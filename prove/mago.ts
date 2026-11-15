@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { Creature, SPECIE } from '../src/creature.js';
 import { costoDi, esperienzaPer, Mago } from '../src/mago.js';
 import { INCANTESIMI } from '../src/incantesimi/elenco.js';
-import { creaDaRicetta } from '../src/incantesimi/officina.js';
+import { creaDaRicetta, EFFETTI, FORME } from '../src/incantesimi/officina.js';
 import { leggi, PAROLE } from '../src/incantesimi/parole.js';
 
 const errori: string[] = [];
@@ -101,6 +101,34 @@ const lontano = new Creature(() => 0, suolo, -0.55, caso);
 for (let i = 0; i < 60 * 30; i++) lontano.aggiorna(1 / 60, new THREE.Vector3(900, 0, 900));
 verifica(lontano.vive > 0 && lontano.vive <= 4, `lontano dal villaggio nascono creature, ma poche (${lontano.vive})`);
 
+// --- la magia che non rompe: stati delle creature, golem amico, scudo ---
+const zoo = new Creature(() => 0, suolo, -0.55, caso);
+const qui = new THREE.Vector3(700, 0, 700);
+const chi = new THREE.Vector3(708, 0, 700);
+const z1 = zoo.nasci(708, 700, 1, true);
+verifica(zoo.stato(chi, 5, 'sonno', 6) === 1, 'il sonno prende la creatura nel cerchio');
+let dz = 0;
+for (let i = 0; i < 60 * 4; i++) dz += zoo.aggiorna(1 / 60, qui);
+verifica(dz === 0 && zoo.vicina(qui)!.distanceTo(chi) < 0.5, 'chi dorme non si muove e non colpisce');
+zoo.stato(chi, 5, 'paura', 4);
+zoo.ferisciIntorno(chi, 5, 2);
+for (let i = 0; i < 60 * 2; i++) zoo.aggiorna(1 / 60, qui);
+verifica(zoo.vicina(qui)!.distanceTo(qui) > 9, 'una ferita la sveglia, e con la paura scappa');
+for (let i = 0; i < 60 * 5; i++) zoo.aggiorna(1 / 60, qui, true);
+const dopo = zoo.vicina(qui)!.distanceTo(qui);
+for (let i = 0; i < 60 * 3; i++) dz += zoo.aggiorna(1 / 60, qui, true);
+verifica(dz === 0 && Math.abs(zoo.vicina(qui)!.distanceTo(qui) - dopo) < 0.5, 'se il mago è invisibile la creatura non lo insegue');
+zoo.evoca(702, 700, 30);
+for (let i = 0; i < 60 * 25 && zoo.vivo(z1); i++) zoo.aggiorna(1 / 60, qui, true);
+verifica(!zoo.vivo(z1) && zoo.ritira().length === 1, 'il golem amico sbriciola la creatura ostile, e il premio va a chi gioca');
+for (let i = 0; i < 60 * 31; i++) zoo.aggiorna(1 / 60, qui, true);
+// Intanto, lontano dal villaggio, sono nate altre creature: si guarda solo che l'amico non ci sia più.
+verifica(zoo.vive === zoo.bersagli(qui, 500).length && zoo.ritira().length === 0, 'finito il tempo il golem amico si sbriciola senza lasciare premi');
+const coperto = new Mago();
+coperto.scudo = 5;
+coperto.ferisci(40);
+verifica(coperto.vita === 90, 'con lo scudo una ferita da 40 ne toglie 10');
+
 // --- gli incantesimi a parole ---
 const note = new Set(PAROLE.filter((x) => x.prezzo === 0).map((x) => x.parola));
 const a = leggi('Pioggia di fuoco piccola', note);
@@ -116,6 +144,12 @@ const tutte = new Set(PAROLE.map((x) => x.parola));
 const e = leggi('onda gigante di fulmine vortice cristallo tempo', tutte);
 verifica(e.ricetta?.effetti.length === 3 && e.ricetta.potenza === 3 && e.ricetta.ampiezza === 3, 'al massimo tre effetti; «gigante» alza forza e ampiezza');
 verifica(costoDi(creaDaRicetta(e.ricetta!)) > costoDi(creaDaRicetta(a.ricetta!)), 'più parole e più forti: più mana');
+const f = leggi('scudo e cura su di me', tutte);
+verifica(f.ricetta?.forma === 'me' && f.ricetta.effetti.join() === 'scudo,cura', '«scudo e cura su di me» è un incantesimo su se stessi');
+const h = leggi('trappola di sonno e veleno', tutte);
+verifica(h.ricetta?.forma === 'mina' && h.ricetta.effetti.join() === 'sonno,veleno', 'le trappole e gli stati delle creature si scrivono a parole');
+verifica(PAROLE.filter((x) => x.famiglia === 'effetto').length >= 30 && PAROLE.filter((x) => x.famiglia === 'forma').length >= 9, 'almeno trenta effetti e nove forme');
+verifica(PAROLE.every((x) => (x.forma ? FORME.some((y) => y.id === x.forma) : true) && (x.effetto ? EFFETTI.some((y) => y.id === x.effetto) : true)) && EFFETTI.every((y) => PAROLE.some((x) => x.effetto === y.id)) && FORME.every((y) => PAROLE.some((x) => x.forma === y.id)), 'ogni forma e ogni effetto ha la sua parola, e viceversa');
 verifica(PAROLE.length >= 20 && new Set(PAROLE.flatMap((x) => [x.parola, ...x.altre])).size === PAROLE.flatMap((x) => [x.parola, ...x.altre]).length, 'il vocabolario ha almeno venti parole e nessun doppione');
 const ricco = new Mago();
 ricco.guadagna(0, 20);

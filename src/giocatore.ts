@@ -21,6 +21,9 @@ export class Giocatore {
   aNuoto = false;
   /** Quanto sta camminando (0 fermo, 1 al passo, di più in corsa): muove il bastone. */
   andatura = 0;
+  /** Quanto la magia allunga il passo e il salto (1 = normale). */
+  passoMagico = 1;
+  saltoMagico = 1;
 
   constructor(R: typeof RAPIER, fisica: RAPIER.World) {
     this.posizione.y = altezza(0, 41) + 1;
@@ -50,11 +53,11 @@ export class Giocatore {
       lato /= lung;
     }
     // In acqua alta si nuota: più lenti, e a galla.
-    const passo = (this.aNuoto ? 3.6 : comandi.corri ? 11 : 6.5) * dt;
+    const passo = (this.aNuoto ? 3.6 : comandi.corri ? 11 : 6.5) * this.passoMagico * dt;
     const sn = Math.sin(this.imbardata);
     const cs = Math.cos(this.imbardata);
     if (this.aTerra && this.velY < 0) this.velY = -2;
-    if (this.aTerra && (comandi.salta || comandi.saltoSingolo)) this.velY = 8.5;
+    if (this.aTerra && (comandi.salta || comandi.saltoSingolo)) this.velY = 8.5 * this.saltoMagico;
     comandi.saltoSingolo = false;
     this.velY = Math.max(-40, this.velY - 24 * dt);
 

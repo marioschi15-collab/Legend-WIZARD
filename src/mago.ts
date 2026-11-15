@@ -35,6 +35,11 @@ export class Mago {
   punti = 0;
   essenze = 0;
   readonly potenziamenti: Record<Potenziamento, number> = { vita: 0, mana: 0, ricarica: 0 };
+  /** Secondi che restano agli incantesimi su di sé: scudo, passo svelto, balzo, invisibilità. */
+  scudo = 0;
+  svelto = 0;
+  balzo = 0;
+  invisibile = 0;
   /** Secondi passati dall'ultima ferita: dopo un po' di quiete la vita torna da sola. */
   private quiete = 99;
 
@@ -54,6 +59,10 @@ export class Mago {
   aggiorna(dt: number): void {
     this.mana = Math.min(this.manaMassimo, this.mana + this.ricarica * dt);
     this.quiete += dt;
+    this.scudo = Math.max(0, this.scudo - dt);
+    this.svelto = Math.max(0, this.svelto - dt);
+    this.balzo = Math.max(0, this.balzo - dt);
+    this.invisibile = Math.max(0, this.invisibile - dt);
     if (this.quiete > 6) this.vita = Math.min(this.vitaMassima, this.vita + 4 * dt);
   }
 
@@ -67,6 +76,8 @@ export class Mago {
   /** Una ferita. Dice vero se la vita è finita. */
   ferisci(quanto: number): boolean {
     if (quanto <= 0) return false;
+    // Lo scudo para tre quarti di ogni ferita.
+    if (this.scudo > 0) quanto *= 0.25;
     this.vita = Math.max(0, this.vita - quanto);
     this.quiete = 0;
     return this.vita <= 0;
@@ -102,6 +113,10 @@ export class Mago {
     return true;
   }
 
+  cura(quanto: number): void {
+    this.vita = Math.min(this.vitaMassima, this.vita + quanto);
+  }
+
   /** Paga con le essenze (una parola nuova). Dice falso, e non toglie nulla, se non bastano. */
   spendiEssenze(quante: number): boolean {
     if (this.essenze < quante) return false;
@@ -117,6 +132,7 @@ export class Mago {
     this.vita = this.vitaMassima;
     this.mana = this.manaMassimo;
     this.quiete = 99;
+    this.scudo = this.svelto = this.balzo = this.invisibile = 0;
     this.salva();
     return perse;
   }

@@ -73,7 +73,12 @@ export class MagoUi {
     this.vita.style.width = `${(m.vita / m.vitaMassima) * 100}%`;
     this.mana.style.width = `${(m.mana / m.manaMassimo) * 100}%`;
     this.esperienza.style.width = `${(m.esperienza / esperienzaPer(m.livello)) * 100}%`;
-    const testo = `Livello ${m.livello} · ◆ ${m.essenze}`;
+    // Gli incantesimi che il mago ha addosso, con i secondi che restano.
+    const addosso = ([['🛡️', m.scudo], ['💨', m.svelto], ['🦘', m.balzo], ['👻', m.invisibile]] as const)
+      .filter(([, s]) => s > 0)
+      .map(([segno, s]) => ` ${segno}${Math.ceil(s)}`)
+      .join('');
+    const testo = `Livello ${m.livello} · ◆ ${m.essenze}${addosso}`;
     if (testo !== this.ultimo) this.riga.textContent = this.ultimo = testo;
     this.punto.style.display = m.punti > 0 ? 'inline-block' : 'none';
     if (m.punti > 0) this.punto.textContent = m.punti === 1 ? '＋ 1 punto da spendere' : `＋ ${m.punti} punti da spendere`;

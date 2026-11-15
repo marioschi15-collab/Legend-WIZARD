@@ -11,7 +11,7 @@ import { Lampi } from './effetti/lampi.js';
 import { massimoPunti, Particelle, scalaPunti } from './effetti/particelle.js';
 import { Pezzi } from './fisica/pezzi.js';
 import { Giocatore } from './giocatore.js';
-import type { Effetto, Gioco, Incantesimo } from './gioco.js';
+import type { Effetto, Gioco, Poteri, Incantesimo } from './gioco.js';
 import { INCANTESIMI } from './incantesimi/elenco.js';
 import { Interfaccia } from './interfaccia.js';
 import { creaDaRicetta, leggiRicette, salvaRicette, type Ricetta } from './incantesimi/officina.js';
@@ -164,12 +164,50 @@ async function avvia(): Promise<void> {
   const creature = new Creature(altezza, campo, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
   const magoUi = new MagoUi(mago, () => suoni.scoperta());
+  // I globi di luce degli incantesimi: al massimo tre accesi insieme, il più vecchio lascia il posto.
+  const globi = [0, 1, 2].map(() => {
+    const luce = new THREE.PointLight(0xffe0a0, 0, 26, 1.4);
+    const palla = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }));
+    luce.add(palla);
+    luce.visible = false;
+    scena.add(luce);
+    return { luce, palla, resta: 0 };
+  });
+  const poteri: Poteri = {
+    dove: giocatore.posizione,
+    cura: (quanto) => {
+      if (quanto < 1) return;
+      mago.cura(quanto);
+      ui.colpo(`+${Math.round(quanto)} vita`, '#8dff9a');
+    },
+    scudo: (secondi) => (mago.scudo = Math.max(mago.scudo, secondi)),
+    svelto: (secondi) => (mago.svelto = Math.max(mago.svelto, secondi)),
+    balzo: (secondi) => (mago.balzo = Math.max(mago.balzo, secondi)),
+    invisibile: (secondi) => (mago.invisibile = Math.max(mago.invisibile, secondi)),
+    teletrasporta: (a) => {
+      giocatore.posizione.set(a.x, altezza(a.x, a.z) + 1.2, a.z);
+      suoni.soffio();
+    },
+    luce: (a, secondi, colore) => {
+      const g = globi.reduce((m, x) => (x.resta < m.resta ? x : m));
+      g.resta = secondi;
+      g.luce.position.copy(a);
+      g.luce.color.setHex(colore).lerp(new THREE.Color(0xffffff), 0.5);
+      g.palla.material.color.copy(g.luce.color);
+      g.luce.intensity = 60;
+      g.luce.visible = true;
+    },
+    stato: (a, raggio, che, secondi) => creature.stato(a, raggio, che, secondi),
+    ferisci: (a, raggio, danno) => creature.ferisciIntorno(a, raggio, danno),
+    evoca: (a, secondi) => creature.evoca(a.x, a.z, secondi),
+    bersagli: (a, raggio) => creature.bersagli(a, raggio),
+  };
   const effetti: Effetto[] = [];
   let scossa = 0;
   const umore = { buio: 0, r: 1, g: 1, b: 1 };
   const umoreVero = { buio: 0, tinta: new THREE.Color(1, 1, 1) };
   const g: Gioco = {
-    R: RAPIER, fisica, scena, camera, corpoGiocatore: giocatore.corpo, pezzi, campo, scintille, fumo, lampi, suoni, alberi,
+    R: RAPIER, fisica, scena, camera, corpoGiocatore: giocatore.corpo, pezzi, campo, scintille, fumo, lampi, suoni, alberi, poteri,
     scossa(forza, dove) {
       const d = dove.distanceTo(camera.position);
       scossa = Math.max(scossa, forza * Math.min(1, 14 / (d + 1)));
@@ -820,7 +858,16 @@ async function avvia(): Promise<void> {
 
     // Il mago e le creature: il mana torna, i golem inseguono e colpiscono, il fuoco sotto i piedi scotta.
     mago.aggiorna(dt);
-    let ferita = creature.aggiorna(dt, giocatore.posizione);
+    giocatore.passoMagico = mago.svelto > 0 ? 1.8 : 1;
+    giocatore.saltoMagico = mago.balzo > 0 ? 1.9 : 1;
+    for (const gl of globi) {
+      if (gl.resta <= 0) continue;
+      gl.resta -= dt;
+      gl.luce.position.y += Math.sin(atmosfera.tempo.value * 2) * dt * 0.15;
+      if (gl.resta < 2) gl.luce.intensity = 30 * Math.max(0, gl.resta);
+      if (gl.resta <= 0) gl.luce.visible = false;
+    }
+    let ferita = creature.aggiorna(dt, giocatore.posizione, mago.invisibile > 0);
     if (ferita > 0) {
       suoni.tonfo(1.4);
       scossa = Math.max(scossa, 0.5);

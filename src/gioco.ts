@@ -7,6 +7,33 @@ import type { AlberiMagici } from './mondo/alberiMagici.js';
 import type { Campo } from './mondo/campo.js';
 import type { Suoni } from './suoni.js';
 
+/** Gli stati che un incantesimo può dare alle creature. */
+export type StatoCreatura = 'sonno' | 'pecora' | 'paura' | 'lento' | 'veleno' | 'piccolo';
+
+/** Ciò che la magia può fare al mago stesso e alle creature: non solo rompere, ma curare, proteggere, ingannare. */
+export interface Poteri {
+  /** Dove sta chi gioca (i piedi). */
+  readonly dove: THREE.Vector3;
+  cura(quanto: number): void;
+  /** Per un po' le ferite pesano un quarto. */
+  scudo(secondi: number): void;
+  svelto(secondi: number): void;
+  balzo(secondi: number): void;
+  /** Per un po' le creature non vedono chi gioca. */
+  invisibile(secondi: number): void;
+  teletrasporta(a: THREE.Vector3): void;
+  /** Un globo di luce che resta sospeso in un punto. */
+  luce(a: THREE.Vector3, secondi: number, colore: number): void;
+  /** Dà uno stato alle creature in un cerchio; restituisce quante ne ha prese. */
+  stato(a: THREE.Vector3, raggio: number, che: StatoCreatura, secondi: number): number;
+  /** Ferisce le creature in un cerchio senza badare alle loro immunità; restituisce il danno fatto in tutto. */
+  ferisci(a: THREE.Vector3, raggio: number, danno: number): number;
+  /** Fa nascere un golem amico che combatte per chi gioca. */
+  evoca(a: THREE.Vector3, secondi: number): void;
+  /** Dove stanno le creature ostili entro un raggio. */
+  bersagli(a: THREE.Vector3, raggio: number): THREE.Vector3[];
+}
+
 /** Tutto ciò che un incantesimo può toccare. */
 export interface Gioco {
   readonly R: typeof RAPIER;
@@ -21,6 +48,7 @@ export interface Gioco {
   readonly lampi: Lampi;
   readonly suoni: Suoni;
   readonly alberi: AlberiMagici;
+  readonly poteri: Poteri;
   /** Fa tremare la visuale; si attenua da sola con la distanza dal punto indicato. */
   scossa(forza: number, dove: THREE.Vector3): void;
   /** Chiede di oscurare e tingere il cielo per questo fotogramma (vince la richiesta più forte). */

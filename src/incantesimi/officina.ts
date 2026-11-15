@@ -35,6 +35,10 @@ export const FORME: readonly Scelta[] = [
   { id: 'cielo', nome: 'Dal cielo', simbolo: '🌠', cosaFa: 'cala dall’alto dopo un attimo' },
   { id: 'pioggia', nome: 'Pioggia', simbolo: '🌧️', cosaFa: 'sei colpi sparsi tutt’intorno' },
   { id: 'onda', nome: 'Onda', simbolo: '🌊', cosaFa: 'una fila di colpi da te al bersaglio' },
+  { id: 'me', nome: 'Su di me', simbolo: '🧙', cosaFa: 'succede dove sei tu' },
+  { id: 'cerchio', nome: 'Cerchio', simbolo: '⭕', cosaFa: 'otto colpi in tondo attorno al punto' },
+  { id: 'mina', nome: 'Trappola', simbolo: '🪤', cosaFa: 'aspetta a terra e scatta quando passa una creatura' },
+  { id: 'sciame', nome: 'Sciame', simbolo: '🐝', cosaFa: 'tre globi che inseguono le creature' },
 ];
 
 export const EFFETTI: readonly Scelta[] = [
@@ -49,9 +53,30 @@ export const EFFETTI: readonly Scelta[] = [
   { id: 'cristalli', nome: 'Cristalli', simbolo: '💎', cosaFa: 'spuntoni che eruttano in cerchio' },
   { id: 'bolla', nome: 'Bolla', simbolo: '🎈', cosaFa: 'per un po’ lì il peso sparisce' },
   { id: 'rammenda', nome: 'Rammenda', simbolo: '⏳', cosaFa: 'rimette a posto ciò che è rotto' },
+  // --- la magia che non rompe: cura, protegge, sposta, inganna, evoca ---
+  { id: 'cura', nome: 'Cura', simbolo: '💚', cosaFa: 'ti ridà vita, se sei lì vicino' },
+  { id: 'scudo', nome: 'Scudo', simbolo: '🛡️', cosaFa: 'per un po’ le ferite pesano un quarto' },
+  { id: 'svelto', nome: 'Passo svelto', simbolo: '💨', cosaFa: 'per un po’ corri molto più veloce' },
+  { id: 'balzo', nome: 'Balzo', simbolo: '🦘', cosaFa: 'per un po’ salti altissimo' },
+  { id: 'ombra', nome: 'Ombra', simbolo: '👻', cosaFa: 'per un po’ le creature non ti vedono' },
+  { id: 'varco', nome: 'Varco', simbolo: '🚪', cosaFa: 'ti porta in un attimo dove miri' },
+  { id: 'luce', nome: 'Luce', simbolo: '💡', cosaFa: 'un globo di luce che resta sospeso' },
+  { id: 'acqua', nome: 'Acqua', simbolo: '💧', cosaFa: 'spegne ogni fuoco e rinfresca il prato' },
+  { id: 'albero', nome: 'Albero', simbolo: '🌳', cosaFa: 'fa nascere un albero' },
+  { id: 'muro', nome: 'Muro', simbolo: '🧱', cosaFa: 'alza una fila di cristalli che sbarra la strada' },
+  { id: 'peso', nome: 'Peso', simbolo: '🪨', cosaFa: 'schiaccia a terra pezzi e creature' },
+  { id: 'trema', nome: 'Terremoto', simbolo: '🌋', cosaFa: 'scuote tutto quello che sta in piedi' },
+  { id: 'sonno', nome: 'Sonno', simbolo: '💤', cosaFa: 'addormenta le creature finché non le tocchi' },
+  { id: 'pecora', nome: 'Pecora', simbolo: '🐑', cosaFa: 'trasforma le creature in pecorelle innocue' },
+  { id: 'paura', nome: 'Paura', simbolo: '😱', cosaFa: 'fa scappare le creature' },
+  { id: 'lento', nome: 'Ragnatela', simbolo: '🕸️', cosaFa: 'rallenta molto le creature' },
+  { id: 'veleno', nome: 'Veleno', simbolo: '☠️', cosaFa: 'consuma le creature poco a poco, anche le immuni' },
+  { id: 'mignon', nome: 'Rimpicciolisci', simbolo: '🐜', cosaFa: 'rende le creature piccole e deboli' },
+  { id: 'linfa', nome: 'Ruba vita', simbolo: '🩸', cosaFa: 'toglie vita alle creature e la dà a te' },
+  { id: 'evoca', nome: 'Evoca', simbolo: '🗿', cosaFa: 'chiama un golem amico che combatte per te' },
 ];
 
-export const SIMBOLI = ['✨', '🌙', '☀️', '⭐', '👁️', '🐉', '🦋', '🍄', '🌊', '🪄', '💀', '👑', '🌈', '🕯️', '🦅', '🐺'];
+export const SIMBOLI = ['✨', '🌙', '☀️', '⭐', '👁️', '🐉', '🦋', '🍄', '🌊', '🪄', '💀', '👑', '🌈', '🕯️', '🦅', '🐺', '💚', '🛡️', '💨', '🦘', '👻', '🚪', '💡', '💧', '🌳', '🧱', '🪨', '🌋', '💤', '🐑', '😱', '🕸️', '☠️', '🐜', '🩸', '🗿'];
 export const COLORI = [0xff5a3a, 0xffb02e, 0xffe14a, 0x6dff6a, 0x4fe0c8, 0x6fb8ff, 0xa56bff, 0xff7ad0];
 export const MASSIMO_EFFETTI = 3;
 export const MASSIMO_RICETTE = 8;
@@ -134,6 +159,8 @@ function impatto(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
   const raggio = RAGGI[r.ampiezza]! * (0.6 + 0.4 * scala);
   const suolo = new THREE.Vector3(p.x, altezza(p.x, p.z), p.z);
   const c = new THREE.Color(r.colore);
+  /** Vero se il colpo cade addosso (o quasi) a chi lancia: allora cura, scudo e simili fanno effetto. */
+  const suMe = Math.hypot(p.x - g.poteri.dove.x, p.z - g.poteri.dove.z) < raggio + 1.5;
   bolla(g, p, r.colore, raggio * 0.55, 0.35, 0.7);
   anello(g, suolo, r.colore, raggio, 0.6, 1.1);
   for (let i = 0; i < 26 * scala + 10; i++) {
@@ -196,6 +223,92 @@ function impatto(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
       }
       case 'bolla':
         g.aggiungi(new Levitazione(g, p, 2.5 + r.potenza * 1.5, raggio));
+        break;
+      // --- su chi lancia: valgono se il colpo cade vicino al mago (la forma «su di me» lo fa cadere ai suoi piedi) ---
+      case 'cura':
+        if (suMe) g.poteri.cura(18 * forza + 8);
+        break;
+      case 'scudo':
+        if (suMe) g.poteri.scudo(6 + 5 * forza);
+        break;
+      case 'svelto':
+        if (suMe) g.poteri.svelto(8 + 6 * forza);
+        break;
+      case 'balzo':
+        if (suMe) g.poteri.balzo(8 + 6 * forza);
+        break;
+      case 'ombra':
+        if (suMe) g.poteri.invisibile(5 + 4 * forza);
+        break;
+      case 'varco':
+        if (!suMe && scala >= 1) g.poteri.teletrasporta(suolo);
+        break;
+      case 'luce':
+        g.poteri.luce(new THREE.Vector3(p.x, suolo.y + 2.4, p.z), 40 + 30 * forza, r.colore);
+        break;
+      // --- sul mondo ---
+      case 'acqua':
+        g.campo.spegni(p.x, p.z, raggio * 1.5);
+        g.campo.fiorisci(p.x, p.z, raggio, 0.25);
+        g.pezzi.gela(p.x, p.y, p.z, raggio * 0.5);
+        for (let i = 0; i < 30; i++) {
+          g.scintille.emetti({
+            x: p.x + (Math.random() - 0.5) * raggio * 2, y: suolo.y + 6 + Math.random() * 6, z: p.z + (Math.random() - 0.5) * raggio * 2, vx: 0, vy: -14, vz: 0,
+            vita: 0.7, dim: 0.35, dimFine: 0.1, r: 0.5, g: 0.75, b: 1.4, alfa: 0.8,
+          });
+        }
+        break;
+      case 'albero':
+        if (!g.alberi.vicino(p.x, p.z, 5)) g.alberi.pianta(p.x, p.z);
+        break;
+      case 'muro': {
+        // Di traverso rispetto a chi lancia, così sbarra la strada tra lui e ciò che arriva.
+        const dx = p.x - g.poteri.dove.x;
+        const dz = p.z - g.poteri.dove.z;
+        const d = Math.hypot(dx, dz) || 1;
+        const quanti = 3 + r.ampiezza * 2;
+        const punti = Array.from({ length: quanti }, (_, k) => {
+          const t = (k - (quanti - 1) / 2) * 1.6;
+          return { x: p.x + (-dz / d) * t, z: p.z + (dx / d) * t };
+        });
+        g.aggiungi(new Cristalli(g, punti));
+        break;
+      }
+      case 'peso':
+        for (const i of g.pezzi.vicini(p.x, p.y, p.z, raggio, 500)) g.pezzi.accelera(i, 0, -16 * forza, 0, 1);
+        g.poteri.ferisci(suolo, raggio, 26 * forza);
+        botto = Math.max(botto, 0.2 * forza);
+        break;
+      case 'trema':
+        for (const i of g.pezzi.vicini(p.x, p.y, p.z, raggio * 1.3, 700)) {
+          g.pezzi.accelera(i, (Math.random() - 0.5) * 9 * forza, 2 + Math.random() * 3 * forza, (Math.random() - 0.5) * 9 * forza, 1);
+        }
+        botto = Math.max(botto, 0.3 * forza);
+        break;
+      // --- sulle creature ---
+      case 'sonno':
+        g.poteri.stato(suolo, raggio, 'sonno', 8 + 6 * forza);
+        break;
+      case 'pecora':
+        g.poteri.stato(suolo, raggio, 'pecora', 7 + 5 * forza);
+        break;
+      case 'paura':
+        g.poteri.stato(suolo, raggio, 'paura', 6 + 4 * forza);
+        break;
+      case 'lento':
+        g.poteri.stato(suolo, raggio, 'lento', 8 + 5 * forza);
+        break;
+      case 'veleno':
+        g.poteri.stato(suolo, raggio, 'veleno', 5 + 3 * forza);
+        break;
+      case 'mignon':
+        g.poteri.stato(suolo, raggio, 'piccolo', 12 + 6 * forza);
+        break;
+      case 'linfa':
+        g.poteri.cura(g.poteri.ferisci(suolo, raggio, 16 * forza) * 0.5);
+        break;
+      case 'evoca':
+        if (scala >= 1) g.poteri.evoca(suolo, 20 + 10 * forza);
         break;
       case 'rammenda':
         g.pezzi.rammenda(p.x, p.z, raggio);
@@ -265,6 +378,68 @@ class Palla implements Effetto {
   }
 }
 
+/** Una runa a terra: aspetta che passi una creatura (o che scada il tempo) e poi scatta. */
+class Trappola implements Effetto {
+  private readonly segno: ReturnType<typeof creaCerchioMagico>;
+  private eta = 0;
+
+  constructor(g: Gioco, private readonly r: Ricetta, private readonly p: THREE.Vector3) {
+    this.segno = creaCerchioMagico(r.colore, 1.2);
+    this.segno.position.copy(p);
+    this.segno.scale.setScalar(1.6);
+    g.scena.add(this.segno);
+  }
+
+  aggiorna(dt: number, g: Gioco): boolean {
+    this.eta += dt;
+    this.segno.rotation.y += dt * 1.5;
+    const scatta = this.eta > 0.8 && g.poteri.bersagli(this.p, 3.5).length > 0;
+    if (!scatta && this.eta < 30) return true;
+    this.segno.removeFromParent();
+    rendi(this.segno.material);
+    if (scatta) impatto(g, this.r, this.p.clone().setY(this.p.y + 0.3), 1.2);
+    return false;
+  }
+}
+
+/** Un globo che cerca da solo la creatura più vicina e le scoppia addosso. */
+class Globo implements Effetto {
+  private readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  private readonly vel: THREE.Vector3;
+  private eta = 0;
+  private readonly c: THREE.Color;
+
+  constructor(g: Gioco, private readonly r: Ricetta, l: Lancio, quale: number) {
+    this.c = new THREE.Color(r.colore);
+    this.mesh = new THREE.Mesh(SFERA, new THREE.MeshBasicMaterial({ color: this.c.clone().multiplyScalar(1.8), fog: false }));
+    this.mesh.scale.setScalar(0.7);
+    this.mesh.position.copy(l.origine);
+    // Partono a ventaglio, poi piegano verso la preda.
+    const lato = new THREE.Vector3(-l.direzione.z, 0, l.direzione.x).multiplyScalar((quale - 1) * 9);
+    this.vel = l.direzione.clone().multiplyScalar(18).add(lato).setY(l.direzione.y * 18 + 5);
+    g.scena.add(this.mesh);
+  }
+
+  aggiorna(dt: number, g: Gioco): boolean {
+    this.eta += dt;
+    const p = this.mesh.position;
+    let preda: THREE.Vector3 | null = null;
+    for (const b of g.poteri.bersagli(p, 45)) if (!preda || b.distanceToSquared(p) < preda.distanceToSquared(p)) preda = b;
+    if (preda) {
+      const verso = new THREE.Vector3(preda.x - p.x, preda.y + 1 - p.y, preda.z - p.z).normalize().multiplyScalar(26);
+      this.vel.lerp(verso, Math.min(1, dt * 4));
+    } else this.vel.y -= 6 * dt;
+    p.addScaledVector(this.vel, dt);
+    g.scintille.emetti({ x: p.x, y: p.y, z: p.z, vx: 0, vy: 0.5, vz: 0, vita: 0.3, dim: 0.5, dimFine: 0.05, r: this.c.r * 1.6, g: this.c.g * 1.6, b: this.c.b * 1.6, alfa: 0.7 });
+    const arrivato = preda !== null && preda.distanceTo(p) < 1.8;
+    if (!arrivato && p.y > altezza(p.x, p.z) + 0.2 && this.eta < 4) return true;
+    this.mesh.removeFromParent();
+    this.mesh.material.dispose();
+    impatto(g, this.r, p.clone(), 0.6);
+    return false;
+  }
+}
+
 /** Trasforma una ricetta in un incantesimo vero, da mettere nella barra. */
 export function creaDaRicetta(r: Ricetta): Incantesimo {
   const forma = FORME.find((f) => f.id === r.forma)!;
@@ -279,7 +454,24 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
       const p = l.bersaglio.clone();
       const c = new THREE.Color(r.colore);
       const raggio = RAGGI[r.ampiezza]!;
-      if (r.forma === 'palla') {
+      if (r.forma === 'me') {
+        const io = g.poteri.dove;
+        impatto(g, r, new THREE.Vector3(io.x, altezza(io.x, io.z) + 0.3, io.z), 1);
+      } else if (r.forma === 'cerchio') {
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          const x = p.x + Math.cos(a) * raggio;
+          const z = p.z + Math.sin(a) * raggio;
+          const q = new THREE.Vector3(x, altezza(x, z) + 0.3, z);
+          g.aggiungi(new Dopo(0.08 * i, (gg) => impatto(gg, r, q, 0.55)));
+        }
+      } else if (r.forma === 'mina') {
+        g.aggiungi(new Trappola(g, r, new THREE.Vector3(p.x, altezza(p.x, p.z) + 0.15, p.z)));
+        g.suoni.carica(0.4);
+      } else if (r.forma === 'sciame') {
+        for (let i = 0; i < 3; i++) g.aggiungi(new Globo(g, r, l, i));
+        g.suoni.soffio();
+      } else if (r.forma === 'palla') {
         g.aggiungi(new Palla(g, r, l));
         g.suoni.soffio();
       } else if (r.forma === 'tocco') {

@@ -36,10 +36,19 @@ colpiscono da vicino; il fuoco li consuma, il gelo li rallenta, i botti li sbric
 forti. Battendoli si guadagnano esperienza ed essenze (◆); a ogni livello c'è un punto da spendere in vita, mana o
 ricarica. Se la vita finisce si rinasce al villaggio perdendo un quinto delle essenze, mai i progressi.
 
-**Incantesimi a parole.** Il pulsante «✎ Scrivi un incantesimo» apre un foglio dove si scrive, per esempio, «pioggia
-di fuoco piccola»: il gioco riconosce le parole che il mago conosce (come parte, che cosa fa, quanto è grande e
-forte) e crea l'incantesimo, che resta sul bastone. Si parte con undici parole; le altre dieci si imparano spendendo
-le essenze. Una parola scritta male riceve un suggerimento; il gioco capisce solo il suo vocabolario, non qualsiasi frase.
+**Incantesimi a parole, di ogni tipo.** Il pulsante «✎ Scrivi un incantesimo» apre un foglio dove si scrive, per
+esempio, «pioggia di fuoco piccola» o «scudo e cura su di me»: il gioco riconosce le parole che il mago conosce e
+crea l'incantesimo, che resta sul bastone. Le parole sono 45:
+- **come parte** (9): palla, tocco, pioggia, cielo, onda, su di me, cerchio, trappola (scatta quando passa una
+  creatura), sciame (globi che inseguono le creature);
+- **che cosa fa** (31): rompere (fuoco, ghiaccio, scoppio, vento, fulmine, risucchio, vortice, cristallo, peso,
+  terremoto), aiutare il mago (cura, scudo, passo svelto, balzo, ombra che rende invisibili, varco che teletrasporta,
+  luce), cambiare il mondo (fiori, acqua, albero, muro, bolla, tempo che ripara), ingannare le creature (sonno,
+  pecora, paura, ragnatela, veleno, rimpicciolisci, vampiro che ruba vita) ed evocare un golem amico;
+- **quanto è grande e forte** (5): piccolo, grande, lieve, forte, gigante.
+Fino a tre effetti per incantesimo: le combinazioni sono decine di migliaia. Tredici parole si sanno dall'inizio, le
+altre si imparano con le essenze, dalle missioni e dai guardiani. Il gioco capisce solo il suo vocabolario, non
+qualsiasi frase.
 
 **Missioni.** All'ingresso del villaggio aspettano cinque abitanti con un punto esclamativo dorato: avvicinandosi a
 uno si riceve la sua missione (far rifiorire l'orto, spegnere il fieno, ghiacciare lo spiazzo, sbriciolare il golem

@@ -89,6 +89,9 @@ con punti da spendere, essenze, rinascita al villaggio e il golem di sassi (più
 Della tappa 2 c'è l'incantesimo scritto a parole con le prime ventuno parole (forma, effetto, misura), undici note
 dall'inizio e dieci da imparare con le essenze. Mancano ancora: comportamenti e bersagli, un aspetto diverso per
 ogni parola, le parole date in premio da missioni e guardiani.
+Su richiesta del fondatore («tantissimi incantesimi, di ogni tipo, come un mago vero») il vocabolario è salito a 45
+parole: oltre a rompere, la magia cura, protegge, sposta il mago, cambia il mondo, inganna le creature (sonno, pecora,
+paura, veleno…) ed evoca un golem amico; ci sono anche trappole e globi che inseguono.
 Della tappa 3 ci sono cinque abitanti all'ingresso del villaggio, ognuno con una missione che si può rifare, il
 premio pieno per le soluzioni nuove e dimezzato per quelle ripetute, e una parola insegnata la prima volta. Mancano:
 carattere e giornata degli abitanti, il villaggio vivo, missioni nelle altre terre, il quaderno da sfogliare.

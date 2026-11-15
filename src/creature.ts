@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { StatoCreatura } from './gioco.js';
 
 /** Ciò che una creatura lascia quando si sbriciola. */
 export interface Premio {
@@ -62,6 +63,13 @@ interface Golem {
   numero: number;
   /** Vero per i golem delle missioni: restano dove sono finché chi gioca non arriva, anche se è lontano. */
   fisso: boolean;
+  /** Secondi che restano a ogni stato dato dalla magia. */
+  stati: Record<StatoCreatura, number>;
+  /** Se è un golem evocato da chi gioca: quanti secondi gli restano (0 = è una creatura ostile). */
+  amico: number;
+  /** Vero per sempre se è nato da un'evocazione. */
+  evocato: boolean;
+  taglia: number;
   lampo: number;
   passo: number;
 }
@@ -181,7 +189,7 @@ export class Creature {
     gruppo.position.set(x, this.quota(x, z), z);
     this.gruppo.add(gruppo);
     const vita = (34 + livello * 14) * specie.vita * (guardiano ? 3 : 1);
-    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, lampo: 0, passo: this.caso() * 6 });
+    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, lampo: 0, passo: this.caso() * 6 });
     return this.contatore;
   }
 
@@ -190,10 +198,51 @@ export class Creature {
     return this.golem.some((g) => g.numero === numero);
   }
 
+  /** Dà uno stato (sonno, paura, veleno…) alle creature ostili in un cerchio; dice quante ne ha prese. */
+  stato(dove: THREE.Vector3, raggio: number, che: StatoCreatura, secondi: number): number {
+    let prese = 0;
+    for (const g of this.golem) {
+      if (g.amico > 0 || g.gruppo.position.distanceTo(dove) > raggio) continue;
+      // I guardiani sono troppo grossi per diventare pecore o addormentarsi a lungo.
+      g.stati[che] = Math.max(g.stati[che], g.guardiano && (che === 'pecora' || che === 'sonno') ? secondi * 0.25 : secondi);
+      prese++;
+    }
+    return prese;
+  }
+
+  /** Ferisce le creature ostili in un cerchio senza badare alle immunità; restituisce il danno fatto in tutto. */
+  ferisciIntorno(dove: THREE.Vector3, raggio: number, danno: number): number {
+    let fatto = 0;
+    for (const g of this.golem) {
+      if (g.amico > 0 || g.gruppo.position.distanceTo(dove) > raggio) continue;
+      const q = Math.min(danno, Math.max(0, g.vita));
+      this.ferisci(g, danno);
+      fatto += q;
+    }
+    return fatto;
+  }
+
+  /** Un golem amico: per un po' combatte al fianco di chi gioca, poi si sbriciola. */
+  evoca(x: number, z: number, secondi: number): void {
+    // Uno alla volta: evocarne un altro manda via il primo.
+    for (const g of this.golem) if (g.amico > 0) g.amico = 0.01;
+    this.nasci(x, z, 2, true, 'golem');
+    const g = this.golem[this.golem.length - 1]!;
+    g.amico = secondi;
+    g.evocato = true;
+    g.corpo.color.setHex(0x6ad0c0);
+  }
+
+  /** Dove stanno le creature ostili entro un raggio. */
+  bersagli(dove: THREE.Vector3, raggio: number): THREE.Vector3[] {
+    return this.golem.filter((g) => g.amico <= 0 && g.gruppo.position.distanceTo(dove) < raggio).map((g) => g.gruppo.position);
+  }
+
   /** Un botto, un fulmine, una meteora: ferisce le creature attorno al punto, di più quelle al centro. */
   urto(dove: THREE.Vector3, forza: number): void {
     const raggio = 3 + forza * 5;
     for (const g of this.golem) {
+      if (g.amico > 0) continue;
       const d = g.gruppo.position.distanceTo(dove);
       if (d < raggio) this.ferisci(g, forza * 45 * (1 - (d / raggio) * 0.6) * g.specie.botto);
     }
@@ -201,13 +250,16 @@ export class Creature {
 
   private ferisci(g: Golem, quanto: number): void {
     g.vita -= quanto;
+    // Una ferita sveglia chi dorme.
+    if (quanto > 1) g.stati.sonno = 0;
     g.lampo = 0.18;
   }
 
   private sbriciola(g: Golem): void {
     const p = g.gruppo.position;
     const k = g.guardiano ? 5 : 1;
-    this.premi.push({ specie: g.specie, numero: g.numero, guardiano: g.guardiano, esperienza: (18 + g.livello * 8) * k, essenze: (2 + g.livello + Math.floor(this.caso() * 3)) * k, dove: p.clone() });
+    // Un golem evocato non lascia premi.
+    if (g.amico <= 0 && !g.evocato) this.premi.push({ specie: g.specie, numero: g.numero, guardiano: g.guardiano, esperienza: (18 + g.livello * 8) * k, essenze: (2 + g.livello + Math.floor(this.caso() * 3)) * k, dove: p.clone() });
     for (let i = 0; i < 14; i++) {
       const mesh = new THREE.Mesh(cubo, this.materialeScheggia);
       mesh.scale.setScalar(0.18 + this.caso() * 0.3);
@@ -224,7 +276,7 @@ export class Creature {
    * Un passo di gioco. Restituisce il danno fatto a chi gioca; i premi delle creature sbriciolate si ritirano con
    * `ritira()`.
    */
-  aggiorna(dt: number, giocatore: THREE.Vector3): number {
+  aggiorna(dt: number, giocatore: THREE.Vector3, nascosto = false): number {
     let danno = 0;
     const daCasa = Math.hypot(giocatore.x, giocatore.z);
     const alSicuro = daCasa < RAGGIO_SICURO;
@@ -268,19 +320,65 @@ export class Creature {
         this.golem.splice(i, 1);
         continue;
       }
-      const insegue = d < 36 && (!alSicuro || g.fisso);
-      if (insegue) {
-        g.gruppo.rotation.y = Math.atan2(dx, dz);
-        if (d > 2.4) {
-          p.x += (dx / d) * passo * dt;
-          p.z += (dz / d) * passo * dt;
-          g.passo += dt * passo * 2.2;
+      // Gli stati dati dalla magia: scadono da soli.
+      const st = g.stati;
+      for (const k of Object.keys(st) as StatoCreatura[]) st[k] = Math.max(0, st[k] - dt);
+      if (st.veleno > 0) g.vita -= 8 * dt;
+      if (st.lento > 0) passo *= 0.3;
+      const mite = st.pecora > 0;
+      g.gruppo.scale.setScalar(g.taglia * (mite ? 0.45 : st.piccolo > 0 ? 0.5 : 1));
+      let insegue = false;
+      if (g.amico > 0) {
+        // Il golem amico: va addosso alla creatura ostile più vicina; se non ce ne sono, segue chi gioca.
+        g.amico -= dt;
+        if (g.amico <= 0) g.vita = 0;
+        let preda: Golem | null = null;
+        for (const altro of this.golem) {
+          if (altro.amico > 0 || altro.gruppo.position.distanceTo(p) > 32) continue;
+          if (!preda || altro.gruppo.position.distanceToSquared(p) < preda.gruppo.position.distanceToSquared(p)) preda = altro;
+        }
+        const mx = (preda ? preda.gruppo.position.x : giocatore.x) - p.x;
+        const mz = (preda ? preda.gruppo.position.z : giocatore.z) - p.z;
+        const md = Math.hypot(mx, mz);
+        if (md > (preda ? 1.8 : 4)) {
+          g.gruppo.rotation.y = Math.atan2(mx, mz);
+          p.x += (mx / md) * 4.5 * dt;
+          p.z += (mz / md) * 4.5 * dt;
+          g.passo += dt * 9;
+          insegue = true;
         }
         g.attesaColpo -= dt;
-        if (d < 2.9 && Math.abs(giocatore.y - p.y) < 3.5 && g.attesaColpo <= 0) {
-          g.attesaColpo = 1.3;
-          danno += g.forza;
-          g.passo += 1.5;
+        if (preda && md < 2.6 && g.attesaColpo <= 0) {
+          g.attesaColpo = 1;
+          this.ferisci(preda, 22);
+        }
+      } else if (st.sonno > 0) {
+        // Dorme: non si muove e non colpisce.
+      } else if (st.paura > 0 || mite) {
+        // Scappa da chi gioca (la pecora trotterella piano).
+        if (d > 0.1 && d < 60) {
+          const v = mite ? 1.2 : passo;
+          g.gruppo.rotation.y = Math.atan2(-dx, -dz);
+          p.x -= (dx / d) * v * dt;
+          p.z -= (dz / d) * v * dt;
+          g.passo += dt * v * 2.2;
+          insegue = true;
+        }
+      } else {
+        insegue = d < 36 && (!alSicuro || g.fisso) && !nascosto;
+        if (insegue) {
+          g.gruppo.rotation.y = Math.atan2(dx, dz);
+          if (d > 2.4) {
+            p.x += (dx / d) * passo * dt;
+            p.z += (dz / d) * passo * dt;
+            g.passo += dt * passo * 2.2;
+          }
+          g.attesaColpo -= dt;
+          if (d < 2.9 && Math.abs(giocatore.y - p.y) < 3.5 && g.attesaColpo <= 0) {
+            g.attesaColpo = 1.3;
+            danno += g.forza * (st.piccolo > 0 ? 0.4 : 1);
+            g.passo += 1.5;
+          }
         }
       }
       // Dove l'acqua è alta le creature restano a galla con il busto fuori, invece di camminare sul fondo.
@@ -298,7 +396,12 @@ export class Creature {
         g.arti[3]!.rotation.x = dondolo;
       }
       g.lampo = Math.max(0, g.lampo - dt);
-      g.corpo.emissive.setScalar(g.lampo > 0 ? 0.6 : 0.1);
+      if (g.lampo > 0) g.corpo.emissive.setScalar(0.6);
+      else if (mite) g.corpo.emissive.setRGB(0.75, 0.75, 0.7);
+      else if (st.sonno > 0) g.corpo.emissive.setRGB(0.1, 0.16, 0.5);
+      else if (st.veleno > 0) g.corpo.emissive.setRGB(0.12, 0.45, 0.1);
+      else if (st.paura > 0) g.corpo.emissive.setRGB(0.45, 0.4, 0.05);
+      else g.corpo.emissive.setScalar(0.1);
       g.barra.scale.x = Math.max(0.02, g.vita / g.vitaMassima);
       g.barra.visible = g.vita < g.vitaMassima;
       g.barra.rotation.y = -g.gruppo.rotation.y + Math.atan2(dx, dz);
