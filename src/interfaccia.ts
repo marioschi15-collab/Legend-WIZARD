@@ -44,6 +44,7 @@ export class Interfaccia {
     el('come').innerHTML = telefono ? COME_DITA : COME_TASTIERA;
     el('magie').addEventListener('scroll', () => this.segnaFine(), { passive: true });
     window.addEventListener('resize', () => this.segnaFine());
+    el('versione').textContent = `Versione del ${__VERSIONE__}`;
     this.impostaMagie(magie);
     this.entra.addEventListener('click', () => this.onEntra());
     // La scelta della grafica vale subito, senza ricaricare (dove il browser non lascia salvare, ricaricando si perderebbe).
