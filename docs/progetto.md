@@ -72,7 +72,7 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 
 | Tappa | Gioco | Grafica | Prova |
 | --- | --- | --- | --- |
-| **0. Le basi belle** | Niente di nuovo da fare: si sistema ciò che si vede | Luce, colori, erba, alberi, acqua, case meno «a scatole», schermate e scritte più curate | Guardando il gioco fermo, viene voglia di entrarci? |
+| **0. Il mondo** | Niente di nuovo da fare: prima viene un mondo che valga la pena esplorare (vedi sotto) | Tanti biomi, panorami diversi, piante e animali di ogni terra, dettaglio, giorno e notte, tempo | Camminando dieci minuti in una direzione, si vedono almeno quattro panorami che fanno dire «guarda là»? |
 | **1. Il mago** | Vita, mana, livelli e punti da spendere; essenze; rinascita. Una creatura semplice nel prato | Le mani e il bastone del mago, la prima creatura, barre e numeri chiari sullo schermo | Avere un costo e un pericolo cambia il modo di giocare? |
 | **2. Le parole** | L'incantesimo scritto a parole, con le prime venti parole e il costo in mana | Ogni parola si vede: forme, colori e scie diversi per ogni elemento e misura | Scrivere «pioggia di fuoco piccola» e vederla accadere dà gioia? |
 | **3. Le missioni** | Abitanti nel villaggio, cinque missioni con più soluzioni, premio alla fantasia, parole nuove in premio | Gli abitanti (con carattere e abitudini), il villaggio vivo: fumo dai camini, luci, oggetti | Viene voglia di inventare una soluzione diversa? |
@@ -83,6 +83,27 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 
 Ciò che esiste già resta la base: mondo senza confini, cinque terre, luoghi che crollano, incantesimi, colonne di
 luce, mete sullo schermo.
+
+### Tappa 0, in dettaglio: il mondo
+
+È la cosa che al fondatore importa di più: una mappa **bella, varia e particolare**, con la diversità di panorami
+di Minecraft e la ricchezza di vita di No Man's Sky. Si fa in quattro passi, ognuno da provare:
+
+1. **Il rilievo.** Oggi il terreno è quasi tutto colline dolci. Arrivano montagne vere con la neve in cima, vallate,
+   altipiani e canyon, scogliere, fiumi che scendono a valle, laghi, il mare con spiagge e isole.
+2. **I biomi.** Da cinque terre a una quindicina, decise da caldo, umidità e altezza: foresta fitta, bosco
+   d'autunno, giungla, savana, steppa, tundra, ghiacciai, deserto di dune, deserto di roccia rossa, saline, palude,
+   foresta di funghi, campi di cristallo, terre vulcaniche, coste. I confini sfumano e ogni bioma ha i suoi colori.
+3. **La vita.** Piante **generate dal codice specie per specie** (forma del tronco, chioma, colori): ogni regione ha
+   le sue, mai viste altrove, come in No Man's Sky. Sottobosco: cespugli, felci, sassi, tronchi caduti, canne, fiori.
+   Piccoli animali che non c'entrano con il combattimento: farfalle, uccelli, pesci, lucciole, greggi al pascolo.
+4. **Il cielo e il tempo.** Giorno e notte con alba e tramonto, stelle e luna, nuvole, pioggia, neve, nebbia al
+   mattino, tempeste di sabbia. E le **meraviglie**: posti rari e unici (un albero gigantesco, un arco di roccia,
+   isole sospese, una cascata altissima) che si vedono da lontano e fanno venire voglia di andarci.
+
+Limiti detti chiari: il terreno è una superficie, quindi niente grotte né scavi come in Minecraft (archi, isole
+sospese e rovine si fanno come oggetti a parte). E tutto deve reggere su un telefono: il dettaglio si concentra
+vicino a chi gioca.
 
 ### Personaggi e intelligenza
 
