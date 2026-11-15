@@ -175,6 +175,10 @@ async function avvia(): Promise<void> {
   scena.add(creaCielo(), lontano.mesh, terreno.gruppo, terreno.acqua, ...prato.oggetti, ...bosco.oggetti, pezzi.mesh, fumo.punti, scintille.punti);
 
   const giocatore = new Giocatore(RAPIER, fisica);
+  giocatore.ghiaccio = (x, z) => {
+    const c = campo.cella(x, z);
+    return c >= 0 && campo.gelo[c]! > 0.3;
+  };
   const bastone = new Bastone();
   camera.add(bastone.gruppo);
   const suoni = new Suoni();
@@ -583,6 +587,16 @@ async function avvia(): Promise<void> {
   let attesaRegola = 0;
   const abitanti = new Abitanti(altezza);
   scena.add(abitanti.gruppo);
+  // Gli abitanti scappano se il prato brucia accanto a loro o se una creatura arriva fin lì.
+  const vicinoA = new THREE.Vector3();
+  abitanti.pericolo = (x, z) => {
+    for (const [dx, dz] of [[0, 0], [3, 0], [-3, 0], [0, 3], [0, -3]] as const) {
+      const c = campo.cella(x + dx, z + dz);
+      if (c >= 0 && campo.fuoco[c]! > 0) return true;
+    }
+    return creature.bersagli(vicinoA.set(x, altezza(x, z), z), 9).length > 0;
+  };
+  let avvisoFuga = 0;
   /** Quanta parte di un cerchio di prato ha una certa qualità (fiorito, gelato, in fiamme, bruciato). */
   const quotaPrato = (valori: Float32Array, soglia: number) => (x: number, z: number, raggio: number): number => {
     let dentro = 0;
@@ -787,6 +801,11 @@ async function avvia(): Promise<void> {
   };
   const curaMissioni = (dt: number): void => {
     const incontrato = abitanti.aggiorna(dt, giocatore.posizione, missioni.attiva?.id ?? null, giornata.luce < 0.5, missioni.riposo);
+    avvisoFuga -= dt;
+    if (abitanti.inFuga > 0 && avvisoFuga <= 0) {
+      avvisoFuga = 12;
+      ui.annuncia('Gli abitanti scappano!', 'C’è pericolo accanto a loro: spegni il fuoco o allontana le creature, e torneranno.');
+    }
     if (incontrato && incontrato === missioni.attiva?.id) ui.annuncia(missioni.attiva.chi, `Conto su di te: ${missioni.attiva.inBreve.toLowerCase()}.`);
     else if (incontrato && missioni.riposo.has(incontrato)) {
       const chi = MISSIONI.find((x) => x.id === incontrato)!.chi;

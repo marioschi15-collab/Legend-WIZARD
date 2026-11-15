@@ -312,7 +312,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
       uniforms: {
         uTempo: atmosfera.tempo, uOrizzonte: atmosfera.nebbiaColore, uAlto: atmosfera.cieloAlto, uLuce: atmosfera.luce,
         uTinta: atmosfera.tinta, uNebbiaDensita: atmosfera.nebbiaDensita, uSole: { value: DIREZIONE_SOLE },
-        uAltezze: { value: altezze },
+        uAltezze: { value: altezze }, uStato: { value: campo.immagine }, uLatoCampo: { value: campo.lato },
       },
       vertexShader: /* glsl */ `
         varying vec3 vMondo; varying float vDistanza;
@@ -326,6 +326,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
       fragmentShader: /* glsl */ `
         uniform float uTempo; uniform vec3 uOrizzonte; uniform vec3 uAlto; uniform float uLuce; uniform vec3 uTinta;
         uniform float uNebbiaDensita; uniform vec3 uSole; uniform sampler2D uAltezze;
+        uniform sampler2D uStato; uniform float uLatoCampo;
         varying vec3 vMondo; varying float vDistanza;
         ${NEBBIA_GLSL}
         ${UV_ALTEZZE_GLSL}
@@ -348,6 +349,12 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
           float schiuma = clamp(riva * smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(prof * 26.0 - uTempo * 1.4 + a * 3.0)) + smoothstep(0.025, 0.0, prof), 0.0, 1.0);
           c = mix(c, vec3(0.92, 0.96, 1.0) * lume, schiuma * 0.55);
           float alfa = max(mix(mix(0.3, 0.6, smoothstep(0.0, 0.5, prof)), 0.93, striscio), schiuma * 0.55);
+          // Dove il gelo è arrivato sull'acqua si forma una lastra di ghiaccio, bianca e incrinata: ci si cammina sopra.
+          float gelo = texture2D(uStato, vMondo.xz / uLatoCampo).g * (1.0 - smoothstep(200.0, 250.0, distance(vMondo.xz, cameraPosition.xz)));
+          float lastra = smoothstep(0.25, 0.45, gelo);
+          float crepe = smoothstep(0.92, 1.0, abs(sin(vMondo.x * 1.3 + 2.0 * sin(vMondo.z * 0.9))) * abs(sin(vMondo.z * 1.7 + 1.5 * sin(vMondo.x * 0.7))));
+          c = mix(c, (vec3(0.8, 0.9, 0.97) - crepe * 0.25) * lume + vec3(1.0, 0.95, 0.85) * pow(max(dot(reflect(-uSole, vec3(0.0, 1.0, 0.0)), vista), 0.0), 60.0) * uLuce, lastra);
+          alfa = mix(alfa, 0.96, lastra);
           gl_FragColor = vec4(conNebbia(c, vDistanza, uOrizzonte, uNebbiaDensita), alfa);
           #include <colorspace_fragment>
         }

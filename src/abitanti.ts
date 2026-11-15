@@ -24,6 +24,11 @@ export class Abitanti {
   readonly gruppo = new THREE.Group();
   private readonly tutti: Abitante[] = [];
   private tempo = 0;
+  /** Dice se in un punto c'è pericolo (il prato che brucia, una creatura): lo dà il gioco vero. */
+  pericolo: (x: number, z: number) => boolean = () => false;
+  /** Quanti abitanti stanno scappando in questo momento. */
+  inFuga = 0;
+  private fuga = new Map<string, number>();
 
   constructor(private readonly quota: (x: number, z: number) => number) {
     const pelle = new THREE.MeshLambertMaterial({ color: 0xf0c8a0 });
@@ -72,8 +77,29 @@ export class Abitanti {
   aggiorna(dt: number, giocatore: THREE.Vector3, inCorso: string | null, notte = false, riposano: ReadonlySet<string> = new Set()): string | null {
     this.tempo += dt;
     let incontrato: string | null = null;
+    this.inFuga = 0;
     for (const a of this.tutti) {
       const p = a.gruppo.position;
+      // Il fuoco o una creatura troppo vicini: l'abitante scappa di corsa dentro il villaggio, e torna quando è passato.
+      let paura = Math.max(0, (this.fuga.get(a.id) ?? 0) - dt);
+      if (this.pericolo(p.x, p.z)) paura = 5;
+      this.fuga.set(a.id, paura);
+      if (paura > 0) {
+        this.inFuga++;
+        const rx = a.casa.x * 0.3 - p.x;
+        const rz = a.casa.y - 22 - p.z;
+        const rd = Math.hypot(rx, rz);
+        if (rd > 1) {
+          a.gruppo.rotation.y = Math.atan2(rx, rz);
+          p.x += (rx / rd) * 4.2 * dt;
+          p.z += (rz / rd) * 4.2 * dt;
+          p.y = this.quota(p.x, p.z) + Math.abs(Math.sin(this.tempo * 16 + a.casa.x)) * 0.12;
+        }
+        a.meta.set(a.casa.x, a.casa.y);
+        a.segno.visible = false;
+        a.vicino = false;
+        continue;
+      }
       const dx = giocatore.x - p.x;
       const dz = giocatore.z - p.z;
       const d = Math.hypot(dx, dz);

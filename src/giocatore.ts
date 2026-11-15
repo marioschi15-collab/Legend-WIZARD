@@ -40,6 +40,9 @@ export class Giocatore {
     this.controllo.setApplyImpulsesToDynamicBodies(false);
   }
 
+  /** Dice se in un punto l'acqua è gelata (lo sa il prato): lì si cammina sopra. */
+  ghiaccio: (x: number, z: number) => boolean = () => false;
+
   aggiorna(dt: number, comandi: Comandi, camera: THREE.PerspectiveCamera, scossa: number): void {
     const sensibilita = 0.0023;
     this.imbardata -= comandi.guardaX * sensibilita;
@@ -76,6 +79,15 @@ export class Giocatore {
     const suolo = altezza(this.posizione.x, this.posizione.z);
     // Dove l'acqua è più alta del petto si resta a galla, con gli occhi appena sopra il pelo.
     this.aNuoto = suolo < QUOTA_ACQUA - 1.15;
+    // Sull'acqua gelata si cammina: la lastra regge come terra.
+    if (suolo < QUOTA_ACQUA && this.ghiaccio(this.posizione.x, this.posizione.z)) {
+      this.aNuoto = false;
+      if (this.posizione.y < QUOTA_ACQUA + 0.9) {
+        this.posizione.y = QUOTA_ACQUA + 0.9;
+        this.velY = Math.max(this.velY, 0);
+        this.aTerra = true;
+      }
+    }
     if (this.aNuoto && this.posizione.y < QUOTA_ACQUA - 0.5) {
       this.posizione.y = QUOTA_ACQUA - 0.5;
       this.velY = Math.max(this.velY, 0);
