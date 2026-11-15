@@ -26,6 +26,7 @@ import { PAROLE, salvaConosciute } from './incantesimi/parole.js';
 import { costoDi, Mago } from './mago.js';
 import { MagoUi } from './magoUi.js';
 import { ParoleUi } from './paroleUi.js';
+import { ViaggioUi, type Meta } from './viaggioUi.js';
 import { leggiConosciute } from './incantesimi/parole.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
@@ -152,7 +153,15 @@ async function avvia(): Promise<void> {
   // --- il mago (vita, mana, livelli) e le creature ---
   const mago = new Mago();
   mago.carica();
-  const creature = new Creature(altezza, campo, QUOTA_ACQUA);
+  const pesiTerra = new Float32Array(N_ZONE);
+  /** Il numero della terra che domina in un punto. */
+  const terraIn = (x: number, z: number): number => {
+    pesiZone(x, z, pesiTerra);
+    let k = 0;
+    for (let i = 1; i < N_ZONE; i++) if (pesiTerra[i]! > pesiTerra[k]!) k = i;
+    return k;
+  };
+  const creature = new Creature(altezza, campo, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
   const magoUi = new MagoUi(mago, () => suoni.scoperta());
   const effetti: Effetto[] = [];
@@ -317,6 +326,59 @@ async function avvia(): Promise<void> {
   };
 
 
+
+  // --- guardiani, luoghi liberati e viaggio rapido ---
+  const VILLAGGIO: Meta = { nome: 'Il villaggio', x: 0, z: 41 };
+  const guardiani = new Map<string, { numero: number; luogo: Luogo }>();
+  const liberati: (Meta & { chiave: string })[] = [];
+  const razzeViste = new Set<string>();
+  try {
+    for (const d of JSON.parse(localStorage.getItem('radura-liberati') ?? '[]') as unknown[]) {
+      const m = d as Partial<Meta & { chiave: string }>;
+      if (typeof m.chiave === 'string' && typeof m.nome === 'string' && Number.isFinite(m.x) && Number.isFinite(m.z)) liberati.push({ chiave: m.chiave, nome: m.nome, x: m.x!, z: m.z! });
+    }
+    for (const r of JSON.parse(localStorage.getItem('radura-razze') ?? '[]') as unknown[]) if (typeof r === 'string') razzeViste.add(r);
+  } catch {
+    // Senza memoria del browser i luoghi liberati valgono solo per questa partita.
+  }
+  /** Il guardiano con quel numero è caduto: il suo luogo diventa sicuro e insegna una parola. */
+  const libera = (numero: number): void => {
+    for (const [chiave, g] of guardiani) {
+      if (g.numero !== numero) continue;
+      guardiani.delete(chiave);
+      const l = g.luogo;
+      // Ci si arriva appena fuori dalle mura, dal lato sud.
+      liberati.push({ chiave, nome: `${l.nome} (${ZONE[terraIn(l.x, l.z)]!.nome})`, x: l.x, z: l.z + l.raggio + 6 });
+      try {
+        localStorage.setItem('radura-liberati', JSON.stringify(liberati.slice(-40)));
+      } catch {
+        // Pazienza.
+      }
+      // La parola più preziosa tra quelle che mancano; se le sa già tutte, il premio in essenze basta.
+      const nuova = PAROLE.filter((x) => !conosciute.has(x.parola)).sort((a, b) => a.prezzo - b.prezzo)[0];
+      if (nuova) {
+        conosciute.add(nuova.parola);
+        salvaConosciute(conosciute);
+      }
+      ui.annuncia('Luogo liberato', (nuova ? `Il guardiano ti lascia la parola «${nuova.parola}». ` : '') + 'Ora puoi tornarci con il viaggio rapido.', true);
+      suoni.tesoro();
+    }
+  };
+  const viaggioUi = new ViaggioUi();
+  viaggioUi.pulsante.addEventListener('click', () => {
+    if (!comandi.attivi) return;
+    comandi.attivi = false;
+    comandi.rilascia();
+    comandi.sgancia();
+    viaggioUi.apri([VILLAGGIO, ...liberati], giocatore.posizione.x, giocatore.posizione.z);
+  });
+  viaggioUi.onChiudi = officina.onChiudi;
+  viaggioUi.onViaggio = (meta) => {
+    creature.svuota();
+    spostati(meta.x, meta.z, 0);
+    ui.annuncia(meta.nome, 'Sei arrivato');
+  };
+
   // --- le missioni: gli abitanti aspettano all'ingresso del villaggio e chiedono una mano ---
   const missioni = new Missioni();
   missioni.carica();
@@ -440,7 +502,7 @@ async function avvia(): Promise<void> {
   let ultimaMagia = '';
   const lancia = (indice: number): void => {
     const magia = magie[indice]!;
-    if (magoUi.aperta || paroleUi.aperta) return;
+    if (magoUi.aperta || paroleUi.aperta || viaggioUi.aperta) return;
     if (!mago.spendi(costoDi(magia))) {
       // Senza mana non si lancia: si aspetta che torni, o si sceglie un incantesimo che costa meno.
       ui.colpo(`Mana insufficiente (serve ${costoDi(magia)})`, '#7ad0ff');
@@ -667,6 +729,13 @@ async function avvia(): Promise<void> {
       suoni.scoperta();
     }
     for (const l of luoghiInVista) {
+      // Ogni luogo ha un guardiano che lo aspetta sul bordo, dalla parte di chi arriva.
+      const lontano = Math.hypot(p.x - l.x, p.z - l.z);
+      if (l.tipo !== 'villaggio' && lontano < l.raggio + 70 && lontano > l.raggio + 12 && !guardiani.has(l.chiave) && !liberati.some((m) => m.chiave === l.chiave)) {
+        const gx = l.x + ((p.x - l.x) / lontano) * (l.raggio + 5);
+        const gz = l.z + ((p.z - l.z) / lontano) * (l.raggio + 5);
+        guardiani.set(l.chiave, { numero: creature.nasci(gx, gz, 2 + Math.floor(Math.hypot(l.x, l.z) / 350), true, undefined, true), luogo: l });
+      }
       if (scoperti.has(l.chiave) || Math.hypot(p.x - l.x, p.z - l.z) > l.raggio + 14) continue;
       scoperti.add(l.chiave);
       if (l.tipo !== 'villaggio') {
@@ -760,6 +829,7 @@ async function avvia(): Promise<void> {
     const sotto = campo.cella(giocatore.posizione.x, giocatore.posizione.z);
     if (sotto >= 0 && campo.fuoco[sotto]! > 0 && !giocatore.aNuoto) ferita += 12 * dt;
     for (const premio of creature.ritira()) {
+      if (premio.guardiano) libera(premio.numero);
       suoni.tonfo(1);
       ui.colpo(`+${premio.esperienza} esperienza · ◆ ${premio.essenze}`, '#e9c46a');
       if (mago.guadagna(premio.esperienza, premio.essenze) > 0) {
@@ -770,12 +840,26 @@ async function avvia(): Promise<void> {
     if (mago.ferisci(ferita)) {
       const perse = mago.rinasci();
       creature.svuota();
-      spostati(0, 41, 0);
-      ui.annuncia('Sei caduto', perse > 0 ? `Rinasci al villaggio · hai perso ◆ ${perse}` : 'Rinasci al villaggio', true);
+      // Si rinasce nel luogo sicuro più vicino: il villaggio, o un luogo liberato dal suo guardiano.
+      let casa: Meta = VILLAGGIO;
+      for (const m of liberati) if (Math.hypot(m.x - giocatore.posizione.x, m.z - giocatore.posizione.z) < Math.hypot(casa.x - giocatore.posizione.x, casa.z - giocatore.posizione.z)) casa = m;
+      spostati(casa.x, casa.z, 0);
+      ui.annuncia('Sei caduto', `Rinasci: ${casa.nome.toLowerCase()}` + (perse > 0 ? ` · hai perso ◆ ${perse}` : ''), true);
       suoni.sveglia();
     }
     magoUi.aggiorna();
     curaMissioni(dt);
+    // La prima volta che si incontra una razza, il gioco dice come si comporta.
+    const razza = creature.razzaVicina(giocatore.posizione, 30);
+    if (razza && !razzeViste.has(razza.nome)) {
+      razzeViste.add(razza.nome);
+      try {
+        localStorage.setItem('radura-razze', JSON.stringify([...razzeViste]));
+      } catch {
+        // Pazienza: lo ridirà la prossima volta.
+      }
+      ui.annuncia(razza.nome, razza.indizio, true);
+    }
 
     umore.buio = 0;
     for (let i = effetti.length - 1; i >= 0; i--) {
@@ -977,7 +1061,7 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, luoghi2: () => luoghiInVista,
     luoghi: () => luoghiInVista,
     magie: () => magie.map((m) => m.nome),
     fermo: false,

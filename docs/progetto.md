@@ -92,6 +92,9 @@ ogni parola, le parole date in premio da missioni e guardiani.
 Della tappa 3 ci sono cinque abitanti all'ingresso del villaggio, ognuno con una missione che si può rifare, il
 premio pieno per le soluzioni nuove e dimezzato per quelle ripetute, e una parola insegnata la prima volta. Mancano:
 carattere e giornata degli abitanti, il villaggio vivo, missioni nelle altre terre, il quaderno da sfogliare.
+Della tappa 4 ci sono cinque razze di creature distribuite sulle quindici terre, ognuna con un'immunità e un punto
+debole, i guardiani dei luoghi (batterli insegna una parola e rende il luogo sicuro) e il viaggio rapido. Mancano:
+le regole proprie di ogni terra (legno bagnato, fuoco che muore tra i ghiacci), creature che girano attorno ai muri.
 
 Ciò che esiste già resta la base: mondo senza confini, cinque terre, luoghi che crollano, incantesimi, colonne di
 luce, mete sullo schermo.

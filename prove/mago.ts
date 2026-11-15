@@ -3,7 +3,7 @@
  * toglie i progressi; un golem insegue, colpisce, e un botto lo sbriciola lasciando il premio.
  */
 import * as THREE from 'three';
-import { Creature } from '../src/creature.js';
+import { Creature, SPECIE } from '../src/creature.js';
 import { costoDi, esperienzaPer, Mago } from '../src/mago.js';
 import { INCANTESIMI } from '../src/incantesimi/elenco.js';
 import { creaDaRicetta } from '../src/incantesimi/officina.js';
@@ -63,6 +63,34 @@ suolo.fuoco[0] = 1;
 for (let i = 0; i < 60 * 6; i++) creature.aggiorna(1 / 60, giocatore);
 verifica(creature.vive <= prima && creature.ritira().length >= 1, 'il fuoco consuma il golem');
 suolo.fuoco[0] = 0;
+
+// Ogni terra ha la sua razza, con immunità e punti deboli.
+const terre = new Creature(() => 0, suolo, -0.55, caso, () => 2);
+const n = terre.nasci(600, 600, 1);
+verifica(terre.razzaVicina(new THREE.Vector3(600, 0, 600), 5) === SPECIE.sentinella, 'tra i ghiacci nasce la sentinella di ghiaccio');
+suolo.gelo[0] = 1;
+for (let i = 0; i < 60 * 20; i++) terre.aggiorna(1 / 60, new THREE.Vector3(600, 0, 700));
+verifica(terre.vivo(n), 'il gelo non fa nulla alla sentinella');
+suolo.gelo[0] = 0;
+suolo.fuoco[0] = 1;
+for (let i = 0; i < 60 * 3; i++) terre.aggiorna(1 / 60, new THREE.Vector3(600, 0, 700));
+verifica(!terre.vivo(n), 'il fuoco la scioglie in fretta');
+suolo.fuoco[0] = 1;
+const lava = new Creature(() => 0, suolo, -0.55, caso, () => 4);
+const dv = lava.nasci(600, 600, 1);
+for (let i = 0; i < 60 * 20; i++) lava.aggiorna(1 / 60, new THREE.Vector3(600, 0, 700));
+verifica(lava.vivo(dv), 'il diavoletto di lava nel fuoco ci sguazza');
+suolo.fuoco[0] = 0;
+// Il guardiano è più duro di una creatura qualunque e lascia un premio più ricco.
+const g1 = new Creature(() => 0, suolo, -0.55, caso);
+const gn = g1.nasci(600, 600, 2, true, undefined, true);
+g1.urto(new THREE.Vector3(600, 0, 600), 1.6);
+g1.aggiorna(1 / 60, new THREE.Vector3(600, 0, 700));
+verifica(g1.vivo(gn), 'un botto solo non basta per un guardiano');
+for (let i = 0; i < 6; i++) g1.urto(new THREE.Vector3(600, 0, 600), 1.6);
+g1.aggiorna(1 / 60, new THREE.Vector3(600, 0, 700));
+const pg = g1.ritira();
+verifica(pg.length === 1 && pg[0]!.guardiano && pg[0]!.numero === gn && pg[0]!.esperienza >= 100, 'battuto, il guardiano lascia un premio ricco');
 
 // Vicino al villaggio non nasce nulla.
 const casa = new Creature(() => 0, suolo, -0.55, caso);

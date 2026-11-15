@@ -47,6 +47,15 @@ sul sentiero, ridurre un rudere in macerie). Un cerchio dorato con una colonna d
 missione si può rifare: risolverla con un incantesimo mai usato prima vale il premio pieno, ripetere lo stesso vale
 la metà. La prima volta, ogni abitante insegna una parola nuova.
 
+**Le terre hanno le loro creature.** Oltre al golem di sassi ci sono la sentinella di ghiaccio (il gelo non le fa
+nulla, il fuoco la scioglie), lo scorpione di sabbia (svelto, quasi insensibile al fuoco, il gelo lo ferma), il lume
+di palude (i botti gli passano attraverso, il gelo lo spegne) e il diavoletto di lava (nel fuoco ci sguazza, il gelo
+lo spacca). La prima volta che se ne incontra una, il gioco dice come si comporta.
+
+**Guardiani e viaggio rapido.** Ogni luogo fuori dal villaggio ha un guardiano con la corona, più grosso e più duro.
+Batterlo libera il luogo: insegna una parola, ci si rinasce se si cade lì vicino, e ci si torna quando si vuole con
+il pulsante «🧭 Viaggio rapido».
+
 - **Una meta sempre sullo schermo** (sotto la mappa): le prime insegnano il gioco in un paio di minuti (bruciare,
   spegnere, afferrare, riparare, inventare, esplorare), poi diventano traguardi di esplorazione senza fine.
 - **Incantesimi perduti**: in ogni tipo di luogo ce n'è uno nascosto, segnalato da una colonna di luce dorata che si
@@ -80,7 +89,7 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 
 ## Dove sta cosa
 
-- `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: i golem.
+- `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: le creature di ogni terra e i guardiani. `src/viaggioUi.ts`: il viaggio rapido.
 - `src/missioni.ts`, `src/abitanti.ts`: le missioni con il loro quaderno delle soluzioni, e gli abitanti che le danno.
 - `src/incantesimi/parole.ts`, `src/paroleUi.ts`: il vocabolario, la lettura di un incantesimo scritto, il foglio per scriverlo.
 
