@@ -76,9 +76,24 @@ export const EFFETTI: readonly Scelta[] = [
   { id: 'mignon', nome: 'Rimpicciolisci', simbolo: '🐜', cosaFa: 'rende le creature piccole e deboli' },
   { id: 'linfa', nome: 'Ruba vita', simbolo: '🩸', cosaFa: 'toglie vita alle creature e la dà a te' },
   { id: 'evoca', nome: 'Evoca', simbolo: '🗿', cosaFa: 'chiama un golem amico che combatte per te' },
+  // --- costruire: quello che nasce resta nel mondo, salvato ---
+  { id: 'blocco', nome: 'Blocco', simbolo: '🧱', cosaFa: 'posa un blocco di pietra' },
+  { id: 'parete', nome: 'Parete', simbolo: '🧱', cosaFa: 'alza una parete di pietra' },
+  { id: 'scala', nome: 'Scala', simbolo: '🪜', cosaFa: 'costruisce una scala di legno' },
+  { id: 'torre', nome: 'Torre', simbolo: '🏰', cosaFa: 'costruisce una torre di vedetta' },
+  { id: 'fattoria', nome: 'Fattoria', simbolo: '🏠', cosaFa: 'costruisce una fattoria' },
+  { id: 'piramide', nome: 'Piramide', simbolo: '🏠', cosaFa: 'costruisce una piramide' },
+  { id: 'tempio', nome: 'Tempio', simbolo: '🏠', cosaFa: 'costruisce un tempio di colonne' },
+  { id: 'igloo', nome: 'Igloo', simbolo: '🏠', cosaFa: 'costruisce un gruppo di igloo' },
+  { id: 'guglia', nome: 'Guglia', simbolo: '🏰', cosaFa: 'costruisce una guglia di cristallo' },
+  { id: 'palafitte', nome: 'Palafitte', simbolo: '🏠', cosaFa: 'costruisce case su palafitte' },
+  { id: 'smonta', nome: 'Smonta', simbolo: '🧹', cosaFa: 'toglie le tue costruzioni lì attorno' },
 ];
 
-export const SIMBOLI = ['✨', '🌙', '☀️', '⭐', '👁️', '🐉', '🦋', '🍄', '🌊', '🪄', '💀', '👑', '🌈', '🕯️', '🦅', '🐺', '💚', '🛡️', '💨', '🦘', '👻', '🚪', '💡', '💧', '🌳', '🧱', '🪨', '🌋', '💤', '🐑', '😱', '🕸️', '☠️', '🐜', '🩸', '🗿'];
+/** Gli effetti che costruiscono: valgono una volta sola per lancio, non nelle repliche. */
+const COSTRUZIONI = new Set(['blocco', 'parete', 'scala', 'torre', 'fattoria', 'piramide', 'tempio', 'igloo', 'guglia', 'palafitte']);
+
+export const SIMBOLI = ['✨', '🌙', '☀️', '⭐', '👁️', '🐉', '🦋', '🍄', '🌊', '🪄', '💀', '👑', '🌈', '🕯️', '🦅', '🐺', '💚', '🛡️', '💨', '🦘', '👻', '🚪', '💡', '💧', '🌳', '🧱', '🪨', '🌋', '💤', '🐑', '😱', '🕸️', '☠️', '🐜', '🩸', '🗿', '🧱', '🪜', '🏰', '🏠', '🧹'];
 export const COLORI = [0xff5a3a, 0xffb02e, 0xffe14a, 0x6dff6a, 0x4fe0c8, 0x6fb8ff, 0xa56bff, 0xff7ad0];
 export const MASSIMO_EFFETTI = 3;
 export const MASSIMO_RICETTE = 12;
@@ -226,6 +241,14 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
     if (soloCreature && DANNI[effetto] !== undefined) {
       g.poteri.ferisci(suolo, raggio, DANNI[effetto]! * forza);
       if (effetto === 'gela') g.poteri.stato(suolo, raggio, 'lento', 6);
+      continue;
+    }
+    if (COSTRUZIONI.has(effetto)) {
+      if (scala >= 1) g.poteri.costruisci(effetto, suolo);
+      continue;
+    }
+    if (effetto === 'smonta') {
+      g.poteri.smonta(suolo, raggio);
       continue;
     }
     switch (effetto) {

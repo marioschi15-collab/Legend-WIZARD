@@ -71,6 +71,19 @@ export const PAROLE: readonly Parola[] = [
   p('vampiro', 'effetto', ['linfa', 'sanguisuga', 'assorbi', 'prosciuga'], { effetto: 'linfa' }, 35, 'toglie vita alle creature e la dà a te'),
   p('evoca', 'effetto', ['alleato', 'amico', 'servitore', 'evocazione'], { effetto: 'evoca' }, 45, 'chiama un golem amico che combatte per te'),
 
+  // --- costruire ---
+  p('blocco', 'effetto', ['mattone', 'cubo', 'blocchi', 'masso'], { effetto: 'blocco' }, 0, 'posa un blocco di pietra'),
+  p('parete', 'effetto', ['pareti', 'muretto', 'recinto'], { effetto: 'parete' }, 15, 'alza una parete di pietra'),
+  p('scala', 'effetto', ['scale', 'gradini', 'scalinata'], { effetto: 'scala' }, 15, 'costruisce una scala di legno'),
+  p('torre', 'effetto', ['torri', 'vedetta', 'torrione'], { effetto: 'torre' }, 40, 'costruisce una torre di vedetta'),
+  p('fattoria', 'effetto', ['casa', 'case', 'cascina', 'fienile'], { effetto: 'fattoria' }, 50, 'costruisce una fattoria'),
+  p('piramide', 'effetto', ['piramidi'], { effetto: 'piramide' }, 60, 'costruisce una piramide'),
+  p('tempio', 'effetto', ['templi', 'colonne', 'colonnato'], { effetto: 'tempio' }, 60, 'costruisce un tempio di colonne'),
+  p('igloo', 'effetto', ['iglu'], { effetto: 'igloo' }, 50, 'costruisce un gruppo di igloo'),
+  p('guglia', 'effetto', ['guglie', 'obelisco'], { effetto: 'guglia' }, 50, 'costruisce una guglia di cristallo'),
+  p('palafitte', 'effetto', ['palafitta', 'capanne'], { effetto: 'palafitte' }, 50, 'costruisce case su palafitte'),
+  p('smonta', 'effetto', ['cancella', 'demolisci', 'togli', 'smantella'], { effetto: 'smonta' }, 0, 'toglie le tue costruzioni lì attorno'),
+
   p('piccolo', 'misura', ['piccola', 'piccoli', 'piccole', 'stretto', 'stretta', 'minuscolo', 'minuscola'], { ampiezza: 1 }, 0, 'colpisce un punto stretto'),
   p('grande', 'misura', ['grandi', 'largo', 'larga', 'vasto', 'vasta', 'ampio', 'ampia'], { ampiezza: 3 }, 0, 'colpisce una zona ampia'),
   p('lieve', 'misura', ['debole', 'deboli', 'leggerissimo', 'delicato', 'delicata'], { potenza: 1 }, 0, 'meno forza, meno mana'),
@@ -86,7 +99,7 @@ export const PAROLE: readonly Parola[] = [
 
 /** Le parolette che non contano: si saltano senza dire nulla. */
 const VUOTE = new Set(['sopra', 'di', 'del', 'dello', 'della', 'dei', 'delle', 'e', 'ed', 'con', 'un', 'una', 'uno', 'il', 'la', 'lo', 'le', 'i', 'gli', 'che', 'solo', 'soltanto', 'molto', 'da', 'dal', 'dall', 'a', 'al', 'in', 'su', 'd', 'l', 'piu', 'tanto', 'tanti']);
-const SIMBOLO: Record<string, string> = { cura: '💚', scudo: '🛡️', svelto: '💨', balzo: '🦘', ombra: '👻', varco: '🚪', luce: '💡', acqua: '💧', albero: '🌳', muro: '🧱', peso: '🪨', trema: '🌋', sonno: '💤', pecora: '🐑', paura: '😱', lento: '🕸️', veleno: '☠️', mignon: '🐜', linfa: '🩸', evoca: '🗿', brucia: '☀️', gela: '🌙', scoppio: '💀', solleva: '🦅', fiorisce: '🦋', folgora: '⭐', risucchio: '👁️', vortice: '🌊', cristalli: '👑', bolla: '🌈', rammenda: '🕯️' };
+const SIMBOLO: Record<string, string> = { scala: '🪜', torre: '🏰', guglia: '🏰', fattoria: '🏠', piramide: '🏠', tempio: '🏠', igloo: '🏠', palafitte: '🏠', smonta: '🧹', cura: '💚', scudo: '🛡️', svelto: '💨', balzo: '🦘', ombra: '👻', varco: '🚪', luce: '💡', acqua: '💧', albero: '🌳', muro: '🧱', peso: '🪨', trema: '🌋', sonno: '💤', pecora: '🐑', paura: '😱', lento: '🕸️', veleno: '☠️', mignon: '🐜', linfa: '🩸', evoca: '🗿', brucia: '☀️', gela: '🌙', scoppio: '💀', solleva: '🦅', fiorisce: '🦋', folgora: '⭐', risucchio: '👁️', vortice: '🌊', cristalli: '👑', bolla: '🌈', rammenda: '🕯️' };
 const COLORE: Record<string, number> = { cura: COLORI[3]!, scudo: COLORI[5]!, svelto: COLORI[4]!, balzo: COLORI[4]!, ombra: COLORI[6]!, varco: COLORI[6]!, luce: COLORI[2]!, acqua: COLORI[5]!, albero: COLORI[3]!, muro: COLORI[7]!, peso: COLORI[1]!, trema: COLORI[1]!, sonno: COLORI[5]!, pecora: COLORI[7]!, paura: COLORI[2]!, lento: COLORI[4]!, veleno: COLORI[3]!, mignon: COLORI[7]!, linfa: COLORI[0]!, evoca: COLORI[4]!, brucia: COLORI[0]!, gela: COLORI[5]!, scoppio: COLORI[1]!, solleva: COLORI[4]!, fiorisce: COLORI[3]!, folgora: COLORI[2]!, risucchio: COLORI[6]!, vortice: COLORI[4]!, cristalli: COLORI[7]!, bolla: COLORI[5]!, rammenda: COLORI[2]! };
 
 const piana = (testo: string): string => testo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -176,7 +189,7 @@ export function leggi(testo: string, conosciute: ReadonlySet<string>): Lettura {
   const scritto = testo.trim().replace(/\s+/g, ' ').replace(/[<>&"']/g, '');
   const nome = (scritto.charAt(0).toUpperCase() + scritto.slice(1)).slice(0, 18);
   const modi = [...new Set(capite.filter((x) => x.modo).map((x) => x.modo!))];
-  const ricetta: Ricetta = { nome, simbolo: SIMBOLO[effetti[0]!]!, colore: COLORE[effetti[0]!]!, forma, effetti, potenza, ampiezza, ...(modi.length > 0 ? { modi } : {}) };
+  const ricetta: Ricetta = { nome, simbolo: SIMBOLO[effetti[0]!] ?? '🧱', colore: COLORE[effetti[0]!] ?? COLORI[1]!, forma, effetti, potenza, ampiezza, ...(modi.length > 0 ? { modi } : {}) };
   const fa = capite.filter((x) => x.famiglia !== 'misura').map((x) => x.cosaFa).join('; ');
   return { ricetta, capite, daImparare, ignote, messaggio: fa };
 }

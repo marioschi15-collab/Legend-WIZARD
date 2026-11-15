@@ -30,6 +30,10 @@ export interface Poteri {
   ferisci(a: THREE.Vector3, raggio: number, danno: number): number;
   /** Fa nascere un golem amico che combatte per chi gioca. */
   evoca(a: THREE.Vector3, secondi: number): void;
+  /** Costruisce qualcosa in un punto (un blocco, una parete, una torre…). */
+  costruisci(che: string, a: THREE.Vector3): void;
+  /** Smonta le costruzioni di chi gioca attorno a un punto. */
+  smonta(a: THREE.Vector3, raggio: number): void;
   /** Dove stanno le creature ostili entro un raggio. */
   bersagli(a: THREE.Vector3, raggio: number): THREE.Vector3[];
 }

@@ -31,6 +31,7 @@ import { QuadernoUi, type Capitolo } from './quadernoUi.js';
 import { SPECIE } from './creature.js';
 import { MISSIONI } from './missioni.js';
 import { REGOLE, Sfide } from './sfide.js';
+import { Cantiere, mattoniDi, OPERE, type Opera } from './cantiere.js';
 import { leggiConosciute } from './incantesimi/parole.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
@@ -137,10 +138,28 @@ async function avvia(): Promise<void> {
       costruiti.delete(chiave);
     }
   };
+  // --- il cantiere: ciò che chi gioca costruisce con la magia resta nel mondo, come i luoghi ---
+  const cantiere = new Cantiere();
+  cantiere.carica();
+  const opereVive = new Map<Opera, Gruppo | null>();
+  const curaCantiere = (x: number, z: number): void => {
+    for (const [o, gruppo] of opereVive) {
+      const lontana = Math.max(Math.abs(o.x - x), Math.abs(o.z - z)) + OPERE[o.tipo]!.raggio > 320;
+      if (!cantiere.opere.includes(o) || lontana) {
+        if (gruppo) pezzi.togli(gruppo);
+        opereVive.delete(o);
+      }
+    }
+    for (const o of cantiere.opere) {
+      if (opereVive.has(o) || Math.max(Math.abs(o.x - x), Math.abs(o.z - z)) + OPERE[o.tipo]!.raggio > 300) continue;
+      opereVive.set(o, pezzi.aggiungi(mattoniDi(o), o.x, o.z, OPERE[o.tipo]!.raggio));
+    }
+  };
   const lontano = creaLontano();
   lontano.segui(0, 41, true);
   terreno.segui(0, 41, Infinity);
   curaLuoghi(0, 41);
+  curaCantiere(0, 41);
   pezzi.avvicina(0, 41, Infinity);
   const scintille = new Particelle(q.scintille, true);
   const fumo = new Particelle(q.fumo, false);
@@ -205,6 +224,42 @@ async function avvia(): Promise<void> {
     ferisci: (a, raggio, danno) => creature.ferisciIntorno(a, raggio, danno),
     evoca: (a, secondi) => creature.evoca(a.x, a.z, secondi),
     bersagli: (a, raggio) => creature.bersagli(a, raggio),
+    costruisci: (che, a) => {
+      const dati = OPERE[che]!;
+      let no = cantiere.impedimento(che, a.x, a.z);
+      // Un edificio vuole terreno piano e libero: niente pendii, niente acqua, niente altri luoghi addosso.
+      let quota = altezza(a.x, a.z);
+      if (!no && dati.luogo) {
+        let bassa = quota;
+        for (let i = 0; i < 8; i++) {
+          const h = altezza(a.x + Math.cos(i * 0.785) * dati.raggio * 0.7, a.z + Math.sin(i * 0.785) * dati.raggio * 0.7);
+          quota = Math.max(quota, h);
+          bassa = Math.min(bassa, h);
+        }
+        if (quota - bassa > 1.6) no = 'Qui il terreno è troppo in pendenza: cerca un posto più piano.';
+        else if (bassa < QUOTA_ACQUA + 0.3) no = 'Qui c’è l’acqua: cerca un posto asciutto.';
+        else if (luoghiVicini(a.x, a.z, dati.raggio + 30).length > 0) no = 'Troppo vicino a un altro luogo: allontanati un po’.';
+        else if (Math.hypot(a.x - giocatore.posizione.x, a.z - giocatore.posizione.z) < dati.raggio + 3) no = 'Troppo vicino a te: mira più lontano.';
+      }
+      if (no) {
+        ui.annuncia('Non si può costruire qui', no);
+        return;
+      }
+      const opera: Opera = {
+        tipo: che, x: a.x, z: a.z, quota: dati.luogo ? quota : a.y,
+        giro: Math.atan2(a.x - giocatore.posizione.x, a.z - giocatore.posizione.z), seme: 1 + Math.floor(Math.random() * 1e6),
+      };
+      cantiere.aggiungi(opera);
+      curaCantiere(giocatore.posizione.x, giocatore.posizione.z);
+      suoni.ricostruzione();
+      if (dati.luogo) ui.annuncia(dati.nome, 'L’hai costruita tu: resta qui, salvata.', true);
+    },
+    smonta: (a, raggio) => {
+      const via = cantiere.smonta(a.x, a.z, raggio);
+      if (via.length === 0) return;
+      curaCantiere(giocatore.posizione.x, giocatore.posizione.z);
+      ui.colpo(via.length === 1 ? 'Costruzione smontata' : `${via.length} costruzioni smontate`, '#e9c46a');
+    },
   };
   const effetti: Effetto[] = [];
   let scossa = 0;
@@ -643,6 +698,7 @@ async function avvia(): Promise<void> {
     lontano.segui(x, z, true);
     campo.segui(x, z);
     curaLuoghi(x, z);
+    curaCantiere(x, z);
     pezzi.avvicina(x, z, Infinity);
     bosco.aggiorna(campo, x, z);
   };
@@ -1082,6 +1138,7 @@ async function avvia(): Promise<void> {
       bosco.aggiorna(campo, giocatore.posizione.x, giocatore.posizione.z);
       campo.segui(giocatore.posizione.x, giocatore.posizione.z);
       curaLuoghi(giocatore.posizione.x, giocatore.posizione.z);
+      curaCantiere(giocatore.posizione.x, giocatore.posizione.z);
       esplora();
       misuraDemolizione();
     }
@@ -1202,7 +1259,7 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, quadernoUi, sfide, luoghi2: () => luoghiInVista,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, quadernoUi, sfide, cantiere, luoghi2: () => luoghiInVista,
     luoghi: () => luoghiInVista,
     magie: () => magie.map((m) => m.nome),
     fermo: false,
@@ -1215,6 +1272,7 @@ async function avvia(): Promise<void> {
     lontano.segui(x, z, true);
       campo.segui(x, z);
       curaLuoghi(x, z);
+      curaCantiere(x, z);
       pezzi.avvicina(x, z, Infinity);
       bosco.aggiorna(campo, x, z);
     },

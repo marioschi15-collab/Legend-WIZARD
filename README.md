@@ -38,19 +38,25 @@ ricarica. Se la vita finisce si rinasce al villaggio perdendo un quinto delle es
 
 **Incantesimi a parole, di ogni tipo.** Il pulsante «✎ Scrivi un incantesimo» apre un foglio dove si scrive, per
 esempio, «pioggia di fuoco piccola» o «scudo e cura su di me»: il gioco riconosce le parole che il mago conosce e
-crea l'incantesimo, che resta sul bastone (c'è posto per dodici). Le parole sono 50:
+crea l'incantesimo, che resta sul bastone (c'è posto per dodici). Le parole sono 61:
 - **come parte** (9): palla, tocco, pioggia, cielo, onda, su di me, cerchio, trappola (scatta quando passa una
   creatura), sciame (globi che inseguono le creature);
-- **che cosa fa** (31): rompere (fuoco, ghiaccio, scoppio, vento, fulmine, risucchio, vortice, cristallo, peso,
+- **che cosa fa** (42): rompere (fuoco, ghiaccio, scoppio, vento, fulmine, risucchio, vortice, cristallo, peso,
   terremoto), aiutare il mago (cura, scudo, passo svelto, balzo, ombra che rende invisibili, varco che teletrasporta,
   luce), cambiare il mondo (fiori, acqua, albero, muro, bolla, tempo che ripara), ingannare le creature (sonno,
-  pecora, paura, ragnatela, veleno, rimpicciolisci, vampiro che ruba vita) ed evocare un golem amico;
+  pecora, paura, ragnatela, veleno, rimpicciolisci, vampiro che ruba vita), evocare un golem amico e **costruire**
+  (blocco, parete, scala, torre, fattoria, piramide, tempio, igloo, guglia, palafitte, e «smonta» per toglierle);
 - **quanto è grande e forte** (5): piccolo, grande, lieve, forte, gigante.
 - **come si comporta** (5): doppio, ritardato, rimbalza, contagioso (salta addosso alle creature vicine), solo
   creature (ferisce le creature e lascia intatti case e prato).
 Fino a tre effetti per incantesimo: le combinazioni sono decine di migliaia. Tredici parole si sanno dall'inizio, le
 altre si imparano con le essenze, dalle missioni e dai guardiani. Il gioco capisce solo il suo vocabolario, non
 qualsiasi frase.
+
+**Costruire.** Con le parole per costruire («tocco torre», «tocco parete») nasce una costruzione vera dove si mira:
+ha peso, si può abbattere e riparare come le altre, e resta salvata sul dispositivo. Blocchi, pareti e scale si
+accostano e si impilano; gli edifici vogliono terreno piano, asciutto e libero. Si possono avere fino a sei edifici e
+sessanta costruzioni in tutto; «smonta» le toglie.
 
 **Il quaderno.** Il pulsante «📖 Quaderno» mostra il mago, le soluzioni trovate per ogni missione, le parole imparate
 per famiglia, le creature incontrate con il loro punto debole e i luoghi liberati.
@@ -110,6 +116,7 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 ## Dove sta cosa
 
 - `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: le creature di ogni terra e i guardiani. `src/viaggioUi.ts`: il viaggio rapido. `src/quadernoUi.ts`: il quaderno.
+- `src/cantiere.ts`: ciò che chi gioca costruisce, e come si ricorda.
 - `src/sfide.ts`: le regole di ogni terra e le sfide.
 - `src/missioni.ts`, `src/abitanti.ts`: le missioni con il loro quaderno delle soluzioni, e gli abitanti che le danno.
 - `src/incantesimi/parole.ts`, `src/paroleUi.ts`: il vocabolario, la lettura di un incantesimo scritto, il foglio per scriverlo.
