@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { foto } from './materiali.js';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { gradino } from '../base/matematica.js';
 import type { Campo } from './campo.js';
@@ -123,6 +124,8 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
     shader.uniforms.uTempo = atmosfera.tempo;
     shader.uniforms.uBiomi = { value: biomi };
     shader.uniforms.uRaggioErba = { value: latoErba / 2 };
+    shader.uniforms.uFotoPrato = { value: foto('prato') };
+    shader.uniforms.uFotoTerra = { value: foto('terra') };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aLava; varying vec3 vMondo; varying float vLava;')
       .replace(
@@ -135,6 +138,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         `#include <common>
          uniform sampler2D uStato; uniform float uLatoCampo; uniform float uTempo;
          uniform sampler2D uBiomi; uniform float uRaggioErba;
+         uniform sampler2D uFotoPrato; uniform sampler2D uFotoTerra;
          varying vec3 vMondo; varying float vLava;
          ${NUBI_GLSL}
          ${UV_ALTEZZE_GLSL}
@@ -152,10 +156,13 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          diffuseColor.rgb *= mix(0.84, 1.1, chiazza) * ombraNubi(vMondo.xz, uTempo);
          // Il suolo non è una tinta unita: grana fine da vicino, macchie più grandi, chiazze di terra nuda.
          float vicinoSuolo = 1.0 - smoothstep(40.0, 140.0, distance(vMondo.xz, cameraPosition.xz));
-         float dettaglio = rumoreSuolo(vMondo.xz * 1.6) * 0.55 + rumoreSuolo(vMondo.xz * 6.5) * 0.45;
-         diffuseColor.rgb *= mix(1.0, mix(0.8, 1.14, dettaglio), vicinoSuolo);
          float nuda = smoothstep(0.6, 0.82, rumoreSuolo(vMondo.xz * 0.19 + 40.0));
          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 0.68, 0.52), nuda * 0.45);
+         // La materia vera del suolo, fotografata: erba da vicino e a macchie larghe (così non si vede ripetersi),
+         // terra battuta nelle chiazze nude.
+         vec3 fotoPrato = texture2D(uFotoPrato, vMondo.xz * 0.23).rgb * 2.0 * mix(vec3(1.0), texture2D(uFotoPrato, vMondo.zx * 0.037 + 0.37).rgb * 2.0, 0.55);
+         vec3 fotoSuolo = mix(fotoPrato, texture2D(uFotoTerra, vMondo.xz * 0.19).rgb * 2.0, nuda);
+         diffuseColor.rgb *= mix(vec3(1.0), fotoSuolo, mix(0.3, 0.95, vicinoSuolo));
          // Dove i fili d'erba finiscono, il terreno prende il loro colore medio: senza, il prato sembrava un
          // tappeto rotondo e chiaro che seguiva chi cammina sopra un suolo più scuro.
          vec4 bio = texture2D(uBiomi, uvAltezze(vMondo.xz));

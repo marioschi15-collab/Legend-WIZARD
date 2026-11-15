@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { foto } from '../mondo/materiali.js';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import type { Particelle } from '../effetti/particelle.js';
 import type { Campo } from '../mondo/campo.js';
@@ -66,6 +67,7 @@ export class Pezzi {
   private readonly fine: Int32Array;
   /** Quanto ogni pezzo è incandescente (0 spento): lo legge la scheda grafica per farlo brillare. */
   private ardore!: THREE.InstancedBufferAttribute;
+  private readonly materia: THREE.InstancedBufferAttribute;
   private elencoArdenti: number[] = [];
   private fiammeDaFare = 0;
   private attesaTremito = 0;
@@ -102,10 +104,22 @@ export class Pezzi {
     // Ogni blocco è un po' più scuro in basso e lungo gli spigoli: dà volume e stacca un blocco dall'altro.
     materiale.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float aArdore; varying vec3 vLocale; varying float vArdore;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLocale = position; vArdore = aArdore;');
+        .replace('#include <common>', '#include <common>\nattribute float aArdore; attribute float aMateria; varying vec3 vLocale; varying float vArdore; varying vec3 vMetri; varying vec3 vFaccia; varying float vMateria; varying float vSfasa;')
+        .replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+           vLocale = position; vArdore = aArdore; vMateria = aMateria; vFaccia = normal;
+           // La posizione sul blocco in metri veri, così la grana della pietra è grande uguale su ogni pezzo.
+           vMetri = position * vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+           vSfasa = fract(float(gl_InstanceID) * 0.6180339) * 9.0;`,
+        );
+      shader.uniforms.uPietra = { value: foto('pietra') };
+      shader.uniforms.uLegno = { value: foto('legno') };
+      shader.uniforms.uIntonaco = { value: foto('intonaco') };
+      shader.uniforms.uTegole = { value: foto('tegole') };
+      shader.uniforms.uPaglia = { value: foto('paglia') };
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vLocale; varying float vArdore;')
+        .replace('#include <common>', '#include <common>\nvarying vec3 vLocale; varying float vArdore; varying vec3 vMetri; varying vec3 vFaccia; varying float vMateria; varying float vSfasa;\nuniform sampler2D uPietra; uniform sampler2D uLegno; uniform sampler2D uIntonaco; uniform sampler2D uTegole; uniform sampler2D uPaglia;')
         // I pezzi di brace e quelli in fiamme emettono luce propria, abbastanza forte da far scattare il bagliore.
         .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(4.0, 1.1, 0.14) * vArdore;')
         .replace(
@@ -113,7 +127,19 @@ export class Pezzi {
           `#include <color_fragment>
            vec3 bordo = smoothstep(0.38, 0.5, abs(vLocale));
            float spigolo = max(bordo.x * bordo.y, max(bordo.y * bordo.z, bordo.x * bordo.z));
-           diffuseColor.rgb *= mix(0.78, 1.05, smoothstep(-0.5, 0.3, vLocale.y)) * (1.0 - 0.3 * spigolo);`,
+           diffuseColor.rgb *= mix(0.78, 1.05, smoothstep(-0.5, 0.3, vLocale.y)) * (1.0 - 0.3 * spigolo);
+           // La materia vera, fotografata: pietra, legno, intonaco, tegole, paglia. Ogni blocco ne prende un pezzo suo.
+           vec3 facce = abs(vFaccia);
+           vec2 uvFoto = (facce.y > 0.5 ? vMetri.xz : facce.x > 0.5 ? vMetri.zy : vMetri.xy) * 0.5 + vSfasa;
+           vec3 materia;
+           if (vMateria < 0.5) materia = texture2D(uPietra, uvFoto).rgb;
+           else if (vMateria < 1.5) materia = texture2D(uLegno, uvFoto.yx * 0.8).rgb;
+           else if (vMateria < 2.5) materia = texture2D(uIntonaco, uvFoto).rgb;
+           else if (vMateria < 3.5) materia = texture2D(uTegole, uvFoto * 1.3).rgb;
+           else if (vMateria < 6.5) materia = texture2D(uPietra, uvFoto * 0.8).rgb;
+           else if (vMateria < 7.5) materia = texture2D(uPaglia, uvFoto).rgb;
+           else materia = texture2D(uLegno, uvFoto.yx * 0.8).rgb;
+           diffuseColor.rgb *= mix(vec3(1.0), materia * 2.0, 0.9);`,
         );
     };
     this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), materiale, capienza);
@@ -125,6 +151,8 @@ export class Pezzi {
     this.mesh.setColorAt(0, new THREE.Color(1, 1, 1));
     this.ardore = new THREE.InstancedBufferAttribute(new Float32Array(capienza), 1).setUsage(THREE.DynamicDrawUsage);
     this.mesh.geometry.setAttribute('aArdore', this.ardore);
+    this.materia = new THREE.InstancedBufferAttribute(new Float32Array(capienza), 1).setUsage(THREE.DynamicDrawUsage);
+    this.mesh.geometry.setAttribute('aMateria', this.materia);
   }
 
   /** Aggiunge i pezzi di un luogo (per ora solo disegnati). Restituisce null se non c'è più posto. */
@@ -152,8 +180,10 @@ export class Pezzi {
       this.disegna(i, b.x, b.y, b.z, b.q);
       this.mesh.setColorAt(i, b.colore);
       this.ardore.setX(i, b.materiale === BRACE ? 0.7 : 0);
+      this.materia.setX(i, b.materiale);
     });
     this.ardore.needsUpdate = true;
+    this.materia.needsUpdate = true;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;
     this.inizio.fill(da, da, da + quanti);
@@ -648,8 +678,10 @@ export class Pezzi {
       this.disegna(i, b.x, b.y, b.z, b.q);
       this.mesh.setColorAt(i, b.colore);
       this.ardore.setX(i, b.materiale === BRACE ? 0.7 : 0);
+      this.materia.setX(i, b.materiale);
     });
     this.ardore.needsUpdate = true;
+    this.materia.needsUpdate = true;
     this.fermo = false;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor!.needsUpdate = true;

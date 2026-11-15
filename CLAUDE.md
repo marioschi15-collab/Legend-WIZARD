@@ -1,7 +1,8 @@
 # Legend Wizard (nome di lavoro del gioco: Radura) — istruzioni per Claude Code
 
 Gioco per browser, telefono e computer: un mago avventuriero in un mondo senza confini, che supera le missioni
-inventando incantesimi a parole. Tutto è fatto di codice (three.js + Rapier): niente immagini, modelli o file audio.
+inventando incantesimi a parole. Motore three.js + Rapier. L'aspetto punta al realistico: superfici, cieli e modelli presi dal vero (liberi da diritti,
+in `public/`), mentre case, creature e suoni nascono dal codice.
 
 Il fondatore **non programma**: spiegagli le cose in italiano semplice, senza gergo, e chiedigli conferma solo per
 decisioni di prodotto. Le decisioni tecniche le prendi tu.

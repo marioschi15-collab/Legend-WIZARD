@@ -330,7 +330,7 @@ async function avvia(): Promise<void> {
   };
 
   /** La pennellata dell'ultima passata: quanto è larga (in punti dello schermo) e quanto si sente. */
-  const pennello = { passo: { value: new THREE.Vector2(0.001, 0.001) }, forza: { value: 0.92 } };
+  const pennello = { passo: { value: new THREE.Vector2(0.001, 0.001) }, forza: { value: 0 } };
   // --- bagliore attorno alle cose luminose (solo al computer) ---
   // L'immagine passa sempre da qui: bordi lisci, bagliore (se il dispositivo lo regge) e toni finali.
   const compositore = new EffectComposer(
@@ -1506,7 +1506,8 @@ async function avvia(): Promise<void> {
   const mostra = (nuovo: number): void => {
     livello = Math.max(0, Math.min(LIVELLO_MASSIMO, nuovo));
     bagliore.enabled = q.bagliore && livello < 1;
-    pennello.forza.value = livello < 5 ? 0.92 : 0;
+    // Con le superfici fotografate l'effetto «dipinto» le impasterebbe: resta spento.
+    pennello.forza.value = 0;
     // La nitidezza si tocca per ultima e mai sotto una volta e mezza: un'immagine sgranata è peggio di una povera.
     densitaPixel = livello >= 6 ? Math.min(q.densitaPixel, 1.5) : livello >= 2 ? Math.min(q.densitaPixel, 1.75) : q.densitaPixel;
     prato.densita(livello >= 7 ? 0.35 : livello >= 3 ? 0.6 : 1);
