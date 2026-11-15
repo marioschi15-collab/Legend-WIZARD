@@ -4,7 +4,41 @@ import { gradino } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { atmosfera, NEBBIA_GLSL, NUBI_GLSL } from './atmosfera.js';
 import { DIREZIONE_SOLE } from './cielo.js';
-import { altezzaEsatta, campiona, lava, QUOTA_ACQUA, VULCANO, ZONE } from './zone.js';
+import { rumore } from '../base/matematica.js';
+import { altezzaEsatta, campiona, lava, PALUDE, QUOTA_ACQUA, VULCANO, ZONE, type Campione } from './zone.js';
+
+const TERRE = ZONE.map((z) => new THREE.Color(z.terra));
+
+/**
+ * Il colore del suolo in un punto, uguale per il terreno vicino e per quello lontano: la terra della zona, poi
+ * sabbia sulle rive, roccia dove è ripido, neve in alta quota, fango sott'acqua. Scrive tre numeri in `esito`
+ * a partire da `k` e restituisce quanta erba può crescerci (da 0 a 1).
+ */
+export function coloreDelSuolo(c: Campione, x: number, z: number, su: number, esito: Float32Array, k: number): number {
+  let r = 0, g = 0, b = 0;
+  for (let n = 0; n < ZONE.length; n++) {
+    const w = c.pesi[n]!;
+    r += TERRE[n]!.r * w;
+    g += TERRE[n]!.g * w;
+    b += TERRE[n]!.b * w;
+  }
+  const h = c.h;
+  const roccia = gradino(0.9, 0.7, su) * 0.85;
+  const fango = gradino(QUOTA_ACQUA + 0.5, QUOTA_ACQUA - 0.2, h) * 0.6;
+  // Sabbia chiara lungo mari, laghi e fiumi (non in palude né sul vulcano, dove la riva è fango o cenere).
+  const sabbia = gradino(0.55, -0.15, h) * (1 - c.pesi[PALUDE]! - c.pesi[VULCANO]!) * (1 - fango) * 0.9;
+  // La neve comincia più o meno a cinquanta metri, con un bordo frastagliato, e non attacca sulle pareti.
+  const neve = gradino(48, 60, h + rumore(x * 0.05, z * 0.05) * 9) * (1 - roccia);
+  const m = (colore: number, quanto: number, v: number): number => v + (colore - v) * quanto;
+  r = m(0.80, sabbia, r); g = m(0.72, sabbia, g); b = m(0.50, sabbia, b);
+  r = m(0.34, roccia, r); g = m(0.32, roccia, g); b = m(0.30, roccia, b);
+  r = m(0.93, neve, r); g = m(0.95, neve, g); b = m(0.99, neve, b);
+  r = m(0.20, fango, r); g = m(0.17, fango, g); b = m(0.10, fango, b);
+  esito[k] = r;
+  esito[k + 1] = g;
+  esito[k + 2] = b;
+  return (1 - roccia / 0.85) * (1 - sabbia) * (1 - neve);
+}
 
 /**
  * Il terreno di un mondo senza confini. È fatto a "zolle" quadrate che nascono attorno a chi gioca e,
@@ -161,7 +195,8 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
     zolle.push({ cx: NaN, cz: NaN, pronta: false, mesh, quote: new Float32Array(PUNTI * PUNTI), collisore: null });
   }
 
-  const terre = ZONE.map((z) => new THREE.Color(z.terra));
+  const pesiPunto = new Float32Array(PUNTI * PUNTI * 5);
+  const puntoQui: Campione = { h: 0, pesi: new Float32Array(5) };
   // Altezze di una zolla più un bordo di un punto tutt'intorno: serve a calcolare le pendenze senza scalini ai confini.
   const BORDO = PUNTI + 2;
   const blocco = new Float32Array(BORDO * BORDO);
@@ -195,20 +230,15 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         pos[k * 3 + 2] = z;
         minimo = Math.min(minimo, c.h);
         massimo = Math.max(massimo, c.h);
-        let r = 0, gg = 0, b = 0;
         const erba = [0, 0, 0, 0];
         for (let n = 0; n < ZONE.length; n++) {
           const w = c.pesi[n]!;
-          r += terre[n]!.r * w;
-          gg += terre[n]!.g * w;
-          b += terre[n]!.b * w;
           for (let e = 0; e < 4; e++) erba[e] = erba[e]! + ZONE[n]!.erba[e]! * w;
         }
         const l = lava(x, z, c.pesi[VULCANO]!);
         lav[k] = l;
-        col[k * 3] = r;
-        col[k * 3 + 1] = gg;
-        col[k * 3 + 2] = b;
+        // Il colore vero arriva nel secondo giro, quando si conosce la pendenza: qui si tengono da parte i pesi.
+        pesiPunto.set(c.pesi, k * 5);
         // Nelle immagini per l'erba ogni zolla scrive i suoi punti tranne l'ultima fila e colonna (sono della vicina).
         if (i < CELLE && j < CELLE) {
           const t = resto(cz * CELLE + j, LATO_IMMAGINE) * LATO_IMMAGINE + resto(cx * CELLE + i, LATO_IMMAGINE);
@@ -230,16 +260,12 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         nor[k * 3] = dx / lung;
         nor[k * 3 + 1] = (2 * PASSO) / lung;
         nor[k * 3 + 2] = dz / lung;
-        // Dove il terreno è ripido affiora la roccia; sotto il pelo dell'acqua, il fango.
-        const roccia = gradino(0.9, 0.7, nor[k * 3 + 1]!) * 0.85;
-        const fango = gradino(QUOTA_ACQUA + 0.5, QUOTA_ACQUA - 0.2, zolla.quote[k]!) * 0.6;
-        const resta = (1 - roccia) * (1 - fango);
-        col[k * 3] = col[k * 3]! * resta + 0.34 * roccia + 0.2 * fango;
-        col[k * 3 + 1] = col[k * 3 + 1]! * resta + 0.32 * roccia + 0.17 * fango;
-        col[k * 3 + 2] = col[k * 3 + 2]! * resta + 0.3 * roccia + 0.1 * fango;
-        if (roccia > 0.3 && i < CELLE && j < CELLE) {
+        puntoQui.h = zolla.quote[k]!;
+        puntoQui.pesi.set(pesiPunto.subarray(k * 5, k * 5 + 5));
+        const fertile = coloreDelSuolo(puntoQui, x0 + i * PASSO, z0 + j * PASSO, nor[k * 3 + 1]!, col, k * 3);
+        if (i < CELLE && j < CELLE) {
           const t = resto(cz * CELLE + j, LATO_IMMAGINE) * LATO_IMMAGINE + resto(cx * CELLE + i, LATO_IMMAGINE);
-          punti[t * 4] = punti[t * 4]! * (1 - roccia);
+          punti[t * 4] = punti[t * 4]! * fertile;
         }
       }
     }
@@ -256,7 +282,8 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
 
   // L'acqua: riflette il cielo quando la si guarda di striscio, lascia vedere il fondo da sopra, e luccica al sole.
   const acqua = new THREE.Mesh(
-    new THREE.PlaneGeometry(LATO_ZOLLA * ZOLLE, LATO_ZOLLA * ZOLLE).rotateX(-Math.PI / 2),
+    // Molto più grande del terreno vicino: il mare deve arrivare fino all'orizzonte.
+    new THREE.PlaneGeometry(4200, 4200).rotateX(-Math.PI / 2),
     new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -289,14 +316,16 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
           vec3 lume = uTinta * mix(0.3, 1.0, min(uLuce, 1.0));
           // Quanta acqua c'è sopra il fondo: bassa e chiara a riva, scura al largo.
           float prof = max(${QUOTA_ACQUA.toFixed(2)} - texture2D(uAltezze, uvAltezze(vMondo.xz)).r, 0.0);
+          // L'immagine delle altezze copre solo i dintorni: più lontano l'acqua è semplicemente profonda.
+          prof = mix(3.0, prof, 1.0 - smoothstep(300.0, 370.0, distance(vMondo.xz, cameraPosition.xz)));
           vec3 corpo = mix(vec3(0.10, 0.34, 0.32), vec3(0.03, 0.15, 0.22), smoothstep(0.0, 0.8, prof)) * lume;
           vec3 c = mix(corpo, mix(uOrizzonte, uAlto * lume, 0.45), clamp(striscio * 1.3 + 0.12, 0.0, 1.0));
           c += vec3(1.0, 0.94, 0.8) * pow(max(dot(reflect(-uSole, n), vista), 0.0), 140.0) * 1.6 * uLuce;
           // Una fascia di schiuma che va e viene lungo la riva.
-          float riva = smoothstep(0.18, 0.0, prof);
-          float schiuma = clamp(riva * smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(prof * 26.0 - uTempo * 1.4 + a * 3.0)) + smoothstep(0.06, 0.0, prof), 0.0, 1.0);
-          c = mix(c, vec3(0.92, 0.96, 1.0) * lume, schiuma * 0.8);
-          float alfa = max(mix(mix(0.25, 0.55, smoothstep(0.0, 0.5, prof)), 0.93, striscio), schiuma * 0.8);
+          float riva = smoothstep(0.09, 0.0, prof);
+          float schiuma = clamp(riva * smoothstep(0.35, 0.75, 0.5 + 0.5 * sin(prof * 26.0 - uTempo * 1.4 + a * 3.0)) + smoothstep(0.025, 0.0, prof), 0.0, 1.0);
+          c = mix(c, vec3(0.92, 0.96, 1.0) * lume, schiuma * 0.55);
+          float alfa = max(mix(mix(0.3, 0.6, smoothstep(0.0, 0.5, prof)), 0.93, striscio), schiuma * 0.55);
           gl_FragColor = vec4(conNebbia(c, vDistanza, uOrizzonte, uNebbiaDensita), alfa);
           #include <colorspace_fragment>
         }

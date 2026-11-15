@@ -1,6 +1,6 @@
 import { graficaScelta, ricordaGrafica, type Grafica } from './base/qualita.js';
 import type { Incantesimo } from './gioco.js';
-import { pesiZone, ZONE, type Luogo } from './mondo/zone.js';
+import { pesiZone, terraferma, ZONE, type Luogo } from './mondo/zone.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -126,12 +126,15 @@ export class Interfaccia {
     const terre = ZONE.map((zona) => [(zona.terra >> 16) & 255, (zona.terra >> 8) & 255, zona.terra & 255]);
     for (let j = 0; j < lato; j++) {
       for (let i = 0; i < lato; i++) {
-        pesiZone(x + ((i + 0.5) / lato - 0.5) * 2 * SFONDO, z + ((j + 0.5) / lato - 0.5) * 2 * SFONDO, pesi);
+        const px = x + ((i + 0.5) / lato - 0.5) * 2 * SFONDO;
+        const pz = z + ((j + 0.5) / lato - 0.5) * 2 * SFONDO;
+        pesiZone(px, pz, pesi);
+        const mare = terraferma(px, pz) < 0.5;
         const k = (j * lato + i) * 4;
         for (let canale = 0; canale < 3; canale++) {
           let v = 0;
           for (let n = 0; n < ZONE.length; n++) v += terre[n]![canale]! * pesi[n]!;
-          punti.data[k + canale] = v;
+          punti.data[k + canale] = mare ? [47, 111, 150][canale]! : v;
         }
         punti.data[k + 3] = 255;
       }

@@ -30,11 +30,11 @@ export interface Zona {
 }
 
 export const ZONE: readonly Zona[] = [
-  { nome: 'La Radura', luceAlta: 0xd6e8ff, luceBassa: 0x70804e, sole: 0xfff1dc, caldo: 0, umido: 0, terra: 0x4f8f2c, nebbia: 0xbcd7ea, cielo: 0x2a6bdb, densitaNebbia: 0.0062, luce: 1, erba: [1, 0, 0, 0], luoghi: ['borgo', 'fattoria', 'vedetta', 'borgo'] },
-  { nome: 'Dune d’Ambra', luceAlta: 0xfff0d2, luceBassa: 0xd0a868, sole: 0xffe9c0, caldo: 0.85, umido: -0.55, terra: 0xd7b56d, nebbia: 0xecd9b0, cielo: 0x3a86e0, densitaNebbia: 0.005, luce: 1.05, erba: [0.1, 1, 0, 0], luoghi: ['piramide', 'tempio', 'casbah'] },
-  { nome: 'Terre Gelate', luceAlta: 0xdcebff, luceBassa: 0xc8d8ea, sole: 0xf4f8ff, caldo: -0.9, umido: -0.1, terra: 0xe6eef5, nebbia: 0xdde8f2, cielo: 0x7a9fd8, densitaNebbia: 0.0095, luce: 0.95, erba: [0.28, 0, 1, 0], luoghi: ['castello', 'igloo', 'guglia'] },
-  { nome: 'Palude dei Lumi', luceAlta: 0x9fc0ae, luceBassa: 0x3c5038, sole: 0xe2ecc8, caldo: -0.1, umido: 0.95, terra: 0x34482b, nebbia: 0x5e7669, cielo: 0x3a5257, densitaNebbia: 0.014, luce: 0.75, erba: [1, 0, 0, 1], luoghi: ['palafitte', 'strega'] },
-  { nome: 'Monte Brace', luceAlta: 0xd29a84, luceBassa: 0x7a2c14, sole: 0xffb890, caldo: 0.9, umido: 0.6, terra: 0x2b2523, nebbia: 0x80564a, cielo: 0x55281f, densitaNebbia: 0.0098, luce: 0.9, erba: [0.03, 0.5, 0, 0.9], luoghi: ['fortezza', 'altare'] },
+  { nome: 'La Radura', luceAlta: 0xd6e8ff, luceBassa: 0x70804e, sole: 0xfff1dc, caldo: 0, umido: 0, terra: 0x4f8f2c, nebbia: 0xbcd7ea, cielo: 0x2a6bdb, densitaNebbia: 0.002, luce: 1, erba: [1, 0, 0, 0], luoghi: ['borgo', 'fattoria', 'vedetta', 'borgo'] },
+  { nome: 'Dune d’Ambra', luceAlta: 0xfff0d2, luceBassa: 0xd0a868, sole: 0xffe9c0, caldo: 0.85, umido: -0.55, terra: 0xd7b56d, nebbia: 0xecd9b0, cielo: 0x3a86e0, densitaNebbia: 0.0017, luce: 1.05, erba: [0.1, 1, 0, 0], luoghi: ['piramide', 'tempio', 'casbah'] },
+  { nome: 'Terre Gelate', luceAlta: 0xdcebff, luceBassa: 0xc8d8ea, sole: 0xf4f8ff, caldo: -0.9, umido: -0.1, terra: 0xe6eef5, nebbia: 0xdde8f2, cielo: 0x7a9fd8, densitaNebbia: 0.003, luce: 0.95, erba: [0.28, 0, 1, 0], luoghi: ['castello', 'igloo', 'guglia'] },
+  { nome: 'Palude dei Lumi', luceAlta: 0x9fc0ae, luceBassa: 0x3c5038, sole: 0xe2ecc8, caldo: -0.1, umido: 0.95, terra: 0x34482b, nebbia: 0x5e7669, cielo: 0x3a5257, densitaNebbia: 0.006, luce: 0.75, erba: [1, 0, 0, 1], luoghi: ['palafitte', 'strega'] },
+  { nome: 'Monte Brace', luceAlta: 0xd29a84, luceBassa: 0x7a2c14, sole: 0xffb890, caldo: 0.9, umido: 0.6, terra: 0x2b2523, nebbia: 0x80564a, cielo: 0x55281f, densitaNebbia: 0.0035, luce: 0.9, erba: [0.03, 0.5, 0, 0.9], luoghi: ['fortezza', 'altare'] },
 ];
 
 export const QUOTA_ACQUA = -0.55;
@@ -96,9 +96,23 @@ export function lava(x: number, z: number, pesoVulcano: number): number {
 
 const p = new Float32Array(5);
 
-/** L'altezza "naturale" del terreno, prima di spianare i luoghi costruiti. Lascia i pesi delle zone in `p`. */
+/** Ciò che l'ultimo calcolo dell'altezza ha trovato in quel punto, oltre all'altezza: serve a decidere dove costruire. */
+const rilievo = { terraferma: 1, monti: 0, fiume: 0 };
+
+/** Quanto un punto è terraferma (1) o mare (0). Attorno al punto di partenza è sempre terra. */
+export function terraferma(x: number, z: number): number {
+  const continente = rumoreStrati(x * 0.0007 + 91.3, z * 0.0007 + 17.7, 3);
+  return gradino(0.41, 0.47, continente + gradino(520, 260, Math.hypot(x, z)) * 0.3);
+}
+
+/**
+ * L'altezza "naturale" del terreno, prima di spianare i luoghi costruiti. Lascia i pesi delle zone in `p`.
+ * Si sommano quattro cose: il suolo di ogni terra (colline, dune, conche), le catene di montagne, i fiumi che
+ * scavano la pianura, e il mare che prende il posto della terra dove il continente finisce.
+ */
 function grezza(x: number, z: number): number {
   pesiZone(x, z, p);
+  const r = Math.hypot(x, z);
   let h = 0;
   if (p[PRATO]! > 0.001) h += p[PRATO]! * (rumoreStrati(x * 0.013 + 10, z * 0.013 + 7) - 0.36) * 15;
   if (p[DESERTO]! > 0.001) {
@@ -114,7 +128,36 @@ function grezza(x: number, z: number): number {
     h += p[VULCANO]! * (1.5 + rumoreStrati(x * 0.017 + 33, z * 0.017 + 12) * 9 + cono - l * 1.2);
   }
   // Il fondo dei laghi non scende oltre il ginocchio.
-  return h < -1 ? -1 - (1 - Math.exp(h + 1)) * 0.5 : h;
+  if (h < -1) h = -1 - (1 - Math.exp(h + 1)) * 0.5;
+
+  // Le montagne: catene lunghe, con creste affilate e valli in mezzo. Lontane dal punto di partenza.
+  const terra = terraferma(x, z);
+  const catena = gradino(0.57, 0.71, rumoreStrati(x * 0.0011 + 200.5, z * 0.0011 + 300.2, 2)) * gradino(260, 520, r) * terra;
+  if (catena > 0) {
+    const cresta = 1 - Math.abs(rumoreStrati(x * 0.0042 + 40.7, z * 0.0042 + 80.3, 4) * 2 - 1);
+    h += catena * (18 + cresta * cresta * 105);
+  }
+
+  // I fiumi: nastri che serpeggiano nella pianura (non sui monti, non nel villaggio di partenza).
+  const dalFiume = Math.abs(rumore(x * 0.0031 + 7.3, z * 0.0031 + 3.9) - 0.5);
+  const fiume = gradino(0.03, 0.009, dalFiume) * (1 - gradino(0, 0.25, catena)) * gradino(120, 200, r) * (1 - p[VULCANO]!);
+  if (fiume > 0) {
+    // La valle si allarga dolcemente attorno al letto, così le rive non sono muri.
+    const valle = gradino(0.09, 0.03, dalFiume) * gradino(18, 5, h);
+    h += (Math.min(h, 1.2) - h) * valle * 0.7;
+    h += (-1.25 - h) * fiume * gradino(14, 4, h);
+  }
+
+  // Il mare: dove il continente finisce il fondale scende piano (spiaggia) e poi si fa profondo.
+  if (terra < 1) {
+    const fondale = -7 + rumore(x * 0.02 + 5, z * 0.02 + 9) * 2.5;
+    h = fondale + (Math.max(h, 0.5) - fondale) * terra * terra;
+    if (terra > 0.55) h = Math.min(h, 0.2 + (terra - 0.55) * 30) + (h - Math.min(h, 0.2 + (terra - 0.55) * 30)) * gradino(0.75, 1, terra);
+  }
+  rilievo.terraferma = terra;
+  rilievo.monti = catena;
+  rilievo.fiume = fiume;
+  return h;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -160,17 +203,19 @@ export function luogoDiCasella(cx: number, cz: number): Luogo | null {
   if (gia !== undefined) return gia;
   let luogo: Luogo | null = null;
   if (cx === 0 && cz === 0) {
-    luogo = { chiave, tipo: 'villaggio', nome: TIPI.villaggio!.nome, x: 0, z: 0, raggio: 48, quota: 0, seme: 11 };
+    luogo = { chiave, tipo: 'villaggio', nome: TIPI.villaggio!.nome, x: 0, z: 0, raggio: 48, quota: 2.2, seme: 11 };
   } else if (sorte(cx, cz, 1) < 0.62) {
     const x = (cx + 0.5 + (sorte(cx, cz, 2) - 0.5) * 0.44) * LATO_CASELLA;
     const z = (cz + 0.5 + (sorte(cx, cz, 3) - 0.5) * 0.44) * LATO_CASELLA;
     // Abbastanza lontano dal villaggio di partenza, e ben dentro una terra sola (non a cavallo di un confine).
     if (Math.hypot(x, z) > 85) {
       // Dove il terreno è sott'acqua (nella palude capita spesso) il luogo sorge su un isolotto appena sopra il pelo.
-      const quota = Math.max(0.45, grezza(x, z));
+      const quota = Math.max(1.2, grezza(x, z));
       let zona = 0;
       for (let i = 1; i < ZONE.length; i++) if (p[i]! > p[zona]!) zona = i;
-      if (p[zona]! > 0.62 && lava(x, z, p[VULCANO]!) < 0.05) {
+      // Non si costruisce in mare, nel letto di un fiume né sul fianco di una montagna.
+      const adatto = rilievo.terraferma > 0.98 && rilievo.monti < 0.08 && rilievo.fiume < 0.05;
+      if (adatto && p[zona]! > 0.62 && lava(x, z, p[VULCANO]!) < 0.05) {
         const scelte = ZONE[zona]!.luoghi;
         const tipo = scelte[Math.floor(sorte(cx, cz, 4) * scelte.length)]!;
         const dati = TIPI[tipo]!;

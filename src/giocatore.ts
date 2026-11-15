@@ -3,6 +3,7 @@ import type RAPIER from '@dimforge/rapier3d-compat';
 import { limita } from './base/matematica.js';
 import type { Comandi } from './comandi.js';
 import { altezza } from './mondo/terreno.js';
+import { QUOTA_ACQUA } from './mondo/zone.js';
 
 const OCCHI = 0.72;
 
@@ -16,6 +17,8 @@ export class Giocatore {
   beccheggio = 0.04;
   private velY = 0;
   private aTerra = false;
+  /** Vero mentre si è in acqua alta. */
+  aNuoto = false;
   /** Quanto sta camminando (0 fermo, 1 al passo, di più in corsa): muove il bastone. */
   andatura = 0;
 
@@ -46,7 +49,8 @@ export class Giocatore {
       avanti /= lung;
       lato /= lung;
     }
-    const passo = (comandi.corri ? 11 : 6.5) * dt;
+    // In acqua alta si nuota: più lenti, e a galla.
+    const passo = (this.aNuoto ? 3.6 : comandi.corri ? 11 : 6.5) * dt;
     const sn = Math.sin(this.imbardata);
     const cs = Math.cos(this.imbardata);
     if (this.aTerra && this.velY < 0) this.velY = -2;
@@ -67,6 +71,12 @@ export class Giocatore {
 
     // Rete di sicurezza: se per qualche motivo si finisce sotto terra, si torna su.
     const suolo = altezza(this.posizione.x, this.posizione.z);
+    // Dove l'acqua è più alta del petto si resta a galla, con gli occhi appena sopra il pelo.
+    this.aNuoto = suolo < QUOTA_ACQUA - 1.15;
+    if (this.aNuoto && this.posizione.y < QUOTA_ACQUA - 0.5) {
+      this.posizione.y = QUOTA_ACQUA - 0.5;
+      this.velY = Math.max(this.velY, 0);
+    }
     if (this.posizione.y < suolo + 0.4) {
       this.posizione.y = suolo + 0.9;
       this.velY = 0;
@@ -74,7 +84,7 @@ export class Giocatore {
     this.corpo.setNextKinematicTranslation(this.posizione);
 
     const mosso = Math.hypot(m.x, m.z) / Math.max(dt, 0.001);
-    this.andatura += ((this.aTerra ? mosso / 6.5 : 0) - this.andatura) * Math.min(1, dt * 10);
+    this.andatura += ((this.aTerra || this.aNuoto ? mosso / 6.5 : 0) - this.andatura) * Math.min(1, dt * 10);
 
     camera.position.set(
       this.posizione.x + (Math.random() - 0.5) * scossa * 0.25,

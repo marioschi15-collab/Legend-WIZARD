@@ -173,7 +173,9 @@ export function creaBosco(ombre: boolean): Bosco {
       let zona = 0;
       for (let k = 1; k < 5; k++) if (pesi[k]! > pesi[zona]!) zona = k;
       const y = altezza(x, z);
+      // Niente piante in acqua, sulla sabbia della riva, né sopra il limite degli alberi (dove comincia la neve).
       const inAcqua = y < QUOTA_ACQUA + 0.15;
+      if (y > 46 || (y < 0.5 && zona !== PALUDE)) continue;
       const bosco = rumore(x * 0.03 + 5, z * 0.03);
       const metti = (tipo: number, s: number, tinta = BIANCO): void => {
         piante.push({ tipo, x, y: y - 0.25, z, scala: s, giro, tinta });

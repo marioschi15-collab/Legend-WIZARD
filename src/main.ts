@@ -26,6 +26,7 @@ import { Campo } from './mondo/campo.js';
 import { creaCielo, DIREZIONE_SOLE } from './mondo/cielo.js';
 import { costruisciLuogo } from './mondo/costruzioni.js';
 import { creaPrato } from './mondo/erba.js';
+import { creaLontano } from './mondo/lontano.js';
 import { altezza, creaTerreno } from './mondo/terreno.js';
 import { luoghiVicini, pesiZone, ZONE, type Luogo } from './mondo/zone.js';
 import type { Gruppo } from './fisica/pezzi.js';
@@ -65,7 +66,7 @@ async function avvia(): Promise<void> {
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scena = new THREE.Scene();
   scena.fog = new THREE.FogExp2(ZONE[0]!.nebbia, atmosfera.nebbiaDensita.value);
-  const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 900);
+  const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 3200);
   scena.add(camera);
 
   const luceCielo = new THREE.HemisphereLight(0xd6e8ff, 0x70804e, 2.1);
@@ -118,13 +119,15 @@ async function avvia(): Promise<void> {
       costruiti.delete(chiave);
     }
   };
+  const lontano = creaLontano();
+  lontano.segui(0, 41, true);
   terreno.segui(0, 41, Infinity);
   curaLuoghi(0, 41);
   pezzi.avvicina(0, 41, Infinity);
   const scintille = new Particelle(q.scintille, true);
   const fumo = new Particelle(q.fumo, false);
   const alberi = new AlberiMagici(scena, RAPIER, fisica, q.ombre);
-  scena.add(creaCielo(), terreno.gruppo, terreno.acqua, ...prato.oggetti, ...bosco.oggetti, pezzi.mesh, fumo.punti, scintille.punti);
+  scena.add(creaCielo(), lontano.mesh, terreno.gruppo, terreno.acqua, ...prato.oggetti, ...bosco.oggetti, pezzi.mesh, fumo.punti, scintille.punti);
 
   const giocatore = new Giocatore(RAPIER, fisica);
   const bastone = new Bastone();
@@ -298,6 +301,7 @@ async function avvia(): Promise<void> {
     giocatore.posizione.set(x, altezza(x, z) + 0.95, z);
     giocatore.imbardata = imbardata;
     terreno.segui(x, z, Infinity);
+    lontano.segui(x, z, true);
     campo.segui(x, z);
     curaLuoghi(x, z);
     pezzi.avvicina(x, z, Infinity);
@@ -576,6 +580,7 @@ async function avvia(): Promise<void> {
     campo.aggiorna(dt);
     // Due zolle di terreno nuove per fotogramma: abbastanza per stare davanti a chi corre, poche per non scattare.
     terreno.segui(giocatore.posizione.x, giocatore.posizione.z, 2);
+    lontano.segui(giocatore.posizione.x, giocatore.posizione.z);
     alberi.aggiorna(dt, campo);
 
     // Fiamme sul prato che brucia.
@@ -755,6 +760,7 @@ async function avvia(): Promise<void> {
       giocatore.imbardata = imbardata;
       giocatore.beccheggio = beccheggio;
       terreno.segui(x, z, Infinity);
+    lontano.segui(x, z, true);
       campo.segui(x, z);
       curaLuoghi(x, z);
       pezzi.avvicina(x, z, Infinity);

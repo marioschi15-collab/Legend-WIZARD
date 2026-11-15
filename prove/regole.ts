@@ -12,6 +12,7 @@ import { Pezzi } from '../src/fisica/pezzi.js';
 import { Giocatore } from '../src/giocatore.js';
 import { Campo } from '../src/mondo/campo.js';
 import { costruisciLuogo } from '../src/mondo/costruzioni.js';
+import { luogoDiCasella } from '../src/mondo/zone.js';
 
 const errori: string[] = [];
 
@@ -29,9 +30,11 @@ const errori: string[] = [];
 await RAPIER.init();
 const fisica = new RAPIER.World({ x: 0, y: -16, z: 0 });
 fisica.timestep = 1 / 60;
-fisica.createCollider(RAPIER.ColliderDesc.cuboid(60, 1, 60).setTranslation(0, -1, 0).setFriction(0.9));
+// Il villaggio di partenza sta a questa quota anche nel mondo vero (il giocatore si appoggia al terreno vero).
+const Q = luogoDiCasella(0, 0)!.quota;
+fisica.createCollider(RAPIER.ColliderDesc.cuboid(60, 1, 60).setTranslation(0, Q - 1, 0).setFriction(0.9));
 const pezzi = new Pezzi(RAPIER, fisica, false);
-const villaggio = pezzi.aggiungi(costruisciLuogo({ tipo: 'villaggio', x: 0, z: 0, quota: 0, seme: 11 }), 0, 0, 48)!;
+const villaggio = pezzi.aggiungi(costruisciLuogo({ tipo: 'villaggio', x: 0, z: 0, quota: Q, seme: 11 }), 0, 0, 48)!;
 pezzi.daiVitaATutto();
 const campo = new Campo();
 const scintille = new Particelle(10, true);
@@ -55,7 +58,7 @@ const scorri = (secondi: number): void => {
   // Si guarda solo la casa: altrove nel villaggio qualche pezzo si assesta ancora di qualche centimetro per conto suo.
   const dellaCasa = (): number[] => pezzi.spostamenti().filter((_, i) => Math.abs(pezzi.pos[i * 3]! - 8) < 5 && Math.abs(pezzi.pos[i * 3 + 2]! + 7) < 4);
   const prima = dellaCasa();
-  giocatore.posizione.set(10, 0.9, 1);
+  giocatore.posizione.set(10, Q + 0.9, 1);
   giocatore.imbardata = 0;
   scorri(0.5);
   comandi.avanti = 1;
@@ -71,12 +74,12 @@ const scorri = (secondi: number): void => {
 
 // --- 3) un luogo tolto non lascia strascichi a chi prende il suo posto ---
 {
-  pezzi.accendiVicini(-22, 2, 7, 6);
-  pezzi.gela(8, 2, -7, 6);
+  pezzi.accendiVicini(-22, Q + 2, 7, 6);
+  pezzi.gela(8, Q + 2, -7, 6);
   scorri(0.5);
   const inFiamme = pezzi.inFiamme;
   pezzi.togli(villaggio);
-  const borgo = pezzi.aggiungi(costruisciLuogo({ tipo: 'borgo', x: 0, z: 0, quota: 0, seme: 5 }), 0, 0, 21)!;
+  const borgo = pezzi.aggiungi(costruisciLuogo({ tipo: 'borgo', x: 0, z: 0, quota: Q, seme: 5 }), 0, 0, 21)!;
   pezzi.daiVitaATutto();
   scorri(8);
   const mossi = pezzi.spostamenti().filter((d) => d > 0.25).length;
