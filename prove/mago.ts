@@ -142,7 +142,54 @@ for (let i = 0; i < 60 * 25 && zoo.vivo(z1); i++) zoo.aggiorna(1 / 60, qui, true
 verifica(!zoo.vivo(z1) && zoo.ritira().length === 1, 'il golem amico sbriciola la creatura ostile, e il premio va a chi gioca');
 for (let i = 0; i < 60 * 31; i++) zoo.aggiorna(1 / 60, qui, true);
 // Intanto, lontano dal villaggio, sono nate altre creature: si guarda solo che l'amico non ci sia più.
-verifica(zoo.vive === zoo.bersagli(qui, 500).length && zoo.ritira().length === 0, 'finito il tempo il golem amico si sbriciola senza lasciare premi');
+zoo.ritira();
+verifica(zoo.vive === zoo.bersagli(qui, 500).length, 'finito il tempo il golem amico si sbriciola');
+
+// --- gli attacchi delle creature: ognuna ha il suo, e si può schivare ---
+// Il pugno del golem si vede arrivare: chi resta nel cerchio lo prende, chi si allontana no.
+const ring = new Creature(() => 0, suolo, -0.55, caso);
+ring.nasci(902.5, 900, 1, true, 'golem');
+const fermo = new THREE.Vector3(900, 0, 900);
+let preso = 0;
+for (let i = 0; i < 60 * 3; i++) preso += ring.aggiorna(1 / 60, fermo);
+verifica(preso > 0, 'chi resta fermo vicino al golem prende il pugno');
+const ring2 = new Creature(() => 0, suolo, -0.55, caso);
+ring2.nasci(902.5, 900, 1, true, 'golem');
+const agile = new THREE.Vector3(900, 0, 900);
+let schivato = 0;
+for (let i = 0; i < 60 * 1.2; i++) {
+  schivato += ring2.aggiorna(1 / 60, agile);
+  // Dopo un attimo (il golem ha già alzato le braccia) chi gioca corre via.
+  if (i > 20) agile.x -= 9 / 60;
+}
+verifica(schivato === 0, 'chi si allontana mentre il golem alza le braccia schiva il pugno');
+// La sentinella tira da lontano: fermi si viene colpiti, spostandosi di lato no.
+const tiro = new Creature(() => 0, suolo, -0.55, caso);
+tiro.nasci(915, 900, 1, true, 'sentinella');
+let colpitoDaLontano = 0;
+for (let i = 0; i < 60 * 6; i++) colpitoDaLontano += tiro.aggiorna(1 / 60, fermo);
+verifica(colpitoDaLontano > 0 && tiro.vicina(fermo)!.distanceTo(fermo) > 5, 'la sentinella colpisce da lontano senza avvicinarsi');
+const tiro2 = new Creature(() => 0, suolo, -0.55, caso);
+tiro2.nasci(915, 900, 1, true, 'sentinella');
+const laterale = new THREE.Vector3(900, 0, 900);
+let schegge = 0;
+for (let i = 0; i < 60 * 6; i++) {
+  schegge += tiro2.aggiorna(1 / 60, laterale);
+  laterale.z += 6 / 60;
+}
+verifica(schegge === 0, 'camminando di lato le schegge passano accanto');
+// Il guardiano, a metà vita, chiama due rinforzi (una volta sola) e lo dice.
+const capo = new Creature(() => 0, suolo, -0.55, caso);
+const cn = capo.nasci(1000, 1000, 2, true, 'golem', true);
+const lontanoDaTutti = new THREE.Vector3(1000, 0, 1100);
+for (let i = 0; i < 4 && capo.vive === 1; i++) {
+  capo.ferisciIntorno(new THREE.Vector3(1000, 0, 1000), 3, 30);
+  capo.aggiorna(1 / 60, lontanoDaTutti);
+}
+verifica(capo.vivo(cn) && capo.vive === 3 && capo.ritiraAvvisi().length === 1, 'a metà vita il guardiano chiama due rinforzi');
+capo.ferisciIntorno(new THREE.Vector3(1000, 0, 1000), 1, 5);
+capo.aggiorna(1 / 60, lontanoDaTutti);
+verifica(capo.vive === 3 && capo.ritiraColpi().length > 0, 'una volta sola; e i colpi a segno diventano numeri da mostrare');
 const coperto = new Mago();
 coperto.scudo = 5;
 coperto.ferisci(40);

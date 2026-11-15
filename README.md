@@ -78,6 +78,12 @@ di palude (i botti gli passano attraverso, il gelo lo spegne) e il diavoletto di
 lo spacca). La prima volta che se ne incontra una, il gioco dice come si comporta. Le creature girano attorno ai
 muri invece di attraversarli (tranne i lumi, che sono fatti di luce).
 
+**Il combattimento.** Ogni razza attacca a modo suo, e ogni attacco si può schivare: il golem alza le braccia e un
+cerchio rosso a terra mostra dove batterà il pugno; la sentinella tira schegge da lontano (basta spostarsi di lato);
+lo scorpione carica in linea retta; il lume lancia globi lenti che inseguono (li ferma un muro); il diavoletto sputa
+fuoco che resta a terra. A metà vita i guardiani chiamano due rinforzi. Sopra le creature colpite sale il numero del
+danno, e quando è il mago a essere colpito i bordi dello schermo lampeggiano di rosso.
+
 **Ogni terra ha la sua regola e la sua sfida.** Tra i ghiacci e nella tundra il fuoco si spegne quasi subito; nel
 deserto, nella savana, nelle gole e sul vulcano è il gelo a sciogliersi; in palude e nella giungla il fuoco dura
 poco; tra i funghi la vita torna da sola; tra i cristalli il mana torna il doppio più in fretta. La prima volta che

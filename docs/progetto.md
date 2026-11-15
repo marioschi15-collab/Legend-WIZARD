@@ -86,6 +86,10 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 | **6. Costruire** | Parole per posare e modellare, la propria torre che resta salvata | Pezzi da costruzione belli, decorazioni | Si ha voglia di tornare alla propria torre? |
 | **7. Online** | Altri maghi, duelli, alleanze, missioni insieme; personaggi speciali con cui parlare liberamente e incantesimi a frase libera | I maghi degli altri, ognuno con il suo aspetto | Si gioca volentieri con un amico? |
 
+**Combattimento:** il fondatore trova il gioco ancora troppo elementare. Primo passo: ogni razza ha un attacco suo
+che si vede arrivare e si schiva (pugno con cerchio a terra, schegge, carica, globi che inseguono, sputi di fuoco),
+i guardiani chiamano rinforzi, i colpi mostrano il danno. Prossimo: oggetti da trovare e indossare.
+
 **Rifiniture fatte:** giorno e notte (dieci minuti, la notte è più pericolosa e più ricca), abitanti che passeggiano,
 hanno la lanterna e si ricordano di chi gioca, titolo «Legend Wizard» nella schermata d'ingresso.
 

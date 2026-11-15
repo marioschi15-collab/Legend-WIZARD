@@ -186,7 +186,7 @@ async function avvia(): Promise<void> {
     for (let i = 1; i < N_ZONE; i++) if (pesiTerra[i]! > pesiTerra[k]!) k = i;
     return k;
   };
-  const creature = new Creature(altezza, campo, QUOTA_ACQUA, Math.random, terraIn);
+  const creature = new Creature(altezza, { cella: (x, z) => campo.cella(x, z), fuoco: campo.fuoco, gelo: campo.gelo, accendi: (x, z, r) => campo.accendi(x, z, r, 10) }, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
   // Le creature girano attorno ai muri: un raggio all'altezza del petto dice se davanti c'è qualcosa di solido.
   const raggioCreatura = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
@@ -196,6 +196,19 @@ async function avvia(): Promise<void> {
     return fisica.castRay(raggioCreatura, lungo, true, undefined, undefined, undefined, giocatore.corpo) === null;
   };
   const magoUi = new MagoUi(mago, () => suoni.scoperta());
+  // I numeri che salgono sopra le creature colpite, e il lampo rosso ai bordi quando è il mago a essere colpito.
+  const numeri = Array.from({ length: 14 }, () => {
+    const e = document.createElement('div');
+    e.className = 'hud';
+    e.style.cssText = 'position:fixed;z-index:2;left:0;top:0;pointer-events:none;font:800 20px system-ui,sans-serif;color:#ffe08a;text-shadow:0 2px 6px rgba(0,0,0,.9);opacity:0;will-change:transform,opacity';
+    document.body.appendChild(e);
+    return { e, dove: new THREE.Vector3(), eta: 9 };
+  });
+  const schermoPunto = new THREE.Vector3();
+  const lampoRosso = document.createElement('div');
+  lampoRosso.style.cssText = 'position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .35s;background:radial-gradient(ellipse at center, rgba(255,40,20,0) 45%, rgba(255,40,20,.55) 100%)';
+  document.body.appendChild(lampoRosso);
+  let attesaLampo = 0;
   // I globi di luce degli incantesimi: al massimo tre accesi insieme, il più vecchio lascia il posto.
   const globi = [0, 1, 2].map(() => {
     const luce = new THREE.PointLight(0xffe0a0, 0, 26, 1.4);
@@ -1067,6 +1080,27 @@ async function avvia(): Promise<void> {
       scossa = Math.max(scossa, 0.5);
       ui.colpo(`−${Math.round(ferita)} vita`, '#ff8a5a');
     }
+    for (const colpo of creature.ritiraColpi()) {
+      const n = numeri.reduce((m, x) => (x.eta > m.eta ? x : m));
+      n.eta = 0;
+      n.dove.copy(colpo.dove);
+      n.e.textContent = String(colpo.quanto);
+      n.e.style.fontSize = `${Math.min(34, 16 + colpo.quanto * 0.3)}px`;
+    }
+    for (const n of numeri) {
+      if (n.eta > 1) continue;
+      n.eta += dt;
+      schermoPunto.copy(n.dove).setY(n.dove.y + n.eta * 1.6).project(camera);
+      const davanti = schermoPunto.z < 1 && n.eta <= 1;
+      n.e.style.opacity = davanti ? String(Math.min(1, (1 - n.eta) * 2.5)) : '0';
+      if (davanti) n.e.style.transform = `translate(${((schermoPunto.x + 1) / 2) * window.innerWidth}px, ${((1 - schermoPunto.y) / 2) * window.innerHeight}px) translate(-50%, -50%)`;
+    }
+    for (const avviso of creature.ritiraAvvisi()) ui.annuncia(avviso, 'Tieni d’occhio anche loro.', true);
+    attesaLampo -= dt;
+    if (ferita > 0) {
+      lampoRosso.style.opacity = '1';
+      attesaLampo = 0.12;
+    } else if (attesaLampo <= 0) lampoRosso.style.opacity = '0';
     const sotto = campo.cella(giocatore.posizione.x, giocatore.posizione.z);
     if (sotto >= 0 && campo.fuoco[sotto]! > 0 && !giocatore.aNuoto) ferita += 12 * dt;
     for (const premio of creature.ritira()) {
