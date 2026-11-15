@@ -81,10 +81,11 @@ export const PAROLE: readonly Parola[] = [
   p('ritardato', 'modo', ['ritardata', 'ritardo', 'dopo', 'miccia'], { modo: 'ritardato' }, 20, 'scatta dopo due secondi e mezzo'),
   p('rimbalza', 'modo', ['rimbalzo', 'rimbalzante', 'saltella', 'rimbalzi'], { modo: 'rimbalza' }, 35, 'rimbalza altre due volte più avanti'),
   p('contagioso', 'modo', ['contagiosa', 'contagio', 'dilaga', 'epidemia'], { modo: 'contagioso' }, 45, 'salta addosso alle creature lì attorno'),
+  p('creature', 'modo', ['creatura', 'mostri', 'mostro', 'nemici', 'nemico'], { modo: 'creature' }, 30, 'colpisce le creature e lascia stare case e prato'),
 ];
 
 /** Le parolette che non contano: si saltano senza dire nulla. */
-const VUOTE = new Set(['sopra', 'di', 'del', 'dello', 'della', 'dei', 'delle', 'e', 'ed', 'con', 'un', 'una', 'uno', 'il', 'la', 'lo', 'le', 'i', 'gli', 'che', 'molto', 'da', 'dal', 'dall', 'a', 'al', 'in', 'su', 'd', 'l', 'piu', 'tanto', 'tanti']);
+const VUOTE = new Set(['sopra', 'di', 'del', 'dello', 'della', 'dei', 'delle', 'e', 'ed', 'con', 'un', 'una', 'uno', 'il', 'la', 'lo', 'le', 'i', 'gli', 'che', 'solo', 'soltanto', 'molto', 'da', 'dal', 'dall', 'a', 'al', 'in', 'su', 'd', 'l', 'piu', 'tanto', 'tanti']);
 const SIMBOLO: Record<string, string> = { cura: '💚', scudo: '🛡️', svelto: '💨', balzo: '🦘', ombra: '👻', varco: '🚪', luce: '💡', acqua: '💧', albero: '🌳', muro: '🧱', peso: '🪨', trema: '🌋', sonno: '💤', pecora: '🐑', paura: '😱', lento: '🕸️', veleno: '☠️', mignon: '🐜', linfa: '🩸', evoca: '🗿', brucia: '☀️', gela: '🌙', scoppio: '💀', solleva: '🦅', fiorisce: '🦋', folgora: '⭐', risucchio: '👁️', vortice: '🌊', cristalli: '👑', bolla: '🌈', rammenda: '🕯️' };
 const COLORE: Record<string, number> = { cura: COLORI[3]!, scudo: COLORI[5]!, svelto: COLORI[4]!, balzo: COLORI[4]!, ombra: COLORI[6]!, varco: COLORI[6]!, luce: COLORI[2]!, acqua: COLORI[5]!, albero: COLORI[3]!, muro: COLORI[7]!, peso: COLORI[1]!, trema: COLORI[1]!, sonno: COLORI[5]!, pecora: COLORI[7]!, paura: COLORI[2]!, lento: COLORI[4]!, veleno: COLORI[3]!, mignon: COLORI[7]!, linfa: COLORI[0]!, evoca: COLORI[4]!, brucia: COLORI[0]!, gela: COLORI[5]!, scoppio: COLORI[1]!, solleva: COLORI[4]!, fiorisce: COLORI[3]!, folgora: COLORI[2]!, risucchio: COLORI[6]!, vortice: COLORI[4]!, cristalli: COLORI[7]!, bolla: COLORI[5]!, rammenda: COLORI[2]! };
 

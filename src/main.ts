@@ -27,6 +27,9 @@ import { costoDi, Mago } from './mago.js';
 import { MagoUi } from './magoUi.js';
 import { ParoleUi } from './paroleUi.js';
 import { ViaggioUi, type Meta } from './viaggioUi.js';
+import { QuadernoUi, type Capitolo } from './quadernoUi.js';
+import { SPECIE } from './creature.js';
+import { MISSIONI } from './missioni.js';
 import { leggiConosciute } from './incantesimi/parole.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
@@ -480,6 +483,52 @@ async function avvia(): Promise<void> {
     cerchioMissione.position.set(dove.x, altezza(dove.x, dove.z) + 0.25, dove.z);
     cerchioMissione.getObjectByName('anello')!.scale.setScalar(dove.raggio);
   };
+  // --- il quaderno: che cosa si è imparato, risolto, incontrato e liberato ---
+  const quadernoUi = new QuadernoUi();
+  const FAMIGLIE = [['forma', 'come parte'], ['effetto', 'che cosa fa'], ['misura', 'quanto è grande e forte'], ['modo', 'come si comporta']] as const;
+  const capitoli = (): Capitolo[] => [
+    {
+      titolo: 'Il mago',
+      riassunto: `Livello ${mago.livello} · vita ${mago.vitaMassima} · mana ${mago.manaMassimo} · essenze ◆ ${mago.essenze} · luoghi scoperti ${scoperti.size}`,
+      voci: [],
+    },
+    {
+      titolo: 'Missioni e soluzioni',
+      riassunto: 'Ogni missione si può risolvere in tanti modi: qui restano gli incantesimi che hai usato.',
+      voci: MISSIONI.map((m) => {
+        const usati = missioni.soluzioni[m.id] ?? [];
+        return { nome: `${m.chi} ${m.mestiere}`, nota: usati.length > 0 ? `${usati.length} ${usati.length === 1 ? 'soluzione' : 'soluzioni'}: ${usati.join(', ')}` : `Da fare: ${m.inBreve.toLowerCase()}`, fatto: usati.length > 0 };
+      }),
+    },
+    {
+      titolo: 'Parole',
+      riassunto: `Ne conosci ${conosciute.size} su ${PAROLE.length}. Le altre si imparano con le essenze, dalle missioni e dai guardiani.`,
+      voci: FAMIGLIE.map(([famiglia, nome]) => {
+        const tutte = PAROLE.filter((x) => x.famiglia === famiglia);
+        const note = tutte.filter((x) => conosciute.has(x.parola));
+        return { nome: `${nome.charAt(0).toUpperCase()}${nome.slice(1)}: ${note.length} su ${tutte.length}`, nota: note.map((x) => x.parola).join(', ') || 'ancora nessuna', fatto: note.length > 0 };
+      }),
+    },
+    {
+      titolo: 'Creature incontrate',
+      riassunto: `${razzeViste.size} su ${Object.keys(SPECIE).length}. Ognuna ha un punto debole.`,
+      voci: Object.values(SPECIE).map((sp) => ({ nome: razzeViste.has(sp.nome) ? sp.nome : '???', nota: razzeViste.has(sp.nome) ? sp.indizio : 'Non l’hai ancora incontrata: vive in un’altra terra.', fatto: razzeViste.has(sp.nome) })),
+    },
+    {
+      titolo: 'Luoghi liberati',
+      riassunto: liberati.length > 0 ? 'Ci torni quando vuoi con il viaggio rapido.' : 'Nessuno, per ora: ogni luogo fuori dal villaggio ha un guardiano con la corona.',
+      voci: liberati.map((l) => ({ nome: l.nome, nota: `a ${Math.round(Math.hypot(l.x, l.z) / 10) * 10} metri dal villaggio`, fatto: true })),
+    },
+  ];
+  quadernoUi.pulsante.addEventListener('click', () => {
+    if (!comandi.attivi) return;
+    comandi.attivi = false;
+    comandi.rilascia();
+    comandi.sgancia();
+    quadernoUi.apri(capitoli());
+  });
+  quadernoUi.onChiudi = officina.onChiudi;
+
   function scriviObiettivo(): void {
     const m = missioni.attiva;
     ui.scriviMeta(m ? `✦ ${m.chi} ${m.mestiere}: ${m.inBreve}` : mete.attuale());
@@ -540,7 +589,7 @@ async function avvia(): Promise<void> {
   let ultimaMagia = '';
   const lancia = (indice: number): void => {
     const magia = magie[indice]!;
-    if (magoUi.aperta || paroleUi.aperta || viaggioUi.aperta) return;
+    if (magoUi.aperta || paroleUi.aperta || viaggioUi.aperta || quadernoUi.aperta) return;
     if (!mago.spendi(costoDi(magia))) {
       // Senza mana non si lancia: si aspetta che torni, o si sceglie un incantesimo che costa meno.
       ui.colpo(`Mana insufficiente (serve ${costoDi(magia)})`, '#7ad0ff');
@@ -1108,7 +1157,7 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, luoghi2: () => luoghiInVista,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, quadernoUi, luoghi2: () => luoghiInVista,
     luoghi: () => luoghiInVista,
     magie: () => magie.map((m) => m.nome),
     fermo: false,

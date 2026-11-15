@@ -154,6 +154,8 @@ const m = leggi('palla di fuoco doppia che rimbalza', tutte);
 verifica(m.ricetta?.modi?.join() === 'doppio,rimbalza' && costoDi(creaDaRicetta(m.ricetta)) > costoDi(creaDaRicetta(leggi('palla di fuoco', tutte).ricetta!)), 'i comportamenti si scrivono a parole e costano mana in più');
 const giro = decodifica(codifica(m.ricetta!));
 verifica(giro?.modi?.join() === 'doppio,rimbalza' && decodifica(codifica(a.ricetta!))?.modi === undefined, 'il codice da passare agli amici porta anche i comportamenti, e quelli vecchi restano validi');
+const sc = leggi('pioggia di fuoco solo creature', tutte);
+verifica(sc.ricetta?.modi?.join() === 'creature' && sc.ignote.length === 0, '«solo creature» si capisce, e «solo» non è una parola ignota');
 verifica(PAROLE.length >= 20 && new Set(PAROLE.flatMap((x) => [x.parola, ...x.altre])).size === PAROLE.flatMap((x) => [x.parola, ...x.altre]).length, 'il vocabolario ha almeno venti parole e nessun doppione');
 const ricco = new Mago();
 ricco.guadagna(0, 20);

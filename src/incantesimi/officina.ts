@@ -89,7 +89,11 @@ export const MODI: readonly Scelta[] = [
   { id: 'ritardato', nome: 'Ritardato', simbolo: '⏲️', cosaFa: 'scatta dopo due secondi e mezzo' },
   { id: 'rimbalza', nome: 'Rimbalza', simbolo: '🏀', cosaFa: 'rimbalza altre due volte più avanti' },
   { id: 'contagioso', nome: 'Contagioso', simbolo: '🦠', cosaFa: 'salta addosso alle creature lì attorno' },
+  { id: 'creature', nome: 'Solo creature', simbolo: '🎯', cosaFa: 'colpisce le creature e lascia stare case e prato' },
 ];
+
+/** Quanto feriscono le creature gli effetti che rompono, quando l'incantesimo è «solo creature». */
+const DANNI: Readonly<Record<string, number>> = { scoppio: 30, risucchio: 14, solleva: 14, vortice: 16, brucia: 24, gela: 12, folgora: 36, peso: 26, trema: 14, cristalli: 20 };
 
 /** Rimette in riga una ricetta arrivata da fuori (un codice incollato, la memoria del browser): solo valori che esistono. */
 export function ripulisci(dato: unknown): Ricetta | null {
@@ -216,7 +220,14 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
   }
   g.lampi.lampo(new THREE.Vector3(p.x, p.y + 2, p.z), r.colore, 22 * forza, 0.6);
   let botto = 0;
+  const soloCreature = r.modi?.includes('creature') ?? false;
   for (const effetto of r.effetti) {
+    // «Solo creature»: gli effetti che rompono diventano ferite per le creature, e case e prato restano intatti.
+    if (soloCreature && DANNI[effetto] !== undefined) {
+      g.poteri.ferisci(suolo, raggio, DANNI[effetto]! * forza);
+      if (effetto === 'gela') g.poteri.stato(suolo, raggio, 'lento', 6);
+      continue;
+    }
     switch (effetto) {
       case 'scoppio':
         g.pezzi.spinta(p.x, p.y - 0.5, p.z, raggio, 11 * forza, 0.45);
