@@ -40,7 +40,7 @@ import { AlberiMagici } from './mondo/alberiMagici.js';
 import { atmosfera } from './mondo/atmosfera.js';
 import { Campo } from './mondo/campo.js';
 import { creaCielo, DIREZIONE_SOLE } from './mondo/cielo.js';
-import { costruisciLuogo } from './mondo/costruzioni.js';
+import { costruisciLuogo, LEGNO, PIETRA, type Mattone } from './mondo/costruzioni.js';
 import { creaPrato } from './mondo/erba.js';
 import { creaLontano } from './mondo/lontano.js';
 import { altezza, creaTerreno } from './mondo/terreno.js';
@@ -193,7 +193,52 @@ async function avvia(): Promise<void> {
   const creature = new Creature(altezza, { cella: (x, z) => campo.cella(x, z), fuoco: campo.fuoco, gelo: campo.gelo, accendi: (x, z, r) => campo.accendi(x, z, r, 10) }, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
   // Ciò che scaglia i pezzi delle case scaglia anche le creature.
-  pezzi.onSpinta = (x, y, z, raggio, forza, alzata) => creature.spingi(x, y, z, raggio, forza, alzata);
+  /** I tronchi e le schegge degli alberi abbattuti e delle rocce spaccate: pezzi veri, i più vecchi lasciano il posto. */
+  const caduti: Gruppo[] = [];
+  let cadendo = false;
+  pezzi.onSpinta = (x, y, z, raggio, forza, alzata) => {
+    if (cadendo) return;
+    creature.spingi(x, y, z, raggio, forza, alzata);
+    // Un colpo forte abbatte gli alberi e spacca le rocce lì attorno: al loro posto cadono tronchi e schegge veri.
+    if (forza < 10) return;
+    const giu = bosco.abbatti(x, z, Math.min(raggio * 0.55, 9));
+    if (giu.length === 0) return;
+    for (const a of giu.slice(0, 6)) {
+      const sasso = a.tipo === 'roccia';
+      const mattoni: Mattone[] = [];
+      const k = Math.max(0.6, a.scala);
+      if (sasso) {
+        for (let i = 0; i < 6; i++) {
+          const lato = (0.45 + Math.random() * 0.5) * k;
+          mattoni.push({ x: a.x + (Math.random() - 0.5) * k, y: a.y + 0.4 + i * 0.25 * k, z: a.z + (Math.random() - 0.5) * k, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random(), Math.random() * 6, Math.random())), sx: lato, sy: lato * 0.8, sz: lato, materiale: PIETRA, colore: new THREE.Color(0x8f8a84).multiplyScalar(0.85 + Math.random() * 0.3), quota: a.y });
+        }
+      } else {
+        // Il tronco a pezzi, uno sull'altro e un po' storti: basta un niente perché cada.
+        const largo = 0.5 * k;
+        for (let i = 0; i < 5; i++) {
+          mattoni.push({ x: a.x + i * 0.05, y: a.y + 0.75 * k + i * 1.25 * k, z: a.z, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, i, 0.04)), sx: largo * (1 - i * 0.1), sy: 1.2 * k, sz: largo * (1 - i * 0.1), materiale: LEGNO, colore: new THREE.Color(0x6a4a30).multiplyScalar(0.85 + Math.random() * 0.3), quota: a.y });
+        }
+        // Le foglie se ne vanno in una nuvola.
+        for (let i = 0; i < 40; i++) {
+          fumo.emetti({ x: a.x + (Math.random() - 0.5) * 5 * k, y: a.y + (3 + Math.random() * 5) * k, z: a.z + (Math.random() - 0.5) * 5 * k, vx: (Math.random() - 0.5) * 4, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 4, vita: 1.5 + Math.random() * 1.5, dim: 0.5 + Math.random() * 0.6, dimFine: 0.15, r: 0.22, g: 0.36, b: 0.1, alfa: 0.9, gravita: 5, attrito: 1.2 });
+        }
+      }
+      const gruppo = pezzi.aggiungi(mattoni, a.x, a.z, 3);
+      if (gruppo) caduti.push(gruppo);
+    }
+    while (caduti.length > 14) pezzi.togli(caduti.shift()!);
+    pezzi.avvicina(giocatore.posizione.x, giocatore.posizione.z, Infinity);
+    suoni.tonfo(1);
+    // La stessa spinta, un istante dopo, prende anche i pezzi appena nati (senza abbattere altro).
+    effetti.push({
+      aggiorna: () => {
+        cadendo = true;
+        pezzi.spinta(x, y, z, raggio, forza * 0.6, alzata);
+        cadendo = false;
+        return false;
+      },
+    });
+  };
   // Le creature girano attorno ai muri: un raggio all'altezza del petto dice se davanti c'è qualcosa di solido.
   const raggioCreatura = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
   creature.libero = (x, y, z, dx, dz, lungo) => {

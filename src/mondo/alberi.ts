@@ -170,7 +170,24 @@ export interface Bosco {
    * dove il prato è bruciato.
    */
   aggiorna(campo: Campo, x: number, z: number): void;
+  /**
+   * Abbatte alberi e spacca rocce in un cerchio: spariscono dal bosco e restituisce che cos'erano e dov'erano,
+   * così chi chiama può far cadere al loro posto tronchi e schegge veri. Ricrescono dove il prato viene fatto rifiorire.
+   */
+  abbatti(x: number, z: number, raggio: number): Caduto[];
 }
+
+/** Un albero abbattuto o una roccia spaccata. */
+export interface Caduto {
+  readonly tipo: string;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly scala: number;
+}
+
+/** Che cosa una magia può buttare giù: gli alberi e le rocce, non le cose minute. */
+const ABBATTIBILI = new Set(['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'acacia', 'palma']);
 
 interface Pianta {
   tipo: number;
@@ -308,11 +325,28 @@ export function creaBosco(ombre: boolean): Bosco {
   });
   mesh[QUERCIA_LONTANA]!.castShadow = false;
   const o = new THREE.Object3D();
+  /** Gli alberi abbattuti e le rocce spaccate in questa partita, per posizione. */
+  const abbattuti = new Map<string, { x: number; z: number }>();
+  const chiaveDi = (p: { x: number; z: number }): string => `${Math.round(p.x * 10)},${Math.round(p.z * 10)}`;
+  let daRiscrivere = false;
   let ultimoCx = NaN;
   let ultimoCz = NaN;
 
   return {
     oggetti: mesh,
+    abbatti(x, z, raggio) {
+      const caduti: Caduto[] = [];
+      for (const piante of zolle.values()) {
+        for (const p of piante) {
+          const nome = TIPI[p.tipo]!;
+          if (!ABBATTIBILI.has(nome) || Math.hypot(p.x - x, p.z - z) > raggio || abbattuti.has(chiaveDi(p))) continue;
+          abbattuti.set(chiaveDi(p), { x: p.x, z: p.z });
+          caduti.push({ tipo: nome, x: p.x, y: p.y, z: p.z, scala: p.scala });
+        }
+      }
+      if (caduti.length > 0) daRiscrivere = true;
+      return caduti;
+    },
     aggiorna(campo, x, z) {
       const ccx = Math.floor(x / LATO_ZOLLA);
       const ccz = Math.floor(z / LATO_ZOLLA);
@@ -342,6 +376,18 @@ export function creaBosco(ombre: boolean): Bosco {
         }
         cambiato = true;
       }
+      // Dove il prato è stato fatto rifiorire, gli alberi abbattuti ricrescono.
+      for (const [chiave, a] of abbattuti) {
+        const c = campo.cella(a.x, a.z);
+        if (c >= 0 && campo.crescita[c]! > 0.55) {
+          abbattuti.delete(chiave);
+          daRiscrivere = true;
+        }
+      }
+      if (daRiscrivere) {
+        cambiato = true;
+        daRiscrivere = false;
+      }
       // Si riscrivono posizioni e colori di tutte le piante in vista: sono poche migliaia, costa poco.
       // Due giri: prima le zolle vicine (finiscono in testa agli elenchi), poi le lontane.
       quante.fill(0);
@@ -353,6 +399,7 @@ export function creaBosco(ombre: boolean): Bosco {
           const vicina = dx <= VICINO && dz <= VICINO;
           if (vicina !== (giro === 0)) continue;
           for (const p of piante) {
+            if (abbattuti.size > 0 && abbattuti.has(chiaveDi(p))) continue;
             const tipo = p.tipo === QUERCIA && !vicina ? QUERCIA_LONTANA : p.tipo;
             const n = quante[tipo]!;
             if (n >= CAPIENZA) continue;

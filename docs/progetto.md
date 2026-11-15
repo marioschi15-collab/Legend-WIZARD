@@ -106,6 +106,11 @@ Primo passo fatto, dopo una revisione a più mani del codice:
 - al computer ogni foglio ha un tasto (T, P, N, V), perché il mouse catturato non può cliccare i pulsanti.
 Prossimi: oggetti da trovare e indossare; poi il mondo vivo (animali, abitanti con una giornata); poi l'aspetto.
 
+**Tutto reagisce alla magia (richiesta del fondatore).** In ordine: le creature dentro la fisica (fatto: spinte,
+vortici, cadute che fanno male); alberi che si abbattono e rocce che si spaccano in pezzi veri, e ricrescono dove
+il prato rifiorisce (fatto); poi gli abitanti che reagiscono a ciò che succede, e l'acqua che gela. Resta un limite
+detto chiaro: ogni parola ha un effetto scritto a mano, non si inventano magie con una frase qualsiasi.
+
 **Rifiniture fatte:** giorno e notte (dieci minuti, la notte è più pericolosa e più ricca), abitanti che passeggiano,
 hanno la lanterna e si ricordano di chi gioca, titolo «Legend Wizard» nella schermata d'ingresso.
 
