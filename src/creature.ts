@@ -24,6 +24,10 @@ interface Golem {
   forza: number;
   livello: number;
   attesaColpo: number;
+  /** Il suo numero, per chi vuole sapere se c'è ancora. */
+  numero: number;
+  /** Vero per i golem delle missioni: restano dove sono finché chi gioca non arriva, anche se è lontano. */
+  fisso: boolean;
   lampo: number;
   passo: number;
 }
@@ -49,6 +53,7 @@ export class Creature {
   private readonly golem: Golem[] = [];
   private readonly schegge: Scheggia[] = [];
   private attesaNascita = 3;
+  private contatore = 0;
   private readonly premi: Premio[] = [];
   private readonly materialeScheggia = new THREE.MeshLambertMaterial({ color: PIETRA });
 
@@ -71,7 +76,7 @@ export class Creature {
   }
 
   /** Fa nascere un golem in un punto. Il livello ne decide vita, forza e taglia. */
-  nasci(x: number, z: number, livello: number): void {
+  nasci(x: number, z: number, livello: number, fisso = false): number {
     // Un filo di luce propria: controsole, al tramonto, il golem restava una sagoma nera.
     const corpo = new THREE.MeshLambertMaterial({ color: new THREE.Color(PIETRA).multiplyScalar(1 - Math.min(0.5, (livello - 1) * 0.08)), emissive: 0xffffff, emissiveIntensity: 1 });
     corpo.emissive.setScalar(0.1);
@@ -104,7 +109,13 @@ export class Creature {
     gruppo.position.set(x, this.quota(x, z), z);
     this.gruppo.add(gruppo);
     const vita = 34 + livello * 14;
-    this.golem.push({ gruppo, arti, barra, corpo, vita, vitaMassima: vita, forza: 9 + livello * 3, livello, attesaColpo: 0.6, lampo: 0, passo: this.caso() * 6 });
+    this.golem.push({ gruppo, arti, barra, corpo, vita, vitaMassima: vita, forza: 9 + livello * 3, livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, lampo: 0, passo: this.caso() * 6 });
+    return this.contatore;
+  }
+
+  /** Vero finché il golem con quel numero non è stato sbriciolato. */
+  vivo(numero: number): boolean {
+    return this.golem.some((g) => g.numero === numero);
   }
 
   /** Un botto, un fulmine, una meteora: ferisce le creature attorno al punto, di più quelle al centro. */
@@ -148,7 +159,7 @@ export class Creature {
     this.attesaNascita -= dt;
     if (this.attesaNascita <= 0) {
       this.attesaNascita = 2.5;
-      if (!alSicuro && this.golem.length < 4) {
+      if (!alSicuro && this.golem.filter((g) => !g.fisso).length < 4) {
         const a = this.caso() * Math.PI * 2;
         const r = 38 + this.caso() * 24;
         const x = giocatore.x + Math.cos(a) * r;
@@ -178,13 +189,13 @@ export class Creature {
         this.golem.splice(i, 1);
         continue;
       }
-      if (d > 130) {
+      if (d > 130 && !g.fisso) {
         this.gruppo.remove(g.gruppo);
         g.corpo.dispose();
         this.golem.splice(i, 1);
         continue;
       }
-      const insegue = d < 36 && !alSicuro;
+      const insegue = d < 36 && (!alSicuro || g.fisso);
       if (insegue) {
         g.gruppo.rotation.y = Math.atan2(dx, dz);
         if (d > 2.4) {
@@ -238,12 +249,14 @@ export class Creature {
     return this.premi.splice(0, this.premi.length);
   }
 
-  /** Toglie tutte le creature (quando chi gioca rinasce o torna al villaggio). */
+  /** Toglie le creature di passaggio (quando chi gioca rinasce); quelle delle missioni restano al loro posto. */
   svuota(): void {
-    for (const g of this.golem) {
+    for (let i = this.golem.length - 1; i >= 0; i--) {
+      const g = this.golem[i]!;
+      if (g.fisso) continue;
       this.gruppo.remove(g.gruppo);
       g.corpo.dispose();
+      this.golem.splice(i, 1);
     }
-    this.golem.length = 0;
   }
 }
