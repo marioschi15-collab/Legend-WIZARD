@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { Creature } from '../src/creature.js';
 import { costoDi, esperienzaPer, Mago } from '../src/mago.js';
 import { INCANTESIMI } from '../src/incantesimi/elenco.js';
+import { creaDaRicetta } from '../src/incantesimi/officina.js';
+import { leggi, PAROLE } from '../src/incantesimi/parole.js';
 
 const errori: string[] = [];
 const verifica = (vero: boolean, che: string): void => {
@@ -70,6 +72,26 @@ verifica(casa.vive === 0, 'attorno al villaggio non nascono creature');
 const lontano = new Creature(() => 0, suolo, -0.55, caso);
 for (let i = 0; i < 60 * 30; i++) lontano.aggiorna(1 / 60, new THREE.Vector3(900, 0, 900));
 verifica(lontano.vive > 0 && lontano.vive <= 4, `lontano dal villaggio nascono creature, ma poche (${lontano.vive})`);
+
+// --- gli incantesimi a parole ---
+const note = new Set(PAROLE.filter((x) => x.prezzo === 0).map((x) => x.parola));
+const a = leggi('Pioggia di fuoco piccola', note);
+verifica(a.ricetta?.forma === 'pioggia' && a.ricetta.effetti.join() === 'brucia' && a.ricetta.ampiezza === 1, '«pioggia di fuoco piccola» diventa una pioggia che brucia, stretta');
+const b = leggi('fiamme e GHIACCIO grandi', note);
+verifica(b.ricetta?.forma === 'palla' && b.ricetta.effetti.join() === 'brucia,gela' && b.ricetta.ampiezza === 3, 'senza forma è una palla; sinonimi, maiuscole e plurali si capiscono');
+const c = leggi('palla di fulmine', note);
+verifica(c.ricetta === null && c.daImparare[0]?.parola === 'fulmine', 'una parola non ancora imparata non si può usare, e il gioco lo dice');
+const d = leggi('palla di fuocco e drago', note);
+verifica(d.ricetta === null && d.ignote[0]?.forse?.parola === 'fuoco' && d.ignote[1]?.scritta === 'drago' && !d.ignote[1]?.forse, 'una parola scritta male ha un suggerimento; una mai sentita viene segnalata');
+verifica(leggi('grande', note).ricetta === null, 'senza un effetto non c’è incantesimo');
+const tutte = new Set(PAROLE.map((x) => x.parola));
+const e = leggi('onda gigante di fulmine vortice cristallo tempo', tutte);
+verifica(e.ricetta?.effetti.length === 3 && e.ricetta.potenza === 3 && e.ricetta.ampiezza === 3, 'al massimo tre effetti; «gigante» alza forza e ampiezza');
+verifica(costoDi(creaDaRicetta(e.ricetta!)) > costoDi(creaDaRicetta(a.ricetta!)), 'più parole e più forti: più mana');
+verifica(PAROLE.length >= 20 && new Set(PAROLE.flatMap((x) => [x.parola, ...x.altre])).size === PAROLE.flatMap((x) => [x.parola, ...x.altre]).length, 'il vocabolario ha almeno venti parole e nessun doppione');
+const ricco = new Mago();
+ricco.guadagna(0, 20);
+verifica(ricco.spendiEssenze(15) && ricco.essenze === 5 && !ricco.spendiEssenze(15), 'le essenze si spendono solo se bastano');
 
 if (errori.length > 0) {
   console.error('Prova fallita:\n - ' + errori.join('\n - '));

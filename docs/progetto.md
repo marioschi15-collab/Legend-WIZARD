@@ -86,6 +86,9 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 **A che punto siamo.** Della tappa 0 sono fatti rilievo e biomi (restano la vita e il cielo). Per scelta del
 fondatore si è passati intanto alle funzionalità: della tappa 1 ci sono vita, mana con costo per incantesimo, livelli
 con punti da spendere, essenze, rinascita al villaggio e il golem di sassi (più forte lontano dal villaggio).
+Della tappa 2 c'è l'incantesimo scritto a parole con le prime ventuno parole (forma, effetto, misura), undici note
+dall'inizio e dieci da imparare con le essenze. Mancano ancora: comportamenti e bersagli, un aspetto diverso per
+ogni parola, le parole date in premio da missioni e guardiani.
 
 Ciò che esiste già resta la base: mondo senza confini, cinque terre, luoghi che crollano, incantesimi, colonne di
 luce, mete sullo schermo.

@@ -36,6 +36,11 @@ colpiscono da vicino; il fuoco li consuma, il gelo li rallenta, i botti li sbric
 forti. Battendoli si guadagnano esperienza ed essenze (◆); a ogni livello c'è un punto da spendere in vita, mana o
 ricarica. Se la vita finisce si rinasce al villaggio perdendo un quinto delle essenze, mai i progressi.
 
+**Incantesimi a parole.** Il pulsante «✎ Scrivi un incantesimo» apre un foglio dove si scrive, per esempio, «pioggia
+di fuoco piccola»: il gioco riconosce le parole che il mago conosce (come parte, che cosa fa, quanto è grande e
+forte) e crea l'incantesimo, che resta sul bastone. Si parte con undici parole; le altre dieci si imparano spendendo
+le essenze. Una parola scritta male riceve un suggerimento; il gioco capisce solo il suo vocabolario, non qualsiasi frase.
+
 - **Una meta sempre sullo schermo** (sotto la mappa): le prime insegnano il gioco in un paio di minuti (bruciare,
   spegnere, afferrare, riparare, inventare, esplorare), poi diventano traguardi di esplorazione senza fine.
 - **Incantesimi perduti**: in ogni tipo di luogo ce n'è uno nascosto, segnalato da una colonna di luce dorata che si
@@ -70,6 +75,7 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 ## Dove sta cosa
 
 - `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: i golem.
+- `src/incantesimi/parole.ts`, `src/paroleUi.ts`: il vocabolario, la lettura di un incantesimo scritto, il foglio per scriverlo.
 
 - `src/mondo/`: `zone.ts` (il clima che decide le terre, e la sorte che decide i luoghi), `terreno.ts` (zolle che
   nascono attorno a chi gioca e vengono riusate), cielo, erba e fiori, vegetazione, e `costruzioni.ts` che disegna

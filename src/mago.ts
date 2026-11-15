@@ -102,6 +102,14 @@ export class Mago {
     return true;
   }
 
+  /** Paga con le essenze (una parola nuova). Dice falso, e non toglie nulla, se non bastano. */
+  spendiEssenze(quante: number): boolean {
+    if (this.essenze < quante) return false;
+    this.essenze -= quante;
+    this.salva();
+    return true;
+  }
+
   /** Si rinasce interi, ma un quinto delle essenze resta dove si è caduti. I progressi non si perdono mai. */
   rinasci(): number {
     const perse = Math.floor(this.essenze * 0.2);

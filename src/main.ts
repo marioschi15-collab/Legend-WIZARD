@@ -22,6 +22,8 @@ import { Sigilli } from './mondo/sigilli.js';
 import { Creature } from './creature.js';
 import { costoDi, Mago } from './mago.js';
 import { MagoUi } from './magoUi.js';
+import { ParoleUi } from './paroleUi.js';
+import { leggiConosciute } from './incantesimi/parole.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
 import { atmosfera } from './mondo/atmosfera.js';
@@ -294,6 +296,22 @@ async function avvia(): Promise<void> {
     if (!q.telefono) comandi.aggancia();
   };
 
+  // --- gli incantesimi scritti a parole: stesso bastone dell'officina, ma si scrive invece di scegliere ---
+  const paroleUi = new ParoleUi(mago, leggiConosciute());
+  paroleUi.pulsante.addEventListener('click', () => {
+    if (!comandi.attivi) return;
+    comandi.attivi = false;
+    comandi.rilascia();
+    comandi.sgancia();
+    paroleUi.posti(ricette.length);
+  }, true);
+  paroleUi.onCreato = (ricetta) => officina.onCambio([...ricette, ricetta], ricette.length);
+  paroleUi.onChiudi = officina.onChiudi;
+  paroleUi.onImparata = (parola) => {
+    suoni.tesoro();
+    ui.annuncia(`Hai imparato «${parola.parola}»`, parola.cosaFa, true);
+  };
+
   const origine = new THREE.Vector3();
   const direzione = new THREE.Vector3();
   const bersaglio = new THREE.Vector3();
@@ -313,7 +331,7 @@ async function avvia(): Promise<void> {
   };
   const lancia = (indice: number): void => {
     const magia = magie[indice]!;
-    if (magoUi.aperta) return;
+    if (magoUi.aperta || paroleUi.aperta) return;
     if (!mago.spendi(costoDi(magia))) {
       // Senza mana non si lancia: si aspetta che torni, o si sceglie un incantesimo che costa meno.
       ui.colpo(`Mana insufficiente (serve ${costoDi(magia)})`, '#7ad0ff');
@@ -848,7 +866,7 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi,
     luoghi: () => luoghiInVista,
     magie: () => magie.map((m) => m.nome),
     fermo: false,
