@@ -1,46 +1,10 @@
 import * as THREE from 'three';
-import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
+import { GEOMETRIE_MINUTE, MINUTI, TIPI_MINUTI } from './minuti.js';
+import { colora, unisci } from './modella.js';
 import { altezza, LATO_ZOLLA } from './terreno.js';
-import { lava, luoghiVicini, N_ZONE, PALUDE, pesiZone, QUOTA_ACQUA, sorte, VULCANO, ZONE } from './zone.js';
-
-function colora(g: THREE.BufferGeometry, colore: number, variazione = 0): THREE.BufferGeometry {
-  const c = new THREE.Color(colore);
-  const n = g.attributes.position!.count;
-  const dati = new Float32Array(n * 3);
-  const pos = g.attributes.position as THREE.BufferAttribute;
-  for (let i = 0; i < n; i++) {
-    // Più chiaro in alto, più scuro in basso: dà volume senza bisogno di immagini.
-    const k = 1 + variazione * (pos.getY(i) > 0 ? 0.5 : -0.5);
-    dati[i * 3] = c.r * k;
-    dati[i * 3 + 1] = c.g * k;
-    dati[i * 3 + 2] = c.b * k;
-  }
-  g.setAttribute('color', new THREE.BufferAttribute(dati, 3));
-  return g;
-}
-
-/**
- * Unisce più forme in una sola. Di norma le superfici vengono lisce e tonde (chiome, tronchi, funghi): è ciò che
- * dà l'aspetto morbido, da cartone animato. Con `spigoli` restano a facce piatte (rocce, cristalli, guglie).
- */
-function unisci(parti: THREE.BufferGeometry[], spigoli = false): THREE.BufferGeometry {
-  const pronte = parti.map((p) => {
-    p.deleteAttribute('uv');
-    p.deleteAttribute('normal');
-    if (spigoli) {
-      const g = p.index ? p.toNonIndexed() : p;
-      g.computeVertexNormals();
-      return g;
-    }
-    // Saldando i punti che coincidono, la luce scorre da una faccia all'altra senza scalini.
-    const g = mergeVertices(p, 1e-3);
-    g.computeVertexNormals();
-    return g.toNonIndexed();
-  });
-  return mergeGeometries(pronte)!;
-}
+import { lava, luoghiVicini, N_ZONE, PALUDE, pesiZone, QUOTA_ACQUA, sorte, VULCANO, ZONE, type Semina } from './zone.js';
 
 /** Un pino: tronco e tre coni. Alto circa 9 metri. */
 export function geometriaPino(): THREE.BufferGeometry {
@@ -220,10 +184,13 @@ interface Pianta {
 const BIANCO = new THREE.Color(1, 1, 1);
 const CARBONE = new THREE.Color(0.09, 0.07, 0.06);
 /** I tipi di pianta, nell'ordine in cui sono disegnati; le terre li chiamano per nome (vedi zone.ts). */
-const TIPI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo'];
+const GRANDI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo'];
+/** Dopo le piante grandi e la quercia lontana vengono le cose minute (felci, sassi, tronchi, barili…). */
+const TIPI = [...GRANDI, 'querciaLontana', ...TIPI_MINUTI];
+const PRIMO_MINUTO = GRANDI.length + 1;
 const QUERCIA = TIPI.indexOf('quercia');
 /** La quercia vista da lontano: stessa forma, un quarto dei triangoli. */
-const QUERCIA_LONTANA = TIPI.length;
+const QUERCIA_LONTANA = GRANDI.length;
 /** Entro quante zolle da chi gioca una pianta fa ombra e si disegna per intero. */
 const VICINO = 2;
 /** Fin dove (in zolle) si vedono piante attorno a chi gioca. */
@@ -242,18 +209,21 @@ export function creaBosco(ombre: boolean): Bosco {
   };
   const pesi = new Float32Array(N_ZONE);
   const zolle = new Map<string, Pianta[]>();
+  /** Le cose minute delle sole zolle vicine: da lontano non si vedrebbero. */
+  const zolleMinute = new Map<string, Pianta[]>();
 
   /** Le piante di una zolla: sempre le stesse, perché la sorte dipende solo da dove sta la zolla. */
-  const semina = (cx: number, cz: number): Pianta[] => {
-    const rnd = generatore(Math.floor(sorte(cx, cz, 9) * 4294967295));
+  const semina = (cx: number, cz: number, minute = false): Pianta[] => {
+    const rnd = generatore(Math.floor(sorte(cx, cz, minute ? 23 : 9) * 4294967295));
     const piante: Pianta[] = [];
-    for (let tentativo = 0; tentativo < 44; tentativo++) {
+    const tentativi = minute ? 300 : 44;
+    for (let tentativo = 0; tentativo < tentativi; tentativo++) {
       const x = (cx + rnd()) * LATO_ZOLLA;
       const z = (cz + rnd()) * LATO_ZOLLA;
       const dado = rnd() * 100;
       const scala = rnd();
       const giro = rnd() * 6.28;
-      if (luoghiVicini(x, z, 5).length > 0) continue;
+      if (luoghiVicini(x, z, minute ? 2 : 5).length > 0) continue;
       pesiZone(x, z, pesi);
       let zona = 0;
       for (let k = 1; k < N_ZONE; k++) if (pesi[k]! > pesi[zona]!) zona = k;
@@ -263,13 +233,16 @@ export function creaBosco(ombre: boolean): Bosco {
       if (y > 46 || (zona === VULCANO && lava(x, z, pesi[VULCANO]!) > 0.05)) continue;
       // La terra decide che cosa nasce: si scorre il suo elenco finché il dado cade su una pianta.
       let soglia = 0;
-      for (const s of ZONE[zona]!.piante) {
+      const elenco: readonly Semina[] = minute ? MINUTI[zona]! : ZONE[zona]!.piante;
+      for (const s of elenco) {
         soglia += s.parte;
         if (dado >= soglia) continue;
         const asciutto = y > 0.5 || zona === PALUDE;
         if ((inAcqua || !asciutto) && !s.acqua) break;
-        if (s.bosco !== undefined && rumore(x * 0.03 + 5, z * 0.03) < s.bosco) break;
-        piante.push({ tipo: TIPI.indexOf(s.tipo), x, y: y - 0.25, z, scala: s.scala[0] + scala * (s.scala[1] - s.scala[0]), giro, tinta: tinta(s.tinta, s.carica) });
+        // Le cose minute stanno a chiazze più piccole di quelle dei boschi, e ogni tipo ha le sue.
+        const macchia = minute ? rumore(x * 0.09 + soglia * 1.7, z * 0.09 - soglia) : rumore(x * 0.03 + 5, z * 0.03);
+        if (s.bosco !== undefined && macchia < s.bosco) break;
+        piante.push({ tipo: TIPI.indexOf(s.tipo), x, y: y - (minute ? 0.04 : 0.25), z, scala: (s.scala[0] + scala * (s.scala[1] - s.scala[0])) * (minute ? 1.45 : 1), giro, tinta: tinta(s.tinta, s.carica) });
         break;
       }
     }
@@ -280,11 +253,13 @@ export function creaBosco(ombre: boolean): Bosco {
     geometriaPino(), geometriaQuercia(), geometriaPinoInnevato(), geometriaCactus(),
     geometriaRoccia(), geometriaAlberoMorto(), geometriaFungo(), geometriaGuglia(),
     geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaQuercia(0),
+    ...GEOMETRIE_MINUTE(),
   ];
-  const mesh = geometrie.map((g) => {
+  const mesh = geometrie.map((g, i) => {
     const m = new THREE.InstancedMesh(g, materialeAlberi, CAPIENZA);
     m.count = 0;
-    m.castShadow = ombre;
+    // Le cose minute non fanno ombra: sono tante, e la loro ombra non si noterebbe.
+    m.castShadow = ombre && i < PRIMO_MINUTO;
     m.receiveShadow = ombre;
     m.frustumCulled = false;
     m.setColorAt(0, BIANCO);
@@ -326,6 +301,16 @@ export function creaBosco(ombre: boolean): Bosco {
             if (!zolle.has(chiave)) zolle.set(chiave, semina(ccx + dx, ccz + dz));
           }
         }
+        for (const chiave of zolleMinute.keys()) {
+          const [cx, cz] = chiave.split(',').map(Number) as [number, number];
+          if (Math.abs(cx - ccx) > VICINO || Math.abs(cz - ccz) > VICINO) zolleMinute.delete(chiave);
+        }
+        for (let dz = -VICINO; dz <= VICINO; dz++) {
+          for (let dx = -VICINO; dx <= VICINO; dx++) {
+            const chiave = `${ccx + dx},${ccz + dz}`;
+            if (!zolleMinute.has(chiave)) zolleMinute.set(chiave, semina(ccx + dx, ccz + dz, true));
+          }
+        }
         cambiato = true;
       }
       // Si riscrivono posizioni e colori di tutte le piante in vista: sono poche migliaia, costa poco.
@@ -356,6 +341,23 @@ export function creaBosco(ombre: boolean): Bosco {
           }
         }
         if (giro === 0) for (let i = 0; i < quante.length; i++) vicine[i] = quante[i]!;
+      }
+      for (const piante of zolleMinute.values()) {
+        for (const p of piante) {
+          const n = quante[p.tipo]!;
+          if (n >= CAPIENZA) continue;
+          quante[p.tipo] = n + 1;
+          const m = mesh[p.tipo]!;
+          if (cambiato) {
+            o.position.set(p.x, p.y, p.z);
+            o.rotation.set(0, p.giro, 0);
+            o.scale.setScalar(p.scala);
+            o.updateMatrix();
+            m.setMatrixAt(n, o.matrix);
+          }
+          const c = campo.cella(p.x, p.z);
+          m.setColorAt(n, c >= 0 && campo.bruciato[c]! > 0.6 ? CARBONE : p.tinta);
+        }
       }
       mesh.forEach((m, i) => {
         m.count = quante[i]!;

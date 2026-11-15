@@ -104,7 +104,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float quanta = max(bio.r, stato.b);
         float presente = step(aCaso.z * 0.98 + 0.01, quanta) * smoothstep(-0.5, -0.15, terra);
         float t = position.y;
-        float alto = aCaso.y * (1.0 + 1.4 * stato.b + 0.5 * bio.a) * (1.0 - 0.82 * stato.r) * bordo * presente;
+        float alto = aCaso.y * 0.55 * (1.0 + 1.4 * stato.b + 0.5 * bio.a) * (1.0 - 0.82 * stato.r) * bordo * presente;
         float ang = aCaso.x * 6.2832;
         vec2 lato = vec2(cos(ang), sin(ang));
         float larghezza = mix(0.075, 0.13, aCaso.z) * (1.0 + 0.5 * stato.b);
