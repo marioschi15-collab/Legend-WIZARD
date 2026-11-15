@@ -23,6 +23,8 @@ export class Comandi {
   onRicostruisci: () => void = () => undefined;
   onPausa: () => void = () => undefined;
   onOfficina: () => void = () => undefined;
+  /** Un tasto che apre un foglio: T scrivi, V viaggio, N quaderno, P punti, Z zaino. */
+  onFoglio: (tasto: string) => void = () => undefined;
   /** Chiamata una volta, quando si scopre che il mouse non si può "catturare" e si guarda trascinando. */
   onTrascina: () => void = () => undefined;
 
@@ -131,6 +133,7 @@ export class Comandi {
       if (e.code === 'KeyE') this.onScorri(1);
       if (e.code === 'KeyR') this.onRicostruisci();
       if (e.code === 'KeyC') this.onOfficina();
+      if (['KeyT', 'KeyV', 'KeyN', 'KeyP', 'KeyZ'].includes(e.code)) this.onFoglio(e.code);
       if (e.code === 'Space') this.saltoSingolo = true;
       if (e.code === 'KeyF') this.colpoSingolo = true;
     }

@@ -90,6 +90,22 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 che si vede arrivare e si schiva (pugno con cerchio a terra, schegge, carica, globi che inseguono, sputi di fuoco),
 i guardiani chiamano rinforzi, i colpi mostrano il danno. Prossimo: oggetti da trovare e indossare.
 
+**Rendere tutto più vero (richiesta del fondatore, un passo alla volta: combattimento, poi mondo vivo, poi aspetto).**
+Primo passo fatto, dopo una revisione a più mani del codice:
+- gli incantesimi colpiscono il corpo delle creature (il mirino le trova, le palle scoppiano addosso); ogni magia che
+  rompe ferisce, e ogni razza la sente a modo suo: il gioco scrive «immune» o segna il punto debole;
+- una creatura colpita da lontano viene a cercare chi è stato e mette in allarme le compagne; il guardiano non lascia
+  il suo luogo se non lo si attacca, e non entra mai nelle mura del villaggio;
+- in pausa, nella schermata d'ingresso e con un foglio aperto niente può fare male;
+- il mago comincia con quattro incantesimi (Fuoco, Gelo, Crescita, Rammendo) e impara gli altri nove salendo di
+  livello, fino al decimo: scelta di prodotto approvata dal fondatore;
+- il guardiano di un luogo insegna la parola che costruisce un luogo come il suo (poi la più preziosa che manca);
+- le missioni non si cambiano per sbaglio passando accanto a un altro abitante, non si possono chiudere con
+  «Ricostruisci» o allontanandosi, premiano com'è fatto l'incantesimo e non il suo nome, e ogni abitante ha di
+  nuovo bisogno solo dopo l'alba o il tramonto; il fieno prende fuoco quando si arriva, non prima;
+- al computer ogni foglio ha un tasto (T, P, N, V), perché il mouse catturato non può cliccare i pulsanti.
+Prossimi: oggetti da trovare e indossare; poi il mondo vivo (animali, abitanti con una giornata); poi l'aspetto.
+
 **Rifiniture fatte:** giorno e notte (dieci minuti, la notte è più pericolosa e più ricca), abitanti che passeggiano,
 hanno la lanterna e si ricordano di chi gioca, titolo «Legend Wizard» nella schermata d'ingresso.
 

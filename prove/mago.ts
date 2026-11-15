@@ -5,9 +5,9 @@
 import * as THREE from 'three';
 import { Creature, SPECIE } from '../src/creature.js';
 import { costoDi, esperienzaPer, Mago } from '../src/mago.js';
-import { INCANTESIMI } from '../src/incantesimi/elenco.js';
+import { INCANTESIMI, sbloccati } from '../src/incantesimi/elenco.js';
 import { codifica, creaDaRicetta, decodifica, EFFETTI, FORME } from '../src/incantesimi/officina.js';
-import { leggi, PAROLE } from '../src/incantesimi/parole.js';
+import { leggi, PAROLE, parolaInPremio } from '../src/incantesimi/parole.js';
 
 const errori: string[] = [];
 const verifica = (vero: boolean, che: string): void => {
@@ -226,6 +226,97 @@ verifica(PAROLE.length >= 20 && new Set(PAROLE.flatMap((x) => [x.parola, ...x.al
 const ricco = new Mago();
 ricco.guadagna(0, 20);
 verifica(ricco.spendiEssenze(15) && ricco.essenze === 5 && !ricco.spendiEssenze(15), 'le essenze si spendono solo se bastano');
+
+// --- il mirino, l'allarme, le immunità, i guardiani che restano a casa ---
+{
+  const c2 = new Creature(() => 0, suolo, -0.55, caso);
+  const io = new THREE.Vector3(800, 0, 800);
+  c2.nasci(800, 808, 1, true, 'golem');
+  const occhi = new THREE.Vector3(800, 1.6, 800);
+  const alPetto = new THREE.Vector3(0, -0.06, 1).normalize();
+  const presa = c2.sottoMira(occhi, alPetto, 95);
+  verifica(presa !== null && presa.lontano > 6.5 && presa.lontano < 8, `il mirino sul petto trova la creatura (a ${presa?.lontano.toFixed(1)} m)`);
+  verifica(c2.sottoMira(occhi, new THREE.Vector3(0.3, -0.06, 1).normalize(), 95) === null, 'due metri di lato non la trova');
+  verifica(c2.sottoMira(occhi, alPetto, 5) === null, 'un muro prima della creatura ferma il mirino');
+  c2.evoca(800, 804, 20);
+  verifica(c2.sottoMira(occhi, new THREE.Vector3(0, -0.06, 1).normalize(), 6) === null, 'il golem amico non viene preso di mira');
+  c2.svuota();
+
+  // Colpita da lontano, una creatura viene a cercare chi è stato (prima restava ferma a farsi colpire).
+  const c3 = new Creature(() => 0, suolo, -0.55, caso);
+  c3.nasci(800, 860, 1, true, 'golem');
+  for (let i = 0; i < 120; i++) c3.aggiorna(1 / 60, io);
+  verifica(Math.abs(c3.vicina(io)!.z - 860) < 0.5, 'a sessanta metri, se nessuno la tocca, resta dov’è');
+  c3.ferisciIntorno(new THREE.Vector3(800, 0, 860), 3, 5, 'botto');
+  for (let i = 0; i < 60 * 5; i++) c3.aggiorna(1 / 60, io);
+  verifica(c3.bersagli(new THREE.Vector3(800, 0, 860), 6).length === 0 && c3.bersagli(new THREE.Vector3(800, 0, 845), 12).length > 0, 'colpita, lascia il suo posto e si avvicina');
+
+  // Le immunità valgono per ogni magia: il fuoco non tocca il diavoletto, il gelo lo spacca.
+  const c4 = new Creature(() => 0, suolo, -0.55, caso);
+  c4.nasci(800, 810, 1, true, 'diavoletto');
+  const qui = new THREE.Vector3(800, 0, 810);
+  verifica(c4.ferisciIntorno(qui, 3, 20, 'fuoco') === 0, 'il fuoco non ferisce il diavoletto di lava');
+  verifica(c4.ritiraColpi().some((x) => x.tipo === 'immune'), 'e il gioco lo dice («immune»)');
+  verifica(c4.ferisciIntorno(qui, 3, 5, 'gelo') > 12, 'il gelo gli fa il triplo del male');
+  c4.aggiorna(0.5, io);
+  verifica(c4.ritiraColpi().some((x) => x.tipo === 'debole'), 'e il numero dice che è il suo punto debole');
+
+  // Il Terremoto ferisce a ondate: lo stesso danno a 30 e a 120 fotogrammi al secondo, e un guardiano resta in piedi.
+  const scosse = (passo: number): number => {
+    const c5 = new Creature(() => 0, suolo, -0.55, caso);
+    c5.nasci(800, 805, 4, true, 'golem', true);
+    let fatto = 0;
+    let attesa = 0;
+    for (let t = 0; t < 3.8; t += passo) {
+      attesa -= passo;
+      if (attesa <= 0) {
+        attesa = 0.22;
+        fatto += c5.ferisciIntorno(new THREE.Vector3(800, 0, 805), 7, 6, 'botto');
+      }
+    }
+    verifica(c5.vive === 1, 'il guardiano regge un Terremoto');
+    return fatto;
+  };
+  verifica(Math.abs(scosse(1 / 30) - scosse(1 / 120)) < 13, 'il Terremoto fa lo stesso danno qualunque sia la fluidità');
+
+  // Un guardiano non insegue lontano dal suo luogo, e sparisce (per rinascere intero) quando chi gioca è lontanissimo.
+  const c6 = new Creature(() => 0, suolo, -0.55, caso);
+  c6.nasci(900, 900, 2, true, 'golem', true);
+  const lontano = new THREE.Vector3(900, 0, 960);
+  for (let i = 0; i < 60 * 6; i++) c6.aggiorna(1 / 60, lontano);
+  const casa = new THREE.Vector3(900, 0, 900);
+  verifica(c6.bersagli(casa, 1.5).length === 1, 'il guardiano non va a cercare chi sta a sessanta metri dal suo luogo');
+  c6.aggiorna(1 / 60, new THREE.Vector3(900, 0, 1200));
+  verifica(c6.bersagli(casa, 30).length === 0, 'con chi gioca a trecento metri il guardiano viene tolto');
+
+  // Chi si addormenta lascia perdere il colpo che stava preparando.
+  const c7 = new Creature(() => 0, suolo, -0.55, caso);
+  c7.nasci(800, 802.5, 1, true, 'golem');
+  let preso = 0;
+  for (let i = 0; i < 60; i++) preso += c7.aggiorna(1 / 60, io);
+  verifica(preso === 0, 'il golem sta preparando il pugno');
+  c7.stato(new THREE.Vector3(800, 0, 802.5), 4, 'sonno', 6);
+  c7.ferisciIntorno(new THREE.Vector3(800, 0, 802.5), 4, 2);
+  for (let i = 0; i < 40; i++) preso += c7.aggiorna(1 / 60, io);
+  verifica(preso === 0, 'svegliato, non colpisce subito: deve ricominciare il preavviso');
+}
+
+// --- le parole in premio e gli incantesimi che si imparano con i livelli ---
+{
+  const note = new Set(PAROLE.filter((x) => x.prezzo === 0).map((x) => x.parola));
+  verifica(parolaInPremio(note, 'igloo')?.parola === 'igloo', 'il guardiano di un igloo insegna a costruire un igloo');
+  note.add('igloo');
+  const rara = parolaInPremio(note, 'igloo')!;
+  verifica(rara.prezzo >= 45 && rara.parola !== 'piramide', `se la si sa già, dà la più preziosa tra le altre (${rara.parola})`);
+  verifica(parolaInPremio(note)!.prezzo === 10, 'la sfida di una terra dà la più a buon mercato');
+  verifica(sbloccati(1).map((x) => x.nome).join() === 'Fuoco,Gelo,Crescita,Rammendo', 'si comincia con quattro incantesimi');
+  verifica(sbloccati(10).length === INCANTESIMI.length && sbloccati(5).length > sbloccati(4).length, 'al decimo livello ci sono tutti');
+  verifica(leggi('cura', note).ricetta?.forma === 'me', '«cura» da sola parte su chi lancia');
+  verifica(leggi('fuoco', note).ricetta?.forma === 'palla', '«fuoco» da solo resta una palla');
+  const uno = creaDaRicetta(leggi('palla di fuoco', note).ricetta!);
+  const due = creaDaRicetta(leggi('fuoco palla', note).ricetta!);
+  verifica(uno.firma === due.firma && uno.nome !== due.nome, 'stesse parole in altro ordine: stessa firma, nome diverso');
+}
 
 if (errori.length > 0) {
   console.error('Prova fallita:\n - ' + errori.join('\n - '));

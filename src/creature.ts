@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { StatoCreatura } from './gioco.js';
+import type { Elemento, StatoCreatura } from './gioco.js';
 
 /** Ciò che una creatura lascia quando si sbriciola. */
 export interface Premio {
@@ -7,6 +7,7 @@ export interface Premio {
   /** Il numero della creatura, e se era il guardiano di un luogo. */
   readonly numero: number;
   readonly guardiano: boolean;
+  readonly livello: number;
   readonly esperienza: number;
   readonly essenze: number;
   readonly dove: THREE.Vector3;
@@ -58,6 +59,16 @@ interface Golem {
   readonly arti: THREE.Object3D[];
   readonly barra: THREE.Mesh;
   readonly corpo: THREE.MeshLambertMaterial;
+  /** I materiali solo suoi, da buttare quando sparisce. */
+  readonly propri: THREE.Material[];
+  /** Dove è nata: un guardiano non si allontana troppo dal suo luogo. */
+  readonly casaX: number;
+  readonly casaZ: number;
+  /** Secondi per cui resta in allarme dopo essere stata colpita: intanto insegue anche da lontano. */
+  allerta: number;
+  /** Vero se l'ultimo danno da mostrare ha toccato il suo punto debole; e l'attesa prima di ridire «immune». */
+  debole: boolean;
+  attesaImmune: number;
   vita: number;
   vitaMassima: number;
   forza: number;
@@ -106,6 +117,11 @@ const PIETRA = 0x8f8a84;
 const cubo = new THREE.BoxGeometry(1, 1, 1);
 const ANELLO = new THREE.RingGeometry(0.86, 1, 40).rotateX(-Math.PI / 2);
 const GLOBO = new THREE.IcosahedronGeometry(0.28, 1);
+const BARRA = new THREE.PlaneGeometry(1, 0.09);
+// Corona, cerchio d'avviso e barra della vita sono uguali per tutte: un materiale solo, mai buttato.
+const ORO = new THREE.MeshBasicMaterial({ color: 0xffd24a });
+const ROSSO_AVVISO = new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+const ROSSO_BARRA = new THREE.MeshBasicMaterial({ color: 0xff5a4a, depthTest: false, transparent: true });
 /** Entro quanti metri il pugno del golem fa male. */
 const RAGGIO_PUGNO = 3.4;
 
@@ -122,10 +138,14 @@ interface Tiro {
 export interface Colpo {
   readonly dove: THREE.Vector3;
   readonly quanto: number;
+  /** «debole»: ha toccato il punto debole. «immune»: quella magia non le fa nulla. */
+  readonly tipo: 'normale' | 'debole' | 'immune';
 }
 const VITA_SCHEGGIA = 2.6;
 /** Entro quanti metri dal villaggio di partenza non nascono creature e quelle che inseguono rinunciano. */
 export const RAGGIO_SICURO = 110;
+/** Dentro le mura del villaggio non entra nessuna creatura, nemmeno una in allarme. */
+const RAGGIO_MURA = 58;
 
 /**
  * Le creature, fatte di blocchi: camminano verso chi gioca e lo colpiscono da vicino. Ogni terra ha la sua razza,
@@ -231,6 +251,7 @@ export class Creature {
     const corpo = new THREE.MeshLambertMaterial({ color: new THREE.Color(specie.colore).multiplyScalar(1 - Math.min(0.4, (livello - 1) * 0.06)), emissive: 0xffffff, emissiveIntensity: 1 });
     corpo.emissive.setScalar(0.1);
     const occhi = new THREE.MeshBasicMaterial({ color: specie.occhi });
+    const propri: THREE.Material[] = [corpo, occhi];
     const gruppo = new THREE.Group();
     const pezzo = (sx: number, sy: number, sz: number, x0: number, y0: number, z0: number, m: THREE.Material = corpo): THREE.Mesh => {
       const mesh = new THREE.Mesh(cubo, m);
@@ -250,7 +271,9 @@ export class Creature {
     };
     if (specie.forma === 'lume') {
       // Un cuore di luce sospeso, con quattro lumini che gli girano attorno.
-      gruppo.add(pezzo(0.7, 0.7, 0.7, 0, 1.5, 0, occhi), pezzo(1.0, 1.0, 1.0, 0, 1.5, 0, new THREE.MeshBasicMaterial({ color: specie.colore, transparent: true, opacity: 0.35, depthWrite: false })));
+      const alone = new THREE.MeshBasicMaterial({ color: specie.colore, transparent: true, opacity: 0.35, depthWrite: false });
+      propri.push(alone);
+      gruppo.add(pezzo(0.7, 0.7, 0.7, 0, 1.5, 0, occhi), pezzo(1.0, 1.0, 1.0, 0, 1.5, 0, alone));
       arti = [0, 1, 2, 3].map((i) => {
         const perno = new THREE.Object3D();
         perno.position.set(0, 1.5, 0);
@@ -274,12 +297,12 @@ export class Creature {
       arti = [arto(-0.68, 1.6, 0.85, 0.3), arto(0.68, 1.6, 0.85, 0.3), arto(-0.26, 0.6, 0.5, 0.32), arto(0.26, 0.6, 0.5, 0.32)];
     }
     // Il guardiano di un luogo porta una corona d'oro.
-    if (guardiano) for (let i = 0; i < 5; i++) gruppo.add(pezzo(0.12, 0.3, 0.12, Math.cos(i * 1.257) * 0.3, specie.forma === 'coda' ? 1.1 : 2.4, Math.sin(i * 1.257) * 0.3 + (specie.forma === 'coda' ? 0.95 : 0), new THREE.MeshBasicMaterial({ color: 0xffd24a })));
-    const avviso = new THREE.Mesh(ANELLO, new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+    if (guardiano) for (let i = 0; i < 5; i++) gruppo.add(pezzo(0.12, 0.3, 0.12, Math.cos(i * 1.257) * 0.3, specie.forma === 'coda' ? 1.1 : 2.4, Math.sin(i * 1.257) * 0.3 + (specie.forma === 'coda' ? 0.95 : 0), ORO));
+    const avviso = new THREE.Mesh(ANELLO, ROSSO_AVVISO);
     avviso.position.y = 0.12;
     avviso.visible = false;
     gruppo.add(avviso);
-    const barra = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.09), new THREE.MeshBasicMaterial({ color: 0xff5a4a, depthTest: false, transparent: true }));
+    const barra = new THREE.Mesh(BARRA, ROSSO_BARRA);
     barra.position.y = 2.6;
     barra.renderOrder = 5;
     gruppo.add(barra);
@@ -287,7 +310,7 @@ export class Creature {
     gruppo.position.set(x, this.quota(x, z), z);
     this.gruppo.add(gruppo);
     const vita = (34 + livello * 14) * specie.vita * (guardiano ? 3 : 1);
-    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, mossa: 0, slancio: 0, slancioX: 0, slancioZ: 0, avviso, dannoDaDire: 0, attesaNumero: 0, rinforzi: false, lato: this.caso() < 0.5 ? 1 : -1, bloccato: 0, deviaX: 0, deviaZ: 0, deviaPer: 0, lampo: 0, passo: this.caso() * 6 });
+    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, propri, casaX: x, casaZ: z, allerta: 0, debole: false, attesaImmune: 0, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, mossa: 0, slancio: 0, slancioX: 0, slancioZ: 0, avviso, dannoDaDire: 0, attesaNumero: 0, rinforzi: false, lato: this.caso() < 0.5 ? 1 : -1, bloccato: 0, deviaX: 0, deviaZ: 0, deviaPer: 0, lampo: 0, passo: this.caso() * 6 });
     return this.contatore;
   }
 
@@ -300,24 +323,89 @@ export class Creature {
   stato(dove: THREE.Vector3, raggio: number, che: StatoCreatura, secondi: number): number {
     let prese = 0;
     for (const g of this.golem) {
-      if (g.amico > 0 || g.gruppo.position.distanceTo(dove) > raggio) continue;
+      if (g.amico > 0 || !this.dentro(g, dove, raggio)) continue;
       // I guardiani sono troppo grossi per diventare pecore o addormentarsi a lungo.
       g.stati[che] = Math.max(g.stati[che], g.guardiano && (che === 'pecora' || che === 'sonno') ? secondi * 0.25 : secondi);
+      // Chi si addormenta, scappa o diventa pecora lascia perdere il colpo che stava preparando: al risveglio
+      // dovrà ricominciare da capo, con il suo preavviso.
+      if (che === 'sonno' || che === 'pecora' || che === 'paura') {
+        g.mossa = 0;
+        g.slancio = 0;
+        g.avviso.visible = false;
+        g.attesaColpo = Math.max(g.attesaColpo, 0.8);
+      }
       prese++;
     }
     return prese;
   }
 
-  /** Ferisce le creature ostili in un cerchio senza badare alle immunità; restituisce il danno fatto in tutto. */
-  ferisciIntorno(dove: THREE.Vector3, raggio: number, danno: number): number {
+  /**
+   * Ferisce le creature ostili in un cerchio; restituisce il danno fatto in tutto. Fuoco, gelo e botti pesano
+   * secondo la razza (punto debole o immunità); «puro» ferisce tutte allo stesso modo.
+   */
+  ferisciIntorno(dove: THREE.Vector3, raggio: number, danno: number, tipo: Elemento = 'puro'): number {
     let fatto = 0;
     for (const g of this.golem) {
-      if (g.amico > 0 || g.gruppo.position.distanceTo(dove) > raggio) continue;
-      const q = Math.min(danno, Math.max(0, g.vita));
-      this.ferisci(g, danno);
-      fatto += q;
+      if (g.amico > 0 || !this.dentro(g, dove, raggio)) continue;
+      fatto += this.ferisci(g, danno, tipo);
     }
     return fatto;
+  }
+
+  /** Vero se la creatura sta nel cerchio: conta la distanza in pianta, così vale anche per chi galleggia sull'acqua alta. */
+  private dentro(g: Golem, dove: THREE.Vector3, raggio: number): boolean {
+    const p = g.gruppo.position;
+    return Math.hypot(p.x - dove.x, p.z - dove.z) <= raggio && Math.abs(p.y - dove.y) < raggio + 5;
+  }
+
+  /** Toglie dal mondo una creatura senza premio (il golem di una missione lasciata a metà). */
+  togli(numero: number): void {
+    const i = this.golem.findIndex((g) => g.numero === numero);
+    if (i < 0) return;
+    this.butta(this.golem[i]!);
+    this.golem.splice(i, 1);
+  }
+
+  private butta(g: Golem): void {
+    this.gruppo.remove(g.gruppo);
+    for (const m of g.propri) m.dispose();
+  }
+
+  /**
+   * La creatura ostile che un raggio incontra per prima (il mirino, una palla in volo): il suo corpo conta come
+   * un cilindro in piedi. Restituisce dove sta e a che distanza lungo il raggio, oppure null.
+   */
+  sottoMira(origine: THREE.Vector3, direzione: THREE.Vector3, lungo: number): { dove: THREE.Vector3; lontano: number } | null {
+    let meglio: { dove: THREE.Vector3; lontano: number } | null = null;
+    const a = direzione.x * direzione.x + direzione.z * direzione.z;
+    if (a < 1e-6) return null;
+    for (const g of this.golem) {
+      if (g.amico > 0) continue;
+      const p = g.gruppo.position;
+      const s = g.gruppo.scale.x;
+      const raggio = Math.max(0.8, (g.specie.forma === 'coda' ? 1.1 : 0.85) * s);
+      const ox = origine.x - p.x;
+      const oz = origine.z - p.z;
+      const b = 2 * (ox * direzione.x + oz * direzione.z);
+      const c = ox * ox + oz * oz - raggio * raggio;
+      const disc = b * b - 4 * a * c;
+      if (disc < 0) continue;
+      const radice = Math.sqrt(disc);
+      let da = Math.max(0, (-b - radice) / (2 * a));
+      let fino = Math.min(lungo, (-b + radice) / (2 * a));
+      // In altezza: dai piedi (il lume sta sospeso) alla testa.
+      const basso = p.y + (g.specie.forma === 'lume' ? 0.6 : -0.2) * s;
+      const alto = p.y + (g.specie.forma === 'coda' ? 2.1 : 2.5) * s;
+      if (Math.abs(direzione.y) > 1e-6) {
+        const t1 = (basso - origine.y) / direzione.y;
+        const t2 = (alto - origine.y) / direzione.y;
+        da = Math.max(da, Math.min(t1, t2));
+        fino = Math.min(fino, Math.max(t1, t2));
+      } else if (origine.y < basso || origine.y > alto) continue;
+      if (da > fino) continue;
+      if (!meglio || da < meglio.lontano) meglio = { dove: p, lontano: da };
+    }
+    return meglio;
   }
 
   /** Un golem amico: per un po' combatte al fianco di chi gioca, poi si sbriciola. */
@@ -342,23 +430,42 @@ export class Creature {
     for (const g of this.golem) {
       if (g.amico > 0) continue;
       const d = g.gruppo.position.distanceTo(dove);
-      if (d < raggio) this.ferisci(g, forza * 45 * (1 - (d / raggio) * 0.6) * g.specie.botto);
+      if (d < raggio) this.ferisci(g, forza * 45 * (1 - (d / raggio) * 0.6), 'botto');
     }
   }
 
-  private ferisci(g: Golem, quanto: number): void {
-    g.vita -= quanto;
-    g.dannoDaDire += quanto;
-    // Una ferita sveglia chi dorme.
-    if (quanto > 1) g.stati.sonno = 0;
+  /** Una ferita a una creatura, pesata secondo la sua razza. Restituisce il danno fatto davvero. */
+  private ferisci(g: Golem, quanto: number, tipo: Elemento = 'puro'): number {
+    const peso = tipo === 'puro' ? 1 : g.specie[tipo];
+    if (peso <= 0) {
+      // Immune: lo si dice (non a raffica), così chi gioca capisce che deve cambiare magia.
+      if (quanto > 1 && g.attesaImmune <= 0) {
+        g.attesaImmune = 1.2;
+        this.colpi.push({ dove: new THREE.Vector3(g.gruppo.position.x, g.gruppo.position.y + 2.4 * g.gruppo.scale.x, g.gruppo.position.z), quanto: 0, tipo: 'immune' });
+      }
+      return 0;
+    }
+    const fatto = Math.min(quanto * peso, Math.max(0, g.vita));
+    g.vita -= quanto * peso;
+    g.dannoDaDire += quanto * peso;
+    if (peso >= 2) g.debole = true;
+    // Una ferita sveglia chi dorme, e mette in allarme lei e le compagne lì attorno: vengono a cercare chi è stato.
+    if (quanto > 1) {
+      g.stati.sonno = 0;
+      g.allerta = 14;
+      for (const altra of this.golem) {
+        if (altra !== g && altra.amico <= 0 && altra.gruppo.position.distanceToSquared(g.gruppo.position) < 18 * 18) altra.allerta = Math.max(altra.allerta, 10);
+      }
+    }
     g.lampo = 0.18;
+    return fatto;
   }
 
   private sbriciola(g: Golem): void {
     const p = g.gruppo.position;
     const k = g.guardiano ? 5 : 1;
     // Un golem evocato non lascia premi.
-    if (g.amico <= 0 && !g.evocato) this.premi.push({ specie: g.specie, numero: g.numero, guardiano: g.guardiano, esperienza: (18 + g.livello * 8) * k, essenze: (2 + g.livello + Math.floor(this.caso() * 3)) * k, dove: p.clone() });
+    if (g.amico <= 0 && !g.evocato) this.premi.push({ specie: g.specie, numero: g.numero, guardiano: g.guardiano, livello: g.livello, esperienza: (18 + g.livello * 8) * k, essenze: (2 + g.livello + Math.floor(this.caso() * 3)) * k, dove: p.clone() });
     for (let i = 0; i < 14; i++) {
       const mesh = new THREE.Mesh(cubo, this.materialeScheggia);
       mesh.scale.setScalar(0.18 + this.caso() * 0.3);
@@ -367,8 +474,7 @@ export class Creature {
       this.gruppo.add(mesh);
       this.schegge.push({ mesh, v: new THREE.Vector3((this.caso() - 0.5) * 7, 2 + this.caso() * 6, (this.caso() - 0.5) * 7), vita: VITA_SCHEGGIA });
     }
-    this.gruppo.remove(g.gruppo);
-    g.corpo.dispose();
+    this.butta(g);
   }
 
   /**
@@ -402,7 +508,7 @@ export class Creature {
       const c = this.suolo.cella(p.x, p.z);
       let passo = g.specie.passo;
       if (c >= 0) {
-        if (this.suolo.fuoco[c]! > 0 && g.specie.fuoco > 0) this.ferisci(g, 16 * dt * g.specie.fuoco);
+        if (this.suolo.fuoco[c]! > 0 && g.specie.fuoco > 0) this.ferisci(g, 16 * dt, 'fuoco');
         if (this.suolo.gelo[c]! > 0.3 && g.specie.gelo > 0) {
           passo *= 0.2;
           g.vita -= 4 * dt * g.specie.gelo;
@@ -413,9 +519,10 @@ export class Creature {
         this.golem.splice(i, 1);
         continue;
       }
-      if (d > 130 && !g.fisso) {
-        this.gruppo.remove(g.gruppo);
-        g.corpo.dispose();
+      // Le creature di passaggio spariscono quando chi gioca è lontano; i guardiani più tardi (e rinascono interi
+      // quando si torna): senza, esplorando se ne accumulerebbero decine, tutte da muovere a ogni fotogramma.
+      if ((d > 130 && !g.fisso) || (d > 220 && g.guardiano)) {
+        this.butta(g);
         this.golem.splice(i, 1);
         continue;
       }
@@ -427,6 +534,9 @@ export class Creature {
       const mite = st.pecora > 0;
       g.gruppo.scale.setScalar(g.taglia * (mite ? 0.45 : st.piccolo > 0 ? 0.5 : 1));
       let insegue = false;
+      let torna = false;
+      g.allerta = Math.max(0, g.allerta - dt);
+      g.attesaImmune = Math.max(0, g.attesaImmune - dt);
       if (g.amico > 0) {
         // Il golem amico: va addosso alla creatura ostile più vicina; se non ce ne sono, segue chi gioca.
         g.amico -= dt;
@@ -449,6 +559,7 @@ export class Creature {
         if (preda && md < 2.6 && g.attesaColpo <= 0) {
           g.attesaColpo = 1;
           this.ferisci(preda, 22);
+          preda.allerta = 0;
         }
       } else if (st.sonno > 0) {
         // Dorme: non si muove e non colpisce.
@@ -462,7 +573,12 @@ export class Creature {
           insegue = true;
         }
       } else {
-        insegue = d < 36 && (!alSicuro || g.fisso) && !nascosto;
+        // Chi è stato colpito viene a cercare chi gioca anche da lontano, e lo segue fin sotto le mura del villaggio;
+        // le altre lo lasciano stare appena è vicino a casa. Il guardiano non si allontana dal luogo che custodisce.
+        const sveglia = g.allerta > 0;
+        const protetto = sveglia ? daCasa < RAGGIO_MURA : alSicuro && !(g.fisso && !g.guardiano);
+        insegue = (d < 36 || (sveglia && d < 100)) && !protetto && !nascosto;
+        if (g.guardiano && !sveglia && Math.hypot(giocatore.x - g.casaX, giocatore.z - g.casaZ) > 48) insegue = false;
         const peso = (st.piccolo > 0 ? 0.4 : 1) * (this.notte ? 1.3 : 1);
         const att = g.specie.attacco;
         g.attesaColpo -= dt;
@@ -490,6 +606,8 @@ export class Creature {
               this.urtoATerra(p);
             } else if (att === 'carica') {
               g.slancio = 0.75;
+              // Una deviazione attorno a un muro rimasta a metà farebbe partire la carica di lato.
+              g.deviaPer = 0;
               g.slancioX = dx / Math.max(d, 0.1);
               g.slancioZ = dz / Math.max(d, 0.1);
             }
@@ -521,11 +639,24 @@ export class Creature {
               g.attesaColpo = att === 'scheggia' ? 2.2 : att === 'globo' ? 3.2 : 2.6;
             }
           }
+        } else if (g.guardiano) {
+          // Nessuno da inseguire: il guardiano torna al suo posto.
+          const hx = g.casaX - p.x;
+          const hz = g.casaZ - p.z;
+          const hd = Math.hypot(hx, hz);
+          if (hd > 1.5) {
+            g.gruppo.rotation.y = Math.atan2(hx, hz);
+            this.muovi(g, hx / hd, hz / hd, passo * dt, dt);
+            g.passo += dt * passo * 2.2;
+            torna = true;
+          }
         }
         // A metà vita il guardiano chiama due dei suoi.
         if (g.guardiano && !g.rinforzi && g.vita < g.vitaMassima * 0.5) {
           g.rinforzi = true;
-          for (const lato of [-1, 1]) this.nasci(p.x + lato * 4, p.z + 2, Math.max(1, g.livello - 1), true, Object.keys(SPECIE).find((k) => SPECIE[k] === g.specie));
+          for (const lato of [-1, 1]) this.nasci(p.x + lato * 4, p.z + 2, Math.max(1, g.livello - 1), false, Object.keys(SPECIE).find((k) => SPECIE[k] === g.specie));
+          // I rinforzi arrivano già in allarme, e spariscono come le creature di passaggio.
+          for (const nuovo of this.golem.slice(-2)) nuovo.allerta = 20;
           this.avvisi.push('Il guardiano chiama rinforzi!');
         }
       }
@@ -537,7 +668,7 @@ export class Creature {
         p.y += Math.sin(g.passo) * 0.25;
         for (const a of g.arti) a.rotation.y += dt * 2.4;
       } else {
-        const dondolo = Math.sin(g.passo) * (insegue ? 0.7 : 0.08);
+        const dondolo = Math.sin(g.passo) * (insegue || torna ? 0.7 : 0.08);
         g.arti[0]!.rotation.x = dondolo;
         g.arti[1]!.rotation.x = -dondolo;
         g.arti[2]!.rotation.x = -dondolo;
@@ -547,8 +678,9 @@ export class Creature {
       }
       g.attesaNumero -= dt;
       if (g.dannoDaDire >= 1 && g.attesaNumero <= 0) {
-        this.colpi.push({ dove: new THREE.Vector3(p.x, p.y + 2.4 * g.gruppo.scale.x, p.z), quanto: Math.round(g.dannoDaDire) });
+        this.colpi.push({ dove: new THREE.Vector3(p.x, p.y + 2.4 * g.gruppo.scale.x, p.z), quanto: Math.round(g.dannoDaDire), tipo: g.debole ? 'debole' : 'normale' });
         g.dannoDaDire = 0;
+        g.debole = false;
         g.attesaNumero = 0.35;
       }
       g.lampo = Math.max(0, g.lampo - dt);
@@ -664,8 +796,7 @@ export class Creature {
     for (let i = this.golem.length - 1; i >= 0; i--) {
       const g = this.golem[i]!;
       if (g.fisso) continue;
-      this.gruppo.remove(g.gruppo);
-      g.corpo.dispose();
+      this.butta(g);
       this.golem.splice(i, 1);
     }
   }

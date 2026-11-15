@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { anello, bolla, creaCerchioMagico, rendi, Saetta, scia } from '../effetti/forme.js';
-import type { Effetto, Gioco, Incantesimo, Lancio } from '../gioco.js';
+import type { Effetto, Elemento, Gioco, Incantesimo, Lancio } from '../gioco.js';
 import { altezza } from '../mondo/terreno.js';
 import { Cristalli } from './cristalli.js';
 import { Levitazione } from './levitazione.js';
@@ -109,6 +109,16 @@ export const MODI: readonly Scelta[] = [
 
 /** Quanto feriscono le creature gli effetti che rompono, quando l'incantesimo è «solo creature». */
 const DANNI: Readonly<Record<string, number>> = { scoppio: 30, risucchio: 14, solleva: 14, vortice: 16, brucia: 24, gela: 12, folgora: 36, peso: 26, trema: 14, cristalli: 20 };
+/** Di che natura è la ferita di ogni effetto: le razze ne temono alcune e ne ignorano altre. */
+const NATURA: Readonly<Record<string, Elemento>> = { brucia: 'fuoco', gela: 'gelo', peso: 'puro' };
+/** Gli effetti che valgono solo su chi lancia. */
+export const SU_DI_SE = new Set(['cura', 'scudo', 'svelto', 'balzo', 'ombra']);
+
+/** Quello che un lancio si ricorda tra un colpo e l'altro: certe cose valgono una volta sola. */
+interface Memoria {
+  curato: boolean;
+  unici: Set<string>;
+}
 
 /** Rimette in riga una ricetta arrivata da fuori (un codice incollato, la memoria del browser): solo valori che esistono. */
 export function ripulisci(dato: unknown): Ricetta | null {
@@ -188,13 +198,13 @@ const RAGGI = [0, 4.2, 7, 10.5, 13.5];
  * Un colpo dell'incantesimo, con i suoi comportamenti: può scattare in ritardo, ripetersi, rimbalzare più avanti,
  * saltare addosso alle creature vicine. Le repliche sono più deboli e non si replicano a loro volta.
  */
-function impatto(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
+function impatto(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number, m: Memoria): void {
   const modi = r.modi ?? [];
-  if (modi.length === 0) return colpo(g, r, p, scala);
+  if (modi.length === 0) return colpo(g, r, p, scala, m, false);
   const attesa = modi.includes('ritardato') ? 2.5 : 0;
-  const dopo = (secondi: number, dove: THREE.Vector3, quanto: number): void => g.aggiungi(new Dopo(attesa + secondi, (gg) => colpo(gg, r, dove, quanto)));
-  if (attesa > 0) dopo(0, p, scala);
-  else colpo(g, r, p, scala);
+  const dopo = (secondi: number, dove: THREE.Vector3, quanto: number, replica = true): void => g.aggiungi(new Dopo(attesa + secondi, (gg) => colpo(gg, r, dove, quanto, m, replica)));
+  if (attesa > 0) dopo(0, p, scala, false);
+  else colpo(g, r, p, scala, m, false);
   if (modi.includes('doppio')) dopo(0.6, p, scala * 0.8);
   if (modi.includes('rimbalza')) {
     const via = new THREE.Vector3(p.x - g.poteri.dove.x, 0, p.z - g.poteri.dove.z);
@@ -214,7 +224,7 @@ function impatto(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
 }
 
 /** Quello che succede in un punto: i bagliori del colore scelto e, uno dopo l'altro, gli effetti della ricetta. */
-function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
+function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number, m: Memoria, replica: boolean): void {
   const forza = FORZE[r.potenza]! * scala;
   const raggio = RAGGI[r.ampiezza]! * (0.6 + 0.4 * scala);
   const suolo = new THREE.Vector3(p.x, altezza(p.x, p.z), p.z);
@@ -237,14 +247,21 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
   let botto = 0;
   const soloCreature = r.modi?.includes('creature') ?? false;
   for (const effetto of r.effetti) {
-    // «Solo creature»: gli effetti che rompono diventano ferite per le creature, e case e prato restano intatti.
-    if (soloCreature && DANNI[effetto] !== undefined) {
-      g.poteri.ferisci(suolo, raggio, DANNI[effetto]! * forza);
-      if (effetto === 'gela') g.poteri.stato(suolo, raggio, 'lento', 6);
-      continue;
+    // Gli effetti che rompono feriscono anche le creature, ognuna secondo la sua razza. Con «solo creature» la
+    // ferita è più forte, e case e prato restano intatti.
+    if (DANNI[effetto] !== undefined) {
+      const fatto = g.poteri.ferisci(suolo, raggio, DANNI[effetto]! * forza * (soloCreature ? 1.4 : 1), NATURA[effetto] ?? 'botto');
+      if (effetto === 'gela' && fatto > 0) g.poteri.stato(suolo, raggio, 'lento', 6);
+      if (soloCreature) continue;
     }
     if (COSTRUZIONI.has(effetto)) {
-      if (scala >= 1) g.poteri.costruisci(effetto, suolo);
+      // I pezzi piccoli si posano a ogni colpo (una pioggia di blocchi ne posa sei); un edificio, uno per lancio.
+      const piccolo = effetto === 'blocco' || effetto === 'parete' || effetto === 'scala';
+      if (!replica && (piccolo || !m.unici.has(effetto))) {
+        m.unici.add(effetto);
+        // Mirando sopra qualcosa (un altro blocco, un muro) il pezzo va lì sopra, non a terra.
+        g.poteri.costruisci(effetto, new THREE.Vector3(p.x, p.y - suolo.y > 0.7 ? p.y : suolo.y, p.z));
+      }
       continue;
     }
     if (effetto === 'smonta') {
@@ -301,7 +318,11 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
         break;
       // --- su chi lancia: valgono se il colpo cade vicino al mago (la forma «su di me» lo fa cadere ai suoi piedi) ---
       case 'cura':
-        if (suMe) g.poteri.cura(18 * forza + 8);
+        // Una volta sola per lancio: un cerchio o una pioggia di cure non curano otto volte.
+        if (suMe && !m.curato) {
+          m.curato = true;
+          g.poteri.cura(18 * FORZE[r.potenza]! + 8);
+        }
         break;
       case 'scudo':
         if (suMe) g.poteri.scudo(6 + 5 * forza);
@@ -316,7 +337,10 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
         if (suMe) g.poteri.invisibile(5 + 4 * forza);
         break;
       case 'varco':
-        if (!suMe && scala >= 1) g.poteri.teletrasporta(suolo);
+        if (!suMe && !replica && !m.unici.has('varco')) {
+          m.unici.add('varco');
+          g.poteri.teletrasporta(suolo);
+        }
         break;
       case 'luce':
         g.poteri.luce(new THREE.Vector3(p.x, suolo.y + 2.4, p.z), 40 + 30 * forza, r.colore);
@@ -351,7 +375,6 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
       }
       case 'peso':
         for (const i of g.pezzi.vicini(p.x, p.y, p.z, raggio, 500)) g.pezzi.accelera(i, 0, -16 * forza, 0, 1);
-        g.poteri.ferisci(suolo, raggio, 26 * forza);
         botto = Math.max(botto, 0.2 * forza);
         break;
       case 'trema':
@@ -383,7 +406,10 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
         g.poteri.cura(g.poteri.ferisci(suolo, raggio, 16 * forza) * 0.5);
         break;
       case 'evoca':
-        if (scala >= 1) g.poteri.evoca(suolo, 20 + 10 * forza);
+        if (!replica && !m.unici.has('evoca')) {
+          m.unici.add('evoca');
+          g.poteri.evoca(suolo, 20 + 10 * FORZE[r.potenza]!);
+        }
         break;
       case 'rammenda':
         g.pezzi.rammenda(p.x, p.z, raggio);
@@ -394,7 +420,7 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
   }
   if (botto > 0) {
     g.suoni.botto(botto);
-    g.scossa(botto * 1.6, p);
+    g.scossa(botto * 1.6, p, false);
   } else {
     g.suoni.soffio();
   }
@@ -419,7 +445,7 @@ class Palla implements Effetto {
   private eta = 0;
   private readonly c: THREE.Color;
 
-  constructor(g: Gioco, private readonly r: Ricetta, l: Lancio) {
+  constructor(g: Gioco, private readonly r: Ricetta, l: Lancio, private readonly m: Memoria) {
     this.c = new THREE.Color(r.colore);
     this.mesh = new THREE.Mesh(SFERA, new THREE.MeshBasicMaterial({ color: this.c.clone().multiplyScalar(1.8), fog: false }));
     this.mesh.position.copy(l.origine);
@@ -438,17 +464,19 @@ class Palla implements Effetto {
     const passo = this.vel.length() * dt;
     const dir = this.vel.clone().normalize();
     const colpo = g.fisica.castRay(new g.R.Ray(p, dir), passo, true, undefined, undefined, undefined, g.corpoGiocatore);
-    p.addScaledVector(dir, colpo ? colpo.timeOfImpact : passo);
+    // Il corpo di una creatura ferma la palla come un muro.
+    const corpo = g.poteri.sulRaggio(p, dir, colpo ? colpo.timeOfImpact : passo);
+    p.addScaledVector(dir, corpo >= 0 ? corpo : colpo ? colpo.timeOfImpact : passo);
     for (let i = 0; i < 2; i++) {
       g.scintille.emetti({
         x: p.x, y: p.y, z: p.z, vx: (Math.random() - 0.5) * 1.5, vy: Math.random() * 1.5, vz: (Math.random() - 0.5) * 1.5,
         vita: 0.35, dim: 0.7, dimFine: 0.08, r: this.c.r * 1.6, g: this.c.g * 1.6, b: this.c.b * 1.6, alfa: 0.7,
       });
     }
-    if (!colpo && p.y > altezza(p.x, p.z) && this.eta < 5) return true;
+    if (!colpo && corpo < 0 && p.y > altezza(p.x, p.z) && this.eta < 5) return true;
     this.mesh.removeFromParent();
     this.mesh.material.dispose();
-    impatto(g, this.r, p.clone(), 1);
+    impatto(g, this.r, p.clone(), 1, this.m);
     return false;
   }
 }
@@ -458,7 +486,7 @@ class Trappola implements Effetto {
   private readonly segno: ReturnType<typeof creaCerchioMagico>;
   private eta = 0;
 
-  constructor(g: Gioco, private readonly r: Ricetta, private readonly p: THREE.Vector3) {
+  constructor(g: Gioco, private readonly r: Ricetta, private readonly p: THREE.Vector3, private readonly m: Memoria) {
     this.segno = creaCerchioMagico(r.colore, 1.2);
     this.segno.position.copy(p);
     this.segno.scale.setScalar(1.6);
@@ -472,7 +500,7 @@ class Trappola implements Effetto {
     if (!scatta && this.eta < 30) return true;
     this.segno.removeFromParent();
     rendi(this.segno.material);
-    if (scatta) impatto(g, this.r, this.p.clone().setY(this.p.y + 0.3), 1.2);
+    if (scatta) impatto(g, this.r, this.p.clone().setY(this.p.y + 0.3), 1.2, this.m);
     return false;
   }
 }
@@ -484,7 +512,7 @@ class Globo implements Effetto {
   private eta = 0;
   private readonly c: THREE.Color;
 
-  constructor(g: Gioco, private readonly r: Ricetta, l: Lancio, quale: number) {
+  constructor(g: Gioco, private readonly r: Ricetta, l: Lancio, quale: number, private readonly m: Memoria) {
     this.c = new THREE.Color(r.colore);
     this.mesh = new THREE.Mesh(SFERA, new THREE.MeshBasicMaterial({ color: this.c.clone().multiplyScalar(1.8), fog: false }));
     this.mesh.scale.setScalar(0.7);
@@ -510,7 +538,7 @@ class Globo implements Effetto {
     if (!arrivato && p.y > altezza(p.x, p.z) + 0.2 && this.eta < 4) return true;
     this.mesh.removeFromParent();
     this.mesh.material.dispose();
-    impatto(g, this.r, p.clone(), 0.6);
+    impatto(g, this.r, p.clone(), 0.6, this.m);
     return false;
   }
 }
@@ -521,6 +549,7 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
   const nomi = r.effetti.map((e) => EFFETTI.find((x) => x.id === e)!.nome.toLowerCase());
   return {
     nome: r.nome,
+    firma: [r.forma, [...r.effetti].sort().join('+'), r.potenza, r.ampiezza, [...(r.modi ?? [])].sort().join('+')].join('|'),
     cosaFa: `${forma.nome}: ${[...nomi, ...(r.modi ?? [])].join(', ')}`,
     simbolo: r.simbolo,
     colore: r.colore,
@@ -529,29 +558,30 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
       const p = l.bersaglio.clone();
       const c = new THREE.Color(r.colore);
       const raggio = RAGGI[r.ampiezza]!;
+      const m: Memoria = { curato: false, unici: new Set() };
       if (r.forma === 'me') {
         const io = g.poteri.dove;
-        impatto(g, r, new THREE.Vector3(io.x, altezza(io.x, io.z) + 0.3, io.z), 1);
+        impatto(g, r, new THREE.Vector3(io.x, altezza(io.x, io.z) + 0.3, io.z), 1, m);
       } else if (r.forma === 'cerchio') {
         for (let i = 0; i < 8; i++) {
           const a = (i / 8) * Math.PI * 2;
           const x = p.x + Math.cos(a) * raggio;
           const z = p.z + Math.sin(a) * raggio;
           const q = new THREE.Vector3(x, altezza(x, z) + 0.3, z);
-          g.aggiungi(new Dopo(0.08 * i, (gg) => impatto(gg, r, q, 0.55)));
+          g.aggiungi(new Dopo(0.08 * i, (gg) => impatto(gg, r, q, 0.55, m)));
         }
       } else if (r.forma === 'mina') {
-        g.aggiungi(new Trappola(g, r, new THREE.Vector3(p.x, altezza(p.x, p.z) + 0.15, p.z)));
+        g.aggiungi(new Trappola(g, r, new THREE.Vector3(p.x, altezza(p.x, p.z) + 0.15, p.z), m));
         g.suoni.carica(0.4);
       } else if (r.forma === 'sciame') {
-        for (let i = 0; i < 3; i++) g.aggiungi(new Globo(g, r, l, i));
+        for (let i = 0; i < 3; i++) g.aggiungi(new Globo(g, r, l, i, m));
         g.suoni.soffio();
       } else if (r.forma === 'palla') {
-        g.aggiungi(new Palla(g, r, l));
+        g.aggiungi(new Palla(g, r, l, m));
         g.suoni.soffio();
       } else if (r.forma === 'tocco') {
         scia(g, l.origine, p, c.r * 1.6, c.g * 1.6, c.b * 1.6);
-        impatto(g, r, p, 1);
+        impatto(g, r, p, 1, m);
       } else if (r.forma === 'cielo') {
         const cerchio = creaCerchioMagico(r.colore, 1.6);
         cerchio.position.set(p.x, altezza(p.x, p.z) + 14, p.z);
@@ -568,7 +598,7 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
             if (eta < 0.75) return true;
             cerchio.removeFromParent();
             rendi(cerchio.material);
-            impatto(g, r, p, 1.15);
+            impatto(g, r, p, 1.15, m);
             return false;
           },
         });
@@ -581,7 +611,7 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
           const q = new THREE.Vector3(x, i === 0 ? p.y : altezza(x, z), z);
           g.aggiungi(new Dopo(0.15 + i * 0.3, (gg) => {
             scia(gg, new THREE.Vector3(q.x - 4, q.y + 30, q.z + 2), q, c.r * 1.6, c.g * 1.6, c.b * 1.6, 18);
-            impatto(gg, r, q, 0.6);
+            impatto(gg, r, q, 0.6, m);
           }));
         }
       } else {
@@ -595,7 +625,7 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
           const x = da.x + dir.x * (5 + i * 4);
           const z = da.z + dir.z * (5 + i * 4);
           const q = new THREE.Vector3(x, altezza(x, z) + 0.3, z);
-          g.aggiungi(new Dopo(i * 0.11, (gg) => impatto(gg, r, q, 0.55)));
+          g.aggiungi(new Dopo(i * 0.11, (gg) => impatto(gg, r, q, 0.55, m)));
         }
       }
     },

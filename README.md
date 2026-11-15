@@ -116,6 +116,17 @@ rilascia per scagliarli), **Cristalli** (spuntoni che eruttano dal terreno), Cre
 ciò che era rotto o bruciato torna al suo posto). Si combinano: il gelo spegne gli incendi, il tornado che passa sul
 fuoco diventa di fiamme, la crescita fa nascere l'erba anche nel deserto.
 
+### Le regole del combattimento, in breve
+
+- Si mira al corpo della creatura: il mirino la trova e le palle le scoppiano addosso.
+- Fuoco, gelo e botti pesano secondo la razza: sopra la creatura compare il danno, con un «!» se è il suo punto
+  debole, oppure «immune».
+- Chi viene colpito da lontano arriva di corsa e chiama le compagne. I guardiani restano vicino al loro luogo.
+- In pausa e con un foglio aperto il mondo aspetta.
+- Si parte con Fuoco, Gelo, Crescita e Rammendo; gli altri incantesimi di serie arrivano con i livelli (2 Fulmine,
+  3 Cristalli, 4 Esplosione, 5 Levitazione, 6 Presa, 7 Terremoto, 8 Tornado, 9 Meteore, 10 Singolarità).
+- Al computer: T scrivi un incantesimo, P spendi i punti, N quaderno, V viaggio rapido, Esc chiude il foglio.
+
 ## Comandi per chi sviluppa
 
 ```powershell

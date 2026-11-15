@@ -17,6 +17,8 @@ export const gelo: Incantesimo = {
     scia(g, l.origine, p, 0.6, 1.1, 1.6);
     g.campo.gela(p.x, p.z, RAGGIO);
     g.pezzi.gela(p.x, p.y, p.z, RAGGIO);
+    // Il gelo morde le creature che lo temono, e le rallenta.
+    if (g.poteri.ferisci(suolo, RAGGIO, 14, 'gelo') > 0) g.poteri.stato(suolo, RAGGIO, 'lento', 4);
     anello(g, suolo, 0x9fe4ff, RAGGIO, 0.7);
     bolla(g, p, 0x7fd0ff, RAGGIO * 0.8, 0.5, 0.45);
     for (let i = 0; i < 150; i++) {

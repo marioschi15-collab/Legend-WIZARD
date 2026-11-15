@@ -69,7 +69,7 @@ export class Abitanti {
    * Fa girare gli abitanti verso chi gioca e muove i segni. Restituisce la missione dell'abitante a cui ci si è
    * appena avvicinati (una volta sola per ogni avvicinamento), oppure null. `inCorso` è la missione attiva.
    */
-  aggiorna(dt: number, giocatore: THREE.Vector3, inCorso: string | null, notte = false): string | null {
+  aggiorna(dt: number, giocatore: THREE.Vector3, inCorso: string | null, notte = false, riposano: ReadonlySet<string> = new Set()): string | null {
     this.tempo += dt;
     let incontrato: string | null = null;
     for (const a of this.tutti) {
@@ -98,7 +98,7 @@ export class Abitanti {
           a.sosta = 3 + Math.random() * 5;
         }
       }
-      a.segno.visible = a.id !== inCorso;
+      a.segno.visible = a.id !== inCorso && !riposano.has(a.id);
       a.segno.position.y = 2.1 + Math.sin(this.tempo * 3 + p.x) * 0.07;
       const vicino = d < (a.vicino ? 4.2 : 3.1);
       if (vicino && !a.vicino) incontrato = a.id;

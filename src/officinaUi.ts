@@ -148,6 +148,7 @@ export class OfficinaUi {
     if (b.effetti.length === 0) return this.dici('Scegli almeno un effetto.');
     b.nome = b.nome.replace(/[<>&"']/g, '').trim().slice(0, 18) || 'Senza nome';
     if (this.indice >= 0) this.ricette[this.indice] = b;
+    else if (this.ricette.length >= MASSIMO_RICETTE) return this.dici(`Hai già ${MASSIMO_RICETTE} incantesimi: eliminane uno per fare posto.`);
     else {
       this.ricette.push(b);
       this.indice = this.ricette.length - 1;

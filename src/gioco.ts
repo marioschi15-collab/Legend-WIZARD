@@ -10,6 +10,9 @@ import type { Suoni } from './suoni.js';
 /** Gli stati che un incantesimo può dare alle creature. */
 export type StatoCreatura = 'sonno' | 'pecora' | 'paura' | 'lento' | 'veleno' | 'piccolo';
 
+/** Di che natura è una ferita: ogni razza ne teme alcune e ne ignora altre. «puro» passa sopra ogni immunità. */
+export type Elemento = 'fuoco' | 'gelo' | 'botto' | 'puro';
+
 /** Ciò che la magia può fare al mago stesso e alle creature: non solo rompere, ma curare, proteggere, ingannare. */
 export interface Poteri {
   /** Dove sta chi gioca (i piedi). */
@@ -26,8 +29,10 @@ export interface Poteri {
   luce(a: THREE.Vector3, secondi: number, colore: number): void;
   /** Dà uno stato alle creature in un cerchio; restituisce quante ne ha prese. */
   stato(a: THREE.Vector3, raggio: number, che: StatoCreatura, secondi: number): number;
-  /** Ferisce le creature in un cerchio senza badare alle loro immunità; restituisce il danno fatto in tutto. */
-  ferisci(a: THREE.Vector3, raggio: number, danno: number): number;
+  /** Ferisce le creature in un cerchio (ogni razza sente di più o di meno fuoco, gelo e botti); restituisce il danno fatto in tutto. */
+  ferisci(a: THREE.Vector3, raggio: number, danno: number, tipo?: Elemento): number;
+  /** A che distanza un raggio incontra il corpo di una creatura ostile (o -1 se non ne incontra entro `lungo`). */
+  sulRaggio(origine: THREE.Vector3, direzione: THREE.Vector3, lungo: number): number;
   /** Fa nascere un golem amico che combatte per chi gioca. */
   evoca(a: THREE.Vector3, secondi: number): void;
   /** Costruisce qualcosa in un punto (un blocco, una parete, una torre…). */
@@ -53,8 +58,11 @@ export interface Gioco {
   readonly suoni: Suoni;
   readonly alberi: AlberiMagici;
   readonly poteri: Poteri;
-  /** Fa tremare la visuale; si attenua da sola con la distanza dal punto indicato. */
-  scossa(forza: number, dove: THREE.Vector3): void;
+  /**
+   * Fa tremare la visuale; si attenua da sola con la distanza dal punto indicato. Di suo è anche un botto che
+   * ferisce le creature lì attorno: chi vuole solo il tremito passa `ferisce = false`.
+   */
+  scossa(forza: number, dove: THREE.Vector3, ferisce?: boolean): void;
   /** Chiede di oscurare e tingere il cielo per questo fotogramma (vince la richiesta più forte). */
   umore(buio: number, r: number, g: number, b: number): void;
   aggiungi(effetto: Effetto): void;
@@ -89,5 +97,7 @@ export interface Incantesimo {
   readonly ricarica: number;
   /** Vero per gli incantesimi perduti, trovati nel mondo: nella barra hanno il bordo d'oro. */
   readonly raro?: boolean;
+  /** Com'è fatto (forma, effetti, forza…), per gli incantesimi inventati: due nomi diversi, stessa firma, stessa idea. */
+  readonly firma?: string;
   lancia(g: Gioco, l: Lancio): void;
 }

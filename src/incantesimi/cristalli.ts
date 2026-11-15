@@ -32,10 +32,11 @@ export class Cristalli implements Effetto {
       const lato = (Math.random() - 0.5) * 1.6;
       punti.push({ x: da.x + dir.x * (5.5 + k * 2.3) - dir.z * lato, z: da.z + dir.z * (5.5 + k * 2.3) + dir.x * lato });
     }
-    return new Cristalli(g, punti);
+    return new Cristalli(g, punti, 20);
   }
 
-  constructor(g: Gioco, punti: { x: number; z: number }[]) {
+  /** `danno`: quanto ferisce ogni spuntone le creature che ha addosso quando erutta. */
+  constructor(g: Gioco, punti: { x: number; z: number }[], private readonly danno = 0) {
     for (let k = 0; k < punti.length; k++) {
       const { x, z } = punti[k]!;
       const mesh = new THREE.Mesh(SPUNTONE, MATERIALI[k % 2]!);
@@ -57,6 +58,7 @@ export class Cristalli implements Effetto {
         // Lo spuntone erutta: scaglia in alto ciò che ha sopra e resta lì come un ostacolo.
         s.mesh.visible = true;
         g.pezzi.spinta(p.x, p.y - 0.6, p.z, 3.6, 16, 1.3);
+        if (this.danno > 0) g.poteri.ferisci(p, 2.4, this.danno, 'botto');
         s.collisore = g.fisica.createCollider(
           g.R.ColliderDesc.cylinder(s.alto / 2, 0.35).setTranslation(p.x, p.y + s.alto / 2, p.z),
         );
@@ -94,6 +96,6 @@ export const cristalli: Incantesimo = {
   ricarica: 1.4,
   lancia(g, l) {
     g.aggiungi(Cristalli.inFila(g, g.camera.position, l.bersaglio));
-    g.scossa(0.3, g.camera.position);
+    g.scossa(0.3, g.camera.position, false);
   },
 };

@@ -12,7 +12,7 @@ import { massimoPunti, Particelle, scalaPunti } from './effetti/particelle.js';
 import { Pezzi } from './fisica/pezzi.js';
 import { Giocatore } from './giocatore.js';
 import type { Effetto, Gioco, Poteri, Incantesimo } from './gioco.js';
-import { INCANTESIMI } from './incantesimi/elenco.js';
+import { INCANTESIMI, livelloDi, sbloccati } from './incantesimi/elenco.js';
 import { Interfaccia } from './interfaccia.js';
 import { creaDaRicetta, leggiRicette, salvaRicette, type Ricetta } from './incantesimi/officina.js';
 import { OfficinaUi } from './officinaUi.js';
@@ -22,7 +22,7 @@ import { Sigilli } from './mondo/sigilli.js';
 import { Abitanti } from './abitanti.js';
 import { Creature } from './creature.js';
 import { Missioni, type MondoMissioni } from './missioni.js';
-import { PAROLE, salvaConosciute } from './incantesimi/parole.js';
+import { PAROLE, parolaInPremio, salvaConosciute } from './incantesimi/parole.js';
 import { costoDi, Mago } from './mago.js';
 import { MagoUi } from './magoUi.js';
 import { ParoleUi } from './paroleUi.js';
@@ -71,7 +71,11 @@ async function avvia(): Promise<void> {
   let ricette: Ricetta[] = leggiRicette();
   // Nella barra: gli incantesimi di sempre, poi quelli perduti trovati nel mondo, poi quelli inventati.
   const trovati = leggiTrovati();
-  const componi = (): Incantesimo[] => [...INCANTESIMI, ...trovati.map((t) => PERDUTI[t]!), ...ricette.map(creaDaRicetta)];
+  // Il mago (vita, mana, livelli): gli incantesimi di serie si imparano salendo di livello.
+  const mago = new Mago();
+  mago.carica();
+  let diSerie = sbloccati(mago.livello);
+  const componi = (): Incantesimo[] => [...(diSerie = sbloccati(mago.livello)), ...trovati.map((t) => PERDUTI[t]!), ...ricette.map(creaDaRicetta)];
   let magie = componi();
   const ui = new Interfaccia(magie, q.telefono);
   const officina = new OfficinaUi();
@@ -176,8 +180,6 @@ async function avvia(): Promise<void> {
   const comandi = new Comandi(ui.tela, ui.leva, ui.pomello);
 
   // --- il mago (vita, mana, livelli) e le creature ---
-  const mago = new Mago();
-  mago.carica();
   const pesiTerra = new Float32Array(N_ZONE);
   /** Il numero della terra che domina in un punto. */
   const terraIn = (x: number, z: number): number => {
@@ -243,7 +245,8 @@ async function avvia(): Promise<void> {
       g.luce.visible = true;
     },
     stato: (a, raggio, che, secondi) => creature.stato(a, raggio, che, secondi),
-    ferisci: (a, raggio, danno) => creature.ferisciIntorno(a, raggio, danno),
+    ferisci: (a, raggio, danno, tipo) => creature.ferisciIntorno(a, raggio, danno, tipo),
+    sulRaggio: (da, verso, lungo) => creature.sottoMira(da, verso, lungo)?.lontano ?? -1,
     evoca: (a, secondi) => creature.evoca(a.x, a.z, secondi),
     bersagli: (a, raggio) => creature.bersagli(a, raggio),
     costruisci: (che, a) => {
@@ -267,9 +270,26 @@ async function avvia(): Promise<void> {
         ui.annuncia('Non si può costruire qui', no);
         return;
       }
+      let px = a.x;
+      let pz = a.z;
+      if (!dati.luogo) {
+        if (Math.hypot(a.x - giocatore.posizione.x, a.z - giocatore.posizione.z) < 1.6) {
+          ui.annuncia('Non si può costruire qui', 'Troppo vicino a te: mira un po’ più in là.');
+          return;
+        }
+        // Mirando su un proprio blocco il nuovo si mette in colonna sopra di lui; l'appoggio vero lo dice un
+        // raggio verso il basso (un altro pezzo, un tetto, il prato).
+        const sotto = che === 'blocco' ? cantiere.opere.find((o) => o.tipo === 'blocco' && Math.hypot(o.x - a.x, o.z - a.z) < 0.85) : undefined;
+        if (sotto) {
+          px = sotto.x;
+          pz = sotto.z;
+        }
+        const giu = fisica.castRay(new RAPIER.Ray({ x: px, y: Math.max(a.y, quota) + 2.5, z: pz }, { x: 0, y: -1, z: 0 }), 40, true, undefined, undefined, undefined, giocatore.corpo);
+        quota = giu ? Math.max(a.y, quota) + 2.5 - giu.timeOfImpact : quota;
+      }
       const opera: Opera = {
-        tipo: che, x: a.x, z: a.z, quota: dati.luogo ? quota : a.y,
-        giro: Math.atan2(a.x - giocatore.posizione.x, a.z - giocatore.posizione.z), seme: 1 + Math.floor(Math.random() * 1e6),
+        tipo: che, x: px, z: pz, quota,
+        giro: Math.atan2(px - giocatore.posizione.x, pz - giocatore.posizione.z), seme: 1 + Math.floor(Math.random() * 1e6),
       };
       cantiere.aggiungi(opera);
       curaCantiere(giocatore.posizione.x, giocatore.posizione.z);
@@ -289,11 +309,11 @@ async function avvia(): Promise<void> {
   const umoreVero = { buio: 0, tinta: new THREE.Color(1, 1, 1) };
   const g: Gioco = {
     R: RAPIER, fisica, scena, camera, corpoGiocatore: giocatore.corpo, pezzi, campo, scintille, fumo, lampi, suoni, alberi, poteri,
-    scossa(forza, dove) {
+    scossa(forza, dove, ferisce = true) {
       const d = dove.distanceTo(camera.position);
       scossa = Math.max(scossa, forza * Math.min(1, 14 / (d + 1)));
-      // Ogni botto che fa tremare la terra ferisce anche le creature lì attorno.
-      creature.urto(dove, forza);
+      // Un botto che fa tremare la terra ferisce anche le creature lì attorno (non chi chiede solo il tremito).
+      if (ferisce) creature.urto(dove, forza);
     },
     umore(buio, r, gg, b) {
       if (buio < umore.buio) return;
@@ -411,6 +431,14 @@ async function avvia(): Promise<void> {
     comandi.sgancia();
     officina.apri(ricette);
   };
+  /** Apre un foglio (scrivi, viaggio, quaderno, punti, zaino): intanto il gioco non riceve comandi e il mondo aspetta. */
+  const apriFoglio = (apri: () => void): void => {
+    if (!comandi.attivi) return;
+    comandi.attivi = false;
+    comandi.rilascia();
+    comandi.sgancia();
+    apri();
+  };
   ui.onOfficina = apriOfficina;
   comandi.onOfficina = apriOfficina;
   officina.onCambio = (nuove, daUsare) => {
@@ -420,7 +448,7 @@ async function avvia(): Promise<void> {
     if (daUsare >= 0) fatti.inventati++;
     attese = magie.map(() => 0);
     ui.impostaMagie(magie);
-    scegli(daUsare >= 0 ? INCANTESIMI.length + trovati.length + daUsare : Math.min(scelto, magie.length - 1));
+    scegli(daUsare >= 0 ? diSerie.length + trovati.length + daUsare : Math.min(scelto, magie.length - 1));
   };
   officina.onChiudi = () => {
     comandi.attivi = true;
@@ -430,19 +458,16 @@ async function avvia(): Promise<void> {
   // --- gli incantesimi scritti a parole: stesso bastone dell'officina, ma si scrive invece di scegliere ---
   const conosciute = leggiConosciute();
   const paroleUi = new ParoleUi(mago, conosciute);
-  paroleUi.pulsante.addEventListener('click', () => {
-    if (!comandi.attivi) return;
-    comandi.attivi = false;
-    comandi.rilascia();
-    comandi.sgancia();
-    paroleUi.posti(ricette.length);
-  }, true);
+  const apriParole = (): void => apriFoglio(() => paroleUi.apri(ricette.length));
+  paroleUi.pulsante.addEventListener('click', apriParole);
   paroleUi.onCreato = (ricetta) => officina.onCambio([...ricette, ricetta], ricette.length);
   paroleUi.onChiudi = officina.onChiudi;
-  paroleUi.onImparata = (parola) => {
+  paroleUi.onImparata = () => {
     suoni.tesoro();
-    ui.annuncia(`Hai imparato «${parola.parola}»`, parola.cosaFa, true);
+    fatti.comprate++;
   };
+  magoUi.onRichiesta = () => apriFoglio(() => magoUi.apri());
+  magoUi.onChiudi = officina.onChiudi;
 
 
 
@@ -474,23 +499,18 @@ async function avvia(): Promise<void> {
         // Pazienza.
       }
       // La parola più preziosa tra quelle che mancano; se le sa già tutte, il premio in essenze basta.
-      const nuova = PAROLE.filter((x) => !conosciute.has(x.parola)).sort((a, b) => a.prezzo - b.prezzo)[0];
+      const nuova = parolaInPremio(conosciute, l.tipo);
       if (nuova) {
         conosciute.add(nuova.parola);
         salvaConosciute(conosciute);
       }
-      ui.annuncia('Luogo liberato', (nuova ? `Il guardiano ti lascia la parola «${nuova.parola}». ` : '') + 'Ora puoi tornarci con il viaggio rapido.', true);
+      ui.annuncia('Luogo liberato', (nuova ? `Il guardiano ti lascia la parola «${nuova.parola}»: ${nuova.cosaFa}. ` : '') + 'Ora puoi tornarci con il viaggio rapido.', true);
       suoni.tesoro();
     }
   };
   const viaggioUi = new ViaggioUi();
-  viaggioUi.pulsante.addEventListener('click', () => {
-    if (!comandi.attivi) return;
-    comandi.attivi = false;
-    comandi.rilascia();
-    comandi.sgancia();
-    viaggioUi.apri([VILLAGGIO, ...liberati], giocatore.posizione.x, giocatore.posizione.z);
-  });
+  const apriViaggio = (): void => apriFoglio(() => viaggioUi.apri([VILLAGGIO, ...liberati], giocatore.posizione.x, giocatore.posizione.z));
+  viaggioUi.pulsante.addEventListener('click', apriViaggio);
   viaggioUi.onChiudi = officina.onChiudi;
   viaggioUi.onViaggio = (meta) => {
     creature.svuota();
@@ -524,7 +544,8 @@ async function avvia(): Promise<void> {
         if (valori[c]! > soglia) si++;
       }
     }
-    return dentro > 0 ? si / dentro : 0;
+    // Fuori dalla finestra che il prato ricorda non si sa nulla: né fatto né fallito.
+    return dentro > 0 ? si / dentro : NaN;
   };
   const mondoMissioni: MondoMissioni = {
     fiorito: quotaPrato(campo.crescita, 0.35),
@@ -541,10 +562,12 @@ async function avvia(): Promise<void> {
         }
       }
     },
-    accendi: (x, z, raggio) => campo.accendi(x, z, raggio, 26),
+    accendi: (x, z, raggio) => campo.accendi(x, z, raggio, 14),
     nasciGolem: (x, z, livello) => creature.nasci(x, z, livello, true),
     golemVivo: (numero) => creature.vivo(numero),
-    luoghiRasi: () => rasi.size,
+    togliGolem: (numero) => creature.togli(numero),
+    luoghiRasi: () => demolitiAMeta,
+    lontano: (x, z) => Math.hypot(giocatore.posizione.x - x, giocatore.posizione.z - z),
   };
   // Il cerchio dorato che segna dove si svolge la missione, con una colonna di luce per trovarlo da lontano.
   const cerchioMissione = new THREE.Group();
@@ -615,20 +638,33 @@ async function avvia(): Promise<void> {
       voci: liberati.map((l) => ({ nome: l.nome, nota: `a ${Math.round(Math.hypot(l.x, l.z) / 10) * 10} metri dal villaggio`, fatto: true })),
     },
   ];
-  quadernoUi.pulsante.addEventListener('click', () => {
-    if (!comandi.attivi) return;
-    comandi.attivi = false;
-    comandi.rilascia();
-    comandi.sgancia();
-    quadernoUi.apri(capitoli());
-  });
+  const apriQuaderno = (): void => apriFoglio(() => quadernoUi.apri(capitoli()));
+  quadernoUi.pulsante.addEventListener('click', apriQuaderno);
   quadernoUi.onChiudi = officina.onChiudi;
+  // Al computer il mouse è «catturato» dal gioco e i pulsanti non si possono cliccare: ogni foglio ha il suo tasto.
+  comandi.onFoglio = (tasto) => {
+    if (tasto === 'KeyT') apriParole();
+    else if (tasto === 'KeyV') apriViaggio();
+    else if (tasto === 'KeyN') apriQuaderno();
+    else if (tasto === 'KeyP') magoUi.onRichiesta();
+  };
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape') return;
+    if (paroleUi.aperta) paroleUi.chiudi();
+    else if (viaggioUi.aperta) viaggioUi.chiudi();
+    else if (quadernoUi.aperta) quadernoUi.chiudi();
+    else if (magoUi.aperta) magoUi.chiudi();
+  });
 
   // --- i pulsanti in alto a destra: restano in vista i due che servono sempre, gli altri stanno dietro «Altro» ---
   {
     paroleUi.pulsante.style.top = '52px';
-    // Sugli schermi stretti la scritta lunga copriva livello ed essenze, lì accanto.
-    if (window.innerWidth < 560) paroleUi.pulsante.textContent = '✎ Scrivi';
+    // Sugli schermi stretti la scritta lunga copriva livello ed essenze, lì accanto (anche dopo aver girato il telefono).
+    const etichetta = (): void => {
+      paroleUi.pulsante.textContent = window.innerWidth < 560 ? '✎ Scrivi' : '✎ Scrivi un incantesimo';
+    };
+    etichetta();
+    window.addEventListener('resize', etichetta);
     const altro = document.createElement('button');
     altro.type = 'button';
     altro.textContent = '☰ Altro';
@@ -639,9 +675,14 @@ async function avvia(): Promise<void> {
     const nascosti = [viaggioUi.pulsante, quadernoUi.pulsante, document.getElementById('casa')!];
     let aperto = false;
     const mostra = (): void => nascosti.forEach((b, i) => {
-      b.style.top = `${136 + i * 42}px`;
+      // Con lo schermo basso (telefono in orizzontale) la colonna finirebbe sopra il pulsante ✦: si mettono in
+      // una seconda colonna, a sinistra di «Scrivi» e «Altro».
+      const basso = window.innerHeight < 480;
+      b.style.top = basso ? `${10 + i * 42}px` : `${136 + i * 42}px`;
+      b.style.right = basso ? '150px' : '12px';
       b.style.display = aperto ? '' : 'none';
     });
+    window.addEventListener('resize', mostra);
     altro.addEventListener('click', () => {
       altro.blur();
       aperto = !aperto;
@@ -655,6 +696,26 @@ async function avvia(): Promise<void> {
     mostra();
   }
 
+  /** Esperienza ed essenze guadagnate: se si sale di livello lo si dice, insieme agli incantesimi appena imparati. */
+  function premia(esperienza: number, essenze: number): void {
+    const prima = mago.livello;
+    if (mago.guadagna(esperienza, essenze) <= 0) return;
+    const nuovi = INCANTESIMI.filter((x) => livelloDi(x) > prima && livelloDi(x) <= mago.livello);
+    if (nuovi.length > 0) {
+      const sceltoPrima = magie[scelto]!;
+      magie = componi();
+      attese = magie.map(() => 0);
+      ui.impostaMagie(magie);
+      scegli(Math.max(0, magie.findIndex((x) => x.nome === sceltoPrima.nome)));
+    }
+    ui.annuncia(
+      `Livello ${mago.livello}`,
+      (nuovi.length > 0 ? `Impari ${nuovi.map((x) => `«${x.nome}»`).join(' e ')}: ${nuovi[0]!.cosaFa}. ` : '') + `Hai un punto da spendere: ${q.telefono ? 'tocca il pulsante dorato' : 'premi P'}.`,
+      true,
+    );
+    suoni.tesoro();
+  }
+
   function scriviObiettivo(): void {
     const m = missioni.attiva;
     const s = sfide.attiva;
@@ -662,11 +723,30 @@ async function avvia(): Promise<void> {
     else if (s) ui.scriviMeta(`⚔ Sfida · ${ZONE[s.zona]!.nome}: sbriciola ${s.servono} creature di questa terra (${s.fatte} su ${s.servono})`);
     else ui.scriviMeta(mete.attuale());
   }
+  /** L'abitante che ha chiesto di lasciare la missione in corso per la sua: al secondo avvicinamento si cambia. */
+  let propostaCambio = '';
+  const lasciaMissione = (perche: string): void => {
+    const m = missioni.attiva;
+    if (!m) return;
+    missioni.annulla(mondoMissioni);
+    mostraCerchio();
+    scriviObiettivo();
+    ui.annuncia('Missione lasciata', `${perche} Torna da ${m.chi} per riprovare.`, true);
+  };
   const curaMissioni = (dt: number): void => {
-    const incontrato = abitanti.aggiorna(dt, giocatore.posizione, missioni.attiva?.id ?? null, giornata.luce < 0.5);
+    const incontrato = abitanti.aggiorna(dt, giocatore.posizione, missioni.attiva?.id ?? null, giornata.luce < 0.5, missioni.riposo);
     if (incontrato && incontrato === missioni.attiva?.id) ui.annuncia(missioni.attiva.chi, `Conto su di te: ${missioni.attiva.inBreve.toLowerCase()}.`);
-    if (incontrato && incontrato !== missioni.attiva?.id) {
+    else if (incontrato && missioni.riposo.has(incontrato)) {
+      const chi = MISSIONI.find((x) => x.id === incontrato)!.chi;
+      ui.annuncia(chi, `Grazie ancora! Per oggi sono a posto: torna ${giornata.notte ? 'domattina' : 'stasera'}.`);
+    } else if (incontrato && missioni.attiva && propostaCambio !== incontrato) {
+      // Passare accanto a un altro abitante non butta via la missione in corso: lo si deve volere.
+      propostaCambio = incontrato;
+      const chi = MISSIONI.find((x) => x.id === incontrato)!.chi;
+      ui.annuncia(chi, `Stai già aiutando ${missioni.attiva.chi}. Se preferisci aiutare me, allontanati di qualche passo e torna qui.`);
+    } else if (incontrato) {
       // Gli abitanti si ricordano di chi gioca: di quante volte li ha aiutati, e di che fine ha fatto il villaggio.
+      propostaCambio = '';
       const volte = missioni.risolte(incontrato);
       const saluto = rasi.has(chiaveVillaggio) ? 'Hai ridotto il villaggio in macerie… ma ho ancora bisogno di te. ' : volte >= 3 ? 'Ecco il mio mago preferito! ' : volte >= 1 ? 'Bentornato! ' : '';
       const m = missioni.accetta(incontrato, mondoMissioni);
@@ -677,13 +757,16 @@ async function avvia(): Promise<void> {
         scriviObiettivo();
       }
     }
-    const esito = missioni.aggiorna(dt, mondoMissioni, ultimaMagia);
+    // Chi se ne va lontano dal posto della missione la lascia: da laggiù il prato non si vede più.
+    const dove = missioni.attiva?.dove;
+    if (dove && Math.hypot(giocatore.posizione.x - dove.x, giocatore.posizione.z - dove.z) > 230) lasciaMissione('Ti sei allontanato troppo.');
+    const esito = missioni.aggiorna(dt, mondoMissioni, ultimaFirma, ultimaMagia);
     if (!esito) return;
     mostraCerchio();
     scriviObiettivo();
     const m = esito.missione;
     if (!esito.riuscita) {
-      ui.annuncia('Troppo tardi', `${m.chi} ci è rimasto male. Torna da lui per riprovare.`, true);
+      ui.annuncia('Troppo tardi', `${m.chi} ci è rimasto male. Torna a trovarlo per riprovare.`, true);
       return;
     }
     let sotto = esito.nuova
@@ -698,7 +781,7 @@ async function avvia(): Promise<void> {
     ui.annuncia('Missione compiuta', sotto, true);
     ui.colpo(`+${esito.esperienza} esperienza · ◆ ${esito.essenze}`, '#e9c46a');
     suoni.tesoro();
-    if (mago.guadagna(esito.esperienza, esito.essenze) > 0) ui.annuncia(`Livello ${mago.livello}`, 'Hai un punto da spendere: tocca il pulsante dorato', true);
+    premia(esito.esperienza, esito.essenze);
   };
 
   const origine = new THREE.Vector3();
@@ -709,6 +792,12 @@ async function avvia(): Promise<void> {
     const colpo = fisica.castRay(
       new RAPIER.Ray(camera.position, direzione), 95, true, undefined, undefined, undefined, giocatore.corpo,
     );
+    // Il mirino sul corpo di una creatura (e nessun muro in mezzo): l'incantesimo va da lei, non sul prato alle sue spalle.
+    const preda = creature.sottoMira(camera.position, direzione, colpo ? colpo.timeOfImpact : 95);
+    if (preda) {
+      bersaglio.set(preda.dove.x, altezza(preda.dove.x, preda.dove.z) + 0.05, preda.dove.z);
+      return true;
+    }
     if (colpo) {
       bersaglio.copy(camera.position).addScaledVector(direzione, colpo.timeOfImpact);
       return pezzi.indiceDi(colpo.collider) < 0;
@@ -720,6 +809,7 @@ async function avvia(): Promise<void> {
   };
   /** Il nome dell'ultimo incantesimo lanciato: è la «soluzione» con cui si chiude una missione. */
   let ultimaMagia = '';
+  let ultimaFirma = '';
   const lancia = (indice: number): void => {
     const magia = magie[indice]!;
     if (magoUi.aperta || paroleUi.aperta || viaggioUi.aperta || quadernoUi.aperta) return;
@@ -739,6 +829,7 @@ async function avvia(): Promise<void> {
     if (magia.nome === 'Gelo' && campo.celleAccese + pezzi.inFiamme > 0) fatti.spenti++;
     ultimoLancio = atmosfera.tempo.value;
     ultimaMagia = magia.nome;
+    ultimaFirma = magia.firma ?? magia.nome;
   };
 
   const ricostruisci = (): void => {
@@ -746,6 +837,8 @@ async function avvia(): Promise<void> {
     // Il pulsante non deve valere come una riparazione fatta a mano: si riparte da capo con i conti.
     demolizione.clear();
     contoAlResoconto = -1;
+    // Rimettere tutto com'era non vale come soluzione: una missione che si gioca sul prato si lascia.
+    if (missioni.attiva?.dove && missioni.attiva.id !== 'golem') lasciaMissione('Hai rimesso tutto com’era.');
     campo.azzera();
     alberi.azzera();
     suoni.ricostruzione();
@@ -854,7 +947,7 @@ async function avvia(): Promise<void> {
   const puntoOmbra = 96 / q.latoOmbre;
 
   // --- le mete e ciò che chi gioca ha fatto finora ---
-  const fatti: Fatti = { lanci: {}, spenti: 0, inventati: 0, luoghi: 0, terre: 1, perduti: trovati.length, accettate: 0, missioni: 0, creature: 0, parole: 0, potenziamenti: 0, liberati: 0, costruzioni: 0, domate: 0 };
+  const fatti: Fatti = { lanci: {}, spenti: 0, inventati: 0, luoghi: 0, terre: 1, perduti: trovati.length, accettate: 0, missioni: 0, creature: 0, parole: 0, comprate: 0, potenziamenti: 0, liberati: 0, costruzioni: 0, domate: 0 };
   const paroleDiPartenza = PAROLE.filter((x) => x.prezzo === 0).length;
   const mete = new Mete(q.telefono);
   scriviObiettivo();
@@ -878,6 +971,8 @@ async function avvia(): Promise<void> {
   }
   /** Per ogni luogo: la quota più alta di demolizione già annunciata (0, 0.5 oppure 0.9). */
   const demolizione = new Map<string, number>();
+  /** Quante volte un luogo fuori dal villaggio è stato buttato giù almeno per metà (serve alla missione del capomastro). */
+  let demolitiAMeta = 0;
   let luogoQui: Luogo | null = null;
   let quotaQui = 0;
   let ultimoLancio = -100;
@@ -911,6 +1006,7 @@ async function avvia(): Promise<void> {
     }
     const gia = demolizione.get(qui.chiave) ?? 0;
     const percento = Math.round(quotaQui * 100);
+    if (quotaQui >= 0.5 && gia < 0.5 && qui.tipo !== 'villaggio') demolitiAMeta++;
     if (quotaQui >= 0.9 && gia < 0.9) {
       demolizione.set(qui.chiave, 0.9);
       ui.annuncia('In macerie', `${qui.nome} · ${percento}%`);
@@ -957,7 +1053,7 @@ async function avvia(): Promise<void> {
     for (const l of luoghiInVista) {
       // Ogni luogo ha un guardiano che lo aspetta sul bordo, dalla parte di chi arriva.
       const lontano = Math.hypot(p.x - l.x, p.z - l.z);
-      if (l.tipo !== 'villaggio' && lontano < l.raggio + 70 && lontano > l.raggio + 12 && !guardiani.has(l.chiave) && !liberati.some((m) => m.chiave === l.chiave)) {
+      if (l.tipo !== 'villaggio' && lontano < l.raggio + 70 && lontano > l.raggio + 12 && !creature.vivo(guardiani.get(l.chiave)?.numero ?? -1) && !liberati.some((m) => m.chiave === l.chiave)) {
         const gx = l.x + ((p.x - l.x) / lontano) * (l.raggio + 5);
         const gz = l.z + ((p.z - l.z) / lontano) * (l.raggio + 5);
         guardiani.set(l.chiave, { numero: creature.nasci(gx, gz, 2 + Math.floor(Math.hypot(l.x, l.z) / 350), true, undefined, true), luogo: l });
@@ -1032,7 +1128,12 @@ async function avvia(): Promise<void> {
   const formato = new Intl.NumberFormat('it-IT');
 
   /** Fa avanzare il mondo di un istante: tutto tranne il disegno sullo schermo. */
-  const avanza = (dt: number): void => {
+  let attesaScotta = 0;
+  /**
+   * `inGioco` è falso nella schermata d'ingresso, in pausa e con un foglio aperto: il mondo resta vivo come sfondo,
+   * ma niente può fare male a chi non può muoversi (creature, fuoco, tempo delle missioni).
+   */
+  const avanza = (dt: number, inGioco = true): void => {
     atmosfera.tempo.value += dt;
 
     scossa = Math.max(0, scossa - dt * 2.2);
@@ -1045,7 +1146,7 @@ async function avvia(): Promise<void> {
     comandi.colpoSingolo = false;
 
     // Il mago e le creature: il mana torna, i golem inseguono e colpiscono, il fuoco sotto i piedi scotta.
-    mago.aggiorna(dt);
+    if (inGioco) mago.aggiorna(dt);
     // La regola della terra in cui si è: fuoco o gelo che non durano, mana più svelto, vita che torna.
     const regola = REGOLE[zonaAttuale]!;
     mago.manaDellaTerra = regola.mana;
@@ -1067,14 +1168,16 @@ async function avvia(): Promise<void> {
       if (gl.resta < 2) gl.luce.intensity = 30 * Math.max(0, gl.resta);
       if (gl.resta <= 0) gl.luce.visible = false;
     }
-    giornata.aggiorna(dt);
+    if (inGioco) giornata.aggiorna(dt);
     creature.notte = giornata.notte;
     if (giornata.momento !== momento) {
       momento = giornata.momento;
+      // All'alba e al tramonto gli abitanti hanno di nuovo bisogno di una mano.
+      if (momento === 'giorno' || momento === 'notte') missioni.sveglia();
       if (momento === 'notte') ui.annuncia('Scende la notte', 'Le creature sono di più e colpiscono più forte, ma lasciano più essenze.');
       else if (momento === 'giorno') ui.annuncia('Spunta il giorno', 'Le creature tornano più tranquille.');
     }
-    let ferita = creature.aggiorna(dt, giocatore.posizione, mago.invisibile > 0);
+    let ferita = inGioco ? creature.aggiorna(dt, giocatore.posizione, mago.invisibile > 0) : 0;
     if (ferita > 0) {
       suoni.tonfo(1.4);
       scossa = Math.max(scossa, 0.5);
@@ -1084,8 +1187,9 @@ async function avvia(): Promise<void> {
       const n = numeri.reduce((m, x) => (x.eta > m.eta ? x : m));
       n.eta = 0;
       n.dove.copy(colpo.dove);
-      n.e.textContent = String(colpo.quanto);
-      n.e.style.fontSize = `${Math.min(34, 16 + colpo.quanto * 0.3)}px`;
+      n.e.textContent = colpo.tipo === 'immune' ? 'immune' : colpo.tipo === 'debole' ? `${colpo.quanto}!` : String(colpo.quanto);
+      n.e.style.color = colpo.tipo === 'immune' ? '#c8d0dc' : colpo.tipo === 'debole' ? '#ff9a4a' : '#ffe08a';
+      n.e.style.fontSize = colpo.tipo === 'immune' ? '17px' : `${Math.min(36, (colpo.tipo === 'debole' ? 20 : 16) + colpo.quanto * 0.3)}px`;
     }
     for (const n of numeri) {
       if (n.eta > 1) continue;
@@ -1096,37 +1200,42 @@ async function avvia(): Promise<void> {
       if (davanti) n.e.style.transform = `translate(${((schermoPunto.x + 1) / 2) * window.innerWidth}px, ${((1 - schermoPunto.y) / 2) * window.innerHeight}px) translate(-50%, -50%)`;
     }
     for (const avviso of creature.ritiraAvvisi()) ui.annuncia(avviso, 'Tieni d’occhio anche loro.', true);
+    // Il prato in fiamme sotto i piedi scotta (non chi nuota, né chi sta in alto su una torre o a mezz'aria).
+    const sotto = campo.cella(giocatore.posizione.x, giocatore.posizione.z);
+    attesaScotta -= dt;
+    if (inGioco && sotto >= 0 && campo.fuoco[sotto]! > 0 && !giocatore.aNuoto && giocatore.posizione.y - altezza(giocatore.posizione.x, giocatore.posizione.z) < 2.2) {
+      ferita += 12 * dt;
+      if (attesaScotta <= 0) {
+        attesaScotta = 1.2;
+        ui.colpo('Scotti! Esci dal fuoco', '#ff8a5a');
+      }
+    }
     attesaLampo -= dt;
     if (ferita > 0) {
       lampoRosso.style.opacity = '1';
       attesaLampo = 0.12;
     } else if (attesaLampo <= 0) lampoRosso.style.opacity = '0';
-    const sotto = campo.cella(giocatore.posizione.x, giocatore.posizione.z);
-    if (sotto >= 0 && campo.fuoco[sotto]! > 0 && !giocatore.aNuoto) ferita += 12 * dt;
     for (const premio of creature.ritira()) {
       fatti.creature++;
       if (premio.guardiano) libera(premio.numero);
       const sfidaVinta = sfide.sbriciolata(terraIn(premio.dove.x, premio.dove.z));
       if (sfidaVinta) {
         // La terra è domata: oltre al premio, insegna la parola più a buon mercato tra quelle che mancano.
-        const nuova = PAROLE.filter((x) => !conosciute.has(x.parola)).sort((a, b) => a.prezzo - b.prezzo)[0];
+        const nuova = parolaInPremio(conosciute);
         if (nuova) {
           conosciute.add(nuova.parola);
           salvaConosciute(conosciute);
         }
         ui.annuncia('Terra domata', `${ZONE[sfidaVinta.zona]!.nome}` + (nuova ? ` · impari la parola «${nuova.parola}»` : ''), true);
         suoni.tesoro();
-        mago.guadagna(sfidaVinta.esperienza, sfidaVinta.essenze);
+        premia(sfidaVinta.esperienza, sfidaVinta.essenze);
       }
       scriviObiettivo();
       suoni.tonfo(1);
       // Di notte le creature lasciano la metà in più.
       const essenze = Math.round(premio.essenze * (giornata.notte ? 1.5 : 1));
       ui.colpo(`+${premio.esperienza} esperienza · ◆ ${essenze}`, '#e9c46a');
-      if (mago.guadagna(premio.esperienza, essenze) > 0) {
-        ui.annuncia(`Livello ${mago.livello}`, 'Hai un punto da spendere: tocca il pulsante dorato', true);
-        suoni.tesoro();
-      }
+      premia(premio.esperienza, essenze);
     }
     if (mago.ferisci(ferita)) {
       const perse = mago.rinasci();
@@ -1139,7 +1248,7 @@ async function avvia(): Promise<void> {
       suoni.sveglia();
     }
     magoUi.aggiorna();
-    curaMissioni(dt);
+    if (inGioco) curaMissioni(dt);
     // La prima volta che si incontra una razza, il gioco dice come si comporta.
     const razza = creature.razzaVicina(giocatore.posizione, 30);
     if (razza && !razzeViste.has(razza.nome)) {
@@ -1173,7 +1282,8 @@ async function avvia(): Promise<void> {
     pezzi.avvicina(giocatore.posizione.x, giocatore.posizione.z);
     pezzi.sincronizza();
     pezzi.aggiorna(dt, campo, scintille, fumo);
-    campo.aggiorna(dt);
+    // In pausa il fuoco non avanza (ma il prato si ridisegna lo stesso).
+    campo.aggiorna(inGioco ? dt : 0);
     // Due zolle di terreno nuove per fotogramma: abbastanza per stare davanti a chi corre, poche per non scattare.
     terreno.segui(giocatore.posizione.x, giocatore.posizione.z, 2);
     lontano.segui(giocatore.posizione.x, giocatore.posizione.z);
@@ -1251,7 +1361,7 @@ async function avvia(): Promise<void> {
     if (preso) {
       trovati.push(preso.tipo);
       salvaTrovati(trovati);
-      const personali = magie.length - INCANTESIMI.length - (trovati.length - 1);
+      const personali = magie.length - diSerie.length - (trovati.length - 1);
       magie = componi();
       // Le attese degli incantesimi inventati scalano di un posto: si riparte da zero per tutti, è più semplice.
       attese = magie.map(() => 0);
@@ -1489,7 +1599,7 @@ async function avvia(): Promise<void> {
   const fotogramma = (): void => {
     const adesso = performance.now();
     const prima = ultimoIstante;
-    if (!prova.fermo) avanza(Math.min(0.05, (adesso - ultimoIstante) / 1000));
+    if (!prova.fermo) avanza(Math.min(0.05, (adesso - ultimoIstante) / 1000), comandi.attivi && !magoUi.aperta);
     const lavoro = performance.now() - adesso;
     ultimoIstante = adesso;
     compositore.render();

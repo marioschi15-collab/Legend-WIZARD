@@ -30,9 +30,13 @@ export class ViaggioUi {
     crea('div', 'font:italic 600 25px Georgia,serif', foglio, 'Viaggio rapido');
     crea('div', 'opacity:.8;font-size:13px;margin:4px 0 10px', foglio, 'Puoi tornare in un attimo nei luoghi che hai liberato dal loro guardiano.');
     this.elenco = crea('div', '', foglio);
-    const chiudi = crea('button', 'margin-top:10px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer', foglio, 'Chiudi');
+    const chiudi = crea('button', 'margin-top:10px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(18,20,28,.98);color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer;position:sticky;bottom:-8px', foglio, 'Chiudi');
     chiudi.type = 'button';
     chiudi.addEventListener('click', () => this.chiudi());
+    // Toccare fuori dal foglio lo chiude.
+    this.velo.addEventListener('click', (e) => {
+      if (e.target === this.velo) this.chiudi();
+    });
   }
 
   get aperta(): boolean {

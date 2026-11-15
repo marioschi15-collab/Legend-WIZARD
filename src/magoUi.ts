@@ -25,6 +25,9 @@ export class MagoUi {
   private readonly scheda: HTMLElement;
   private readonly velo: HTMLElement;
   private ultimo = '';
+  /** Chi gioca ha toccato il pulsante dei punti: il gioco decide se aprire la scelta (e intanto ferma i comandi). */
+  onRichiesta: () => void = () => this.apri();
+  onChiudi: () => void = () => undefined;
 
   constructor(private readonly mago: Mago, alCambio: () => void) {
     const scatola = crea('div', 'position:fixed;z-index:3;left:128px;top:36px;width:124px;pointer-events:none;font:600 12px system-ui,sans-serif;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.8)', document.body);
@@ -53,14 +56,24 @@ export class MagoUi {
       b.addEventListener('click', () => {
         mago.potenzia(s.che);
         alCambio();
-        if (mago.punti <= 0) this.velo.style.display = 'none';
+        if (mago.punti <= 0) this.chiudi();
         this.aggiorna();
       });
     }
     const chiudi = crea('button', 'margin-top:8px;padding:8px 16px;border-radius:999px;border:0;background:transparent;color:#fff;opacity:.7;font:13px system-ui,sans-serif;cursor:pointer', this.scheda, 'Più tardi');
     chiudi.type = 'button';
-    chiudi.addEventListener('click', () => (this.velo.style.display = 'none'));
-    this.punto.addEventListener('click', () => (this.velo.style.display = 'grid'));
+    chiudi.addEventListener('click', () => this.chiudi());
+    this.punto.addEventListener('click', () => this.onRichiesta());
+  }
+
+  apri(): void {
+    if (this.mago.punti > 0) this.velo.style.display = 'grid';
+  }
+
+  chiudi(): void {
+    if (!this.aperta) return;
+    this.velo.style.display = 'none';
+    this.onChiudi();
   }
 
   /** Vero mentre la scelta è aperta: intanto il gioco non deve lanciare incantesimi. */

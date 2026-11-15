@@ -28,9 +28,13 @@ export class QuadernoUi {
     const foglio = crea('div', 'box-sizing:border-box;width:min(94vw,460px);max-height:90vh;overflow:auto;padding:18px;border-radius:16px;background:rgba(18,20,28,.96);border:1px solid rgba(255,255,255,.2);color:#fff;font:14px/1.4 system-ui,sans-serif', this.velo);
     crea('div', 'font:italic 600 25px Georgia,serif', foglio, 'Il quaderno del mago');
     this.pagine = crea('div', '', foglio);
-    const chiudi = crea('button', 'margin-top:12px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer', foglio, 'Chiudi');
+    const chiudi = crea('button', 'margin-top:12px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(18,20,28,.98);color:#fff;font:600 14px system-ui,sans-serif;cursor:pointer;position:sticky;bottom:-8px', foglio, 'Chiudi');
     chiudi.type = 'button';
     chiudi.addEventListener('click', () => this.chiudi());
+    // Toccare fuori dal foglio lo chiude.
+    this.velo.addEventListener('click', (e) => {
+      if (e.target === this.velo) this.chiudi();
+    });
   }
 
   get aperta(): boolean {

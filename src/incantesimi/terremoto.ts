@@ -17,11 +17,13 @@ class Terremoto implements Effetto {
   aggiorna(dt: number, g: Gioco): boolean {
     this.eta += dt;
     this.attesa -= dt;
-    g.scossa(0.55, this.suolo);
+    // Il tremito è continuo, ma le ferite arrivano a ondate: uguali su ogni dispositivo, qualunque sia la fluidità.
+    g.scossa(0.55, this.suolo, false);
     if (this.attesa <= 0) {
       this.attesa = 0.22;
       const raggio = 7 + this.eta * 4.5;
       anello(g, this.suolo, 0xc9a26a, raggio, 0.5, 0.6);
+      g.poteri.ferisci(this.suolo, raggio, 6, 'botto');
       // Ogni scossa dà uno strattone, in una direzione a caso, a tutto ciò che poggia lì attorno.
       const pos = g.pezzi.pos;
       for (let i = 0; i < g.pezzi.n; i++) {

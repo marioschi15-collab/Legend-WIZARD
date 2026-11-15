@@ -10,7 +10,8 @@ const SFONDO = 700;
 
 const COME_TASTIERA =
   '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> per camminare · mouse per guardare · clic per lanciare<br />' +
-  '<kbd>1</kbd>–<kbd>0</kbd>, <kbd>Q</kbd>/<kbd>E</kbd> o rotella per cambiare incantesimo · <kbd>C</kbd> inventane uno · <kbd>Spazio</kbd> salta · <kbd>Maiusc</kbd> corri · <kbd>R</kbd> ricostruisci';
+  '<kbd>1</kbd>–<kbd>0</kbd>, <kbd>Q</kbd>/<kbd>E</kbd> o rotella per cambiare incantesimo · <kbd>C</kbd> inventane uno · <kbd>Spazio</kbd> salta · <kbd>Maiusc</kbd> corri · <kbd>R</kbd> ricostruisci<br />' +
+  '<kbd>T</kbd> scrivi un incantesimo · <kbd>P</kbd> spendi i punti · <kbd>N</kbd> quaderno · <kbd>V</kbd> viaggio rapido · <kbd>Z</kbd> zaino · <kbd>Esc</kbd> pausa';
 const COME_DITA =
   'Pollice sinistro per camminare, destro per guardarti intorno.<br />Spingi il pollice più lontano per correre. Scorri la barra in basso, tocca un incantesimo e tieni premuto ✦ per lanciarlo. Con ＋ ne inventi uno tuo.<br />Se non senti i suoni, togli il silenzioso.';
 
@@ -197,18 +198,33 @@ export class Interfaccia {
   annuncia(titolo: string, sotto: string, importante = false): void {
     // Un annuncio importante (un incantesimo trovato) non si lascia coprire da uno qualunque arrivato subito dopo.
     const adesso = performance.now();
-    if (!importante && adesso < this.importanteFino) return;
-    if (importante) this.importanteFino = adesso + 3000;
+    if (adesso < this.importanteFino) {
+      // Due annunci importanti nello stesso momento (luogo liberato e livello nuovo): il secondo aspetta il suo turno.
+      if (importante && this.coda.length < 4) this.coda.push([titolo, sotto]);
+      return;
+    }
+    // Più è lungo il testo, più resta: la richiesta di un abitante non si legge in tre secondi.
+    const durata = 3500 + Math.max(0, titolo.length + sotto.length - 40) * 45;
+    if (importante) this.importanteFino = adesso + durata - 400;
     this.annuncio.querySelector('b')!.textContent = titolo;
     this.annuncio.querySelector('span')!.textContent = sotto;
     this.annuncio.style.opacity = '1';
     window.clearTimeout(this.spegniAnnuncio);
-    this.spegniAnnuncio = window.setTimeout(() => (this.annuncio.style.opacity = '0'), 3500);
+    this.spegniAnnuncio = window.setTimeout(() => {
+      this.annuncio.style.opacity = '0';
+      const prossimo = this.coda.shift();
+      if (prossimo) window.setTimeout(() => {
+        this.importanteFino = 0;
+        this.annuncia(prossimo[0], prossimo[1], true);
+      }, 350);
+    }, durata);
   }
+
+  private readonly coda: [string, string][] = [];
 
   caricato(): void {
     this.entra.disabled = false;
-    this.entra.textContent = 'Entra nella radura';
+    this.entra.textContent = 'Entra nel mondo';
   }
 
   mostraIngresso(mostra: boolean): void {

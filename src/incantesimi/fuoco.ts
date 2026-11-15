@@ -24,8 +24,10 @@ class PallaDiFuoco implements Effetto {
     const passo = this.vel.length() * dt;
     const dir = this.vel.clone().normalize();
     const colpo = g.fisica.castRay(new g.R.Ray(p, dir), passo, true, undefined, undefined, undefined, g.corpoGiocatore);
-    if (colpo) {
-      p.addScaledVector(dir, colpo.timeOfImpact);
+    // Il corpo di una creatura ferma la palla come un muro.
+    const corpo = g.poteri.sulRaggio(p, dir, colpo ? colpo.timeOfImpact : passo);
+    if (corpo >= 0 || colpo) {
+      p.addScaledVector(dir, corpo >= 0 ? corpo : colpo!.timeOfImpact);
       this.scoppia(g);
       return false;
     }
@@ -70,7 +72,8 @@ class PallaDiFuoco implements Effetto {
     g.pezzi.accendiVicini(p.x, p.y, p.z, 2.6);
     if (p.y - altezza(p.x, p.z) < 2.5) g.campo.accendi(p.x, p.z, 2.4, 11);
     g.lampi.lampo(p, 0xff8030, 22, 0.5);
-    g.scossa(0.35, p);
+    g.scossa(0.35, p, false);
+    g.poteri.ferisci(new THREE.Vector3(p.x, altezza(p.x, p.z), p.z), 4, 22, 'fuoco');
     g.suoni.botto(0.35);
   }
 }

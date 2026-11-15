@@ -1,4 +1,4 @@
-import { COLORI, type Ricetta } from './officina.js';
+import { COLORI, SU_DI_SE, type Ricetta } from './officina.js';
 
 /** Le famiglie di parole: come parte l'incantesimo, che cosa fa, quanto è grande e quanto è forte. */
 export type Famiglia = 'forma' | 'effetto' | 'misura' | 'modo';
@@ -179,7 +179,8 @@ export function leggi(testo: string, conosciute: ReadonlySet<string>): Lettura {
       : 'Manca che cosa fa: prova con fuoco, ghiaccio, scoppio, vento, fiori, cura o luce.';
     return { ricetta: null, capite, daImparare, ignote, messaggio };
   }
-  const forma = capite.find((x) => x.forma)?.forma ?? 'palla';
+  // Senza dire come parte: una palla; ma ciò che vale solo su chi lancia (cura, scudo…) parte «su di me».
+  const forma = capite.find((x) => x.forma)?.forma ?? (effetti.every((e) => SU_DI_SE.has(e)) ? 'me' : 'palla');
   let potenza = 2;
   let ampiezza = 2;
   for (const x of capite) {
@@ -192,6 +193,22 @@ export function leggi(testo: string, conosciute: ReadonlySet<string>): Lettura {
   const ricetta: Ricetta = { nome, simbolo: SIMBOLO[effetti[0]!] ?? '🧱', colore: COLORE[effetti[0]!] ?? COLORI[1]!, forma, effetti, potenza, ampiezza, ...(modi.length > 0 ? { modi } : {}) };
   const fa = capite.filter((x) => x.famiglia !== 'misura').map((x) => x.cosaFa).join('; ');
   return { ricetta, capite, daImparare, ignote, messaggio: fa };
+}
+
+/** Le parole che costruiscono un edificio, per il tipo di luogo che prendono a modello. */
+const DEI_LUOGHI: Readonly<Record<string, string>> = { vedetta: 'torre', fattoria: 'fattoria', piramide: 'piramide', tempio: 'tempio', igloo: 'igloo', guglia: 'guglia', palafitte: 'palafitte' };
+
+/**
+ * La parola che si riceve in premio. Dal guardiano di un luogo: quella che costruisce un luogo come il suo, se
+ * manca; altrimenti la più preziosa tra le altre. Dalla sfida di una terra (senza luogo): la più a buon mercato.
+ * Le parole degli edifici restano trofei dei guardiani.
+ */
+export function parolaInPremio(conosciute: ReadonlySet<string>, tipoLuogo?: string): Parola | undefined {
+  const mancano = PAROLE.filter((x) => !conosciute.has(x.parola));
+  const edifici = new Set(Object.values(DEI_LUOGHI));
+  if (tipoLuogo === undefined) return mancano.filter((x) => !edifici.has(x.parola)).sort((a, b) => a.prezzo - b.prezzo)[0];
+  const sua = mancano.find((x) => x.parola === DEI_LUOGHI[tipoLuogo]);
+  return sua ?? mancano.filter((x) => !edifici.has(x.parola)).sort((a, b) => b.prezzo - a.prezzo)[0] ?? mancano[0];
 }
 
 const CHIAVE = 'radura-parole';

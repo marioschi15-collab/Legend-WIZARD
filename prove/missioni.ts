@@ -14,7 +14,7 @@ const verifica = (vero: boolean, che: string): void => {
   if (!vero) errori.push(che);
 };
 
-const stato = { fiorito: 0, gelato: 0, fuoco: 0, bruciato: 0, golem: new Set<number>(), rasi: 0, numero: 0 };
+const stato = { fiorito: 0, gelato: 0, fuoco: 0, bruciato: 0, golem: new Set<number>(), rasi: 0, numero: 0, lontano: 0 };
 const mondo: MondoMissioni = {
   fiorito: () => stato.fiorito,
   gelato: () => stato.gelato,
@@ -31,7 +31,11 @@ const mondo: MondoMissioni = {
     return stato.numero;
   },
   golemVivo: (n) => stato.golem.has(n),
+  togliGolem: (n) => {
+    stato.golem.delete(n);
+  },
   luoghiRasi: () => stato.rasi,
+  lontano: () => stato.lontano,
 };
 
 verifica(MISSIONI.length === 5 && MISSIONI.every((m) => PAROLE.some((p) => p.parola === m.parola && p.prezzo > 0)), 'cinque missioni, ognuna insegna una parola che altrimenti si compra');
@@ -44,27 +48,47 @@ verifica(q.aggiorna(1, mondo, 'Crescita') === null, 'finché l’orto è spoglio
 stato.fiorito = 0.7;
 const a = q.aggiorna(1, mondo, 'Crescita')!;
 verifica(a.riuscita && a.nuova && a.parola === 'cielo' && a.esperienza === 40 && q.attiva === null, 'orto fiorito: missione compiuta, premio pieno e parola nuova');
+verifica(q.accetta('orto', mondo) === null, 'appena aiutata, Bice non ha altro da chiedere fino all’alba o al tramonto');
+q.sveglia();
 q.accetta('orto', mondo);
 stato.fiorito = 0.7;
 const b = q.aggiorna(1, mondo, 'Crescita')!;
 verifica(b.riuscita && !b.nuova && b.parola === undefined && b.esperienza === 20, 'stessa soluzione: mezzo premio, nessuna parola');
+q.sveglia();
 q.accetta('orto', mondo);
 stato.fiorito = 0.7;
-const c = q.aggiorna(1, mondo, 'Pioggia di fiori')!;
+const c = q.aggiorna(1, mondo, 'pioggia|fiorisce|2|2|', 'Pioggia di fiori')!;
 verifica(c.nuova && c.soluzioni === 2 && c.esperienza === 40, 'soluzione diversa: di nuovo premio pieno, e il quaderno ne conta due');
+q.sveglia();
+q.accetta('orto', mondo);
+stato.fiorito = 0.7;
+const c2 = q.aggiorna(1, mondo, 'pioggia|fiorisce|2|2|', 'Fiori a pioggia')!;
+verifica(!c2.nuova && c2.esperienza === 20, 'lo stesso incantesimo con un altro nome non è una soluzione nuova');
 
-// Il fieno: spento in tempo riesce; lasciato bruciare fallisce.
+// Il fieno: prende fuoco solo quando si arriva; spento in tempo riesce; lasciato bruciare fallisce.
+stato.lontano = 60;
 q.accetta('fieno', mondo);
-verifica(stato.fuoco > 0 && q.aggiorna(0.5, mondo, 'Gelo') === null, 'il fieno prende fuoco e la missione è in corso');
+verifica(stato.fuoco === 0 && q.aggiorna(5, mondo, 'Gelo') === null, 'finché si è lontani il fieno non brucia e niente si decide');
+stato.lontano = 20;
+verifica(q.aggiorna(0.5, mondo, 'Gelo') === null && stato.fuoco > 0, 'arrivando vicino il fieno prende fuoco');
 stato.fuoco = 0;
 verifica(q.aggiorna(0.5, mondo, 'Gelo') === null, 'nel primo istante non si decide nulla');
 const d = q.aggiorna(2, mondo, 'Gelo')!;
 verifica(d.riuscita && d.parola === 'onda', 'fuoco spento con poco bruciato: missione compiuta');
+q.sveglia();
 q.accetta('fieno', mondo);
-stato.fuoco = 0;
+q.aggiorna(0.1, mondo, 'Gelo');
 stato.bruciato = 0.8;
 const e = q.aggiorna(3, mondo, 'Gelo')!;
-verifica(!e.riuscita && e.esperienza === 0 && q.attiva === null, 'se brucia tutto la missione fallisce e si può riprovare');
+verifica(!e.riuscita && e.esperienza === 0 && q.attiva === null && stato.fuoco === 0, 'se brucia metà la missione fallisce, il campo viene rimesso a posto e si può riprovare');
+// Fuori dalla finestra che il prato ricorda (NaN) non si decide nulla: niente premi viaggiando lontano.
+q.accetta('fieno', mondo);
+q.aggiorna(0.1, mondo, 'Gelo');
+stato.fuoco = NaN;
+stato.bruciato = NaN;
+verifica(q.aggiorna(5, mondo, 'Gelo') === null && q.attiva?.id === 'fieno', 'se il prato non si vede, la missione non riesce né fallisce');
+q.annulla(mondo);
+verifica(q.attiva === null && stato.fuoco === 0, 'lasciare la missione rimette a posto il campo');
 
 // Il golem e il rudere.
 q.accetta('golem', mondo);
@@ -77,6 +101,14 @@ verifica(q.aggiorna(1, mondo, 'Esplosione') === null, 'i luoghi già in macerie 
 stato.rasi = 4;
 verifica(q.aggiorna(1, mondo, 'Esplosione')?.riuscita === true, 'un luogo in più in macerie: missione compiuta');
 
+// Cambiare missione non lascia golem in giro, e riprenderla non ne fa nascere due.
+q.sveglia();
+stato.golem.clear();
+q.accetta('golem', mondo);
+q.accetta('orto', mondo);
+verifica(stato.golem.size === 0, 'lasciando la missione del golem, il golem se ne va');
+q.accetta('golem', mondo);
+verifica(stato.golem.size === 1, 'riprendendola ne nasce uno solo');
 // Cambiare abitante cambia missione, senza restare bloccati.
 q.accetta('orto', mondo);
 verifica(q.accetta('ghiaccio', mondo)?.id === 'ghiaccio' && q.attiva?.id === 'ghiaccio', 'si può passare a un’altra missione');
