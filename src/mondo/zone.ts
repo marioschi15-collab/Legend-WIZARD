@@ -72,8 +72,8 @@ export const ZONE: readonly Zona[] = [
     piante: [
       { tipo: 'quercia', parte: 16, scala: [0.8, 1.6], bosco: 0.44 }, { tipo: 'quercia', parte: 16, scala: [0.9, 1.8], bosco: 0.44, tinta: 0xe0a060, carica: 1.5 },
       { tipo: 'pino', parte: 24, scala: [0.9, 2.1], bosco: 0.5, tinta: 0x8fb4c4, carica: 1.3 },
-      { tipo: 'cespuglio', parte: 8, scala: [0.6, 1.3] }, { tipo: 'cespuglio', parte: 9, scala: [0.3, 0.7], tinta: 0x6a5cff, carica: 3.2 },
-      { tipo: 'cespuglio', parte: 4, scala: [0.3, 0.6], tinta: 0xff5ab0, carica: 3 }, { tipo: 'roccia', parte: 3, scala: [0.4, 1.1] },
+      { tipo: 'cespuglio', parte: 8, scala: [0.6, 1.3] }, { tipo: 'cespuglio', parte: 9, scala: [0.3, 0.7], tinta: 0xb0a8ff, carica: 1.25 },
+      { tipo: 'cespuglio', parte: 4, scala: [0.3, 0.6], tinta: 0xffb0d0, carica: 1.25 }, { tipo: 'roccia', parte: 3, scala: [0.4, 1.1] },
     ],
   },
   {

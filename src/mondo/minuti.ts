@@ -67,9 +67,10 @@ function funghetti(): THREE.BufferGeometry {
 
 function ciuffo(): THREE.BufferGeometry {
   const parti: THREE.BufferGeometry[] = [];
-  for (let i = 0; i < 9; i++) {
-    const filo = new THREE.ConeGeometry(0.05, 1.0 + (i % 3) * 0.25, 3).translate(0, 0.55, 0).rotateZ(-0.12 - (i % 4) * 0.12).rotateY(i * 0.75);
-    parti.push(colora(filo, i % 2 ? 0x8fa64a : 0x6f9240, 0.7));
+  // Un cespo di fili sottili e bassi, del verde spento dell'erba vera.
+  for (let i = 0; i < 16; i++) {
+    const filo = new THREE.ConeGeometry(0.018, 0.45 + (i % 4) * 0.12, 3).translate(0, 0.28, 0).rotateZ(-0.1 - (i % 5) * 0.11).rotateY(i * 0.75);
+    parti.push(colora(filo, i % 2 ? 0x5a6a30 : 0x465a26, 0.7));
   }
   return unisci(parti);
 }
@@ -184,8 +185,8 @@ const VIANDANTI: Semina[] = [s('barile', 0.25, [0.9, 1.1]), s('cartello', 0.2, [
 export const MINUTI: readonly (readonly Semina[])[] = [
   // La Radura
   [
-    s('felce', 11, [0.6, 1.2], { bosco: 0.45 }), s('fioreAlto', 9, [0.7, 1.3], { tinta: 0x5a5cff, carica: 1.6, bosco: 0.4 }),
-    s('fioreAlto', 6, [0.6, 1.1], { tinta: 0xc060ff, carica: 1.5, bosco: 0.5 }), s('fioreAlto', 4, [0.6, 1.0], { tinta: 0xffd24a, carica: 1.4 }),
+    s('felce', 11, [0.6, 1.2], { bosco: 0.45 }), s('fioreAlto', 9, [0.7, 1.3], { bosco: 0.4 }),
+    s('fioreAlto', 6, [0.6, 1.1], { tinta: 0xe0c0ff, carica: 1.2, bosco: 0.5 }), s('fioreAlto', 4, [0.6, 1.0]),
     s('ciuffo', 14, [0.7, 1.4]), s('sassi', 5, [0.5, 1.5]), s('funghetti', 4, [0.8, 1.8], { bosco: 0.5 }), s('tronco', 1.6, [0.7, 1.2]),
     s('ceppo', 1.6, [0.8, 1.3]), s('zucca', 1.2, [0.8, 1.3], { bosco: 0.6 }), s('covone', 0.8, [0.9, 1.2], { bosco: 0.55 }),
     s('canne', 8, [0.8, 1.3], { acqua: true }), ...VIANDANTI,

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { geometriaAbeteVero, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, ombraAbete, materialeSasso, materialeVero, ombraVera } from './alberiVeri.js';
+import { geometriaAbeteVero, geometriaModello, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { GEOMETRIE_MINUTE, MINUTI, TIPI_MINUTI } from './minuti.js';
@@ -258,27 +258,34 @@ export function creaBosco(ombre: boolean): Bosco {
     geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaQuercia(0),
     ...GEOMETRIE_MINUTE(),
   ];
-  // Le querce sono vere: tronco fotografato e fronde ritratte dal modello, con il loro materiale e la loro ombra.
-  geometrie[QUERCIA] = geometriaQuerciaVera();
-  geometrie[QUERCIA_LONTANA] = geometriaQuerciaVeraLontana();
-  const PINO = TIPI.indexOf('pino');
-  const PINO_NEVE = TIPI.indexOf('pinoInnevato');
-  geometrie[PINO] = geometriaAbeteVero();
-  // Lo stesso abete, imbiancato dalla neve.
-  geometrie[PINO_NEVE] = geometriaAbeteVero(2.1);
+  // Piante, rocce e legni veri: geometria presa da modelli fotografati dal vero, ognuno con la sua immagine.
+  // `carte` vale per ciò che è fatto di foglie ritagliate: non riceve ombra (se la farebbe da solo e resterebbe nero).
+  const veri = new Map<number, { materiale: THREE.Material; ombra?: THREE.Material; carte: boolean }>();
+  const vero = (tipo: string, g: THREE.BufferGeometry, materiale: THREE.Material, carte: boolean, ombra?: THREE.Material): void => {
+    const i = tipo === 'querciaLontana' ? QUERCIA_LONTANA : TIPI.indexOf(tipo);
+    geometrie[i] = g;
+    veri.set(i, ombra ? { materiale, ombra, carte } : { materiale, carte });
+  };
+  const fronde = materialeVero();
+  vero('quercia', geometriaQuerciaVera(), fronde, true, ombraVera());
+  vero('querciaLontana', geometriaQuerciaVeraLontana(), fronde, true);
   const abete = materialeAbete();
-  const ombraDellAbete = ombraAbete();
-  const ROCCIA = TIPI.indexOf('roccia');
-  geometrie[ROCCIA] = geometriaSassoVero();
+  vero('pino', geometriaAbeteVero(), abete, true, ombraAbete());
+  // Lo stesso abete, imbiancato dalla neve.
+  vero('pinoInnevato', geometriaAbeteVero(2.1), abete, true, ombraAbete());
   const sasso = materialeSasso();
-  const vero = materialeVero();
-  const ombraDelVero = ombraVera();
+  vero('roccia', geometriaSassoVero(), sasso, false);
+  vero('sassi', geometriaSassoVero().scale(0.32, 0.3, 0.32), sasso, false);
+  vero('cespuglio', geometriaModello('cespuglio', { alto: 1.25 }, 6, 0.5), materialeModello('cespuglio.webp', true), true);
+  vero('felce', geometriaModello('felce', { alto: 0.55 }, 3, 0.3), materialeModello('felce.webp', true), true);
+  vero('fioreAlto', geometriaModello('fiore', { alto: 0.5 }, 5, 0.32), materialeModello('fiore.webp', true), true);
+  vero('ceppo', geometriaModello('ceppo', { alto: 0.55 }), materialeModello('ceppo.jpg', false), false);
+  vero('tronco', geometriaModello('tronco', { lungo: 3.2 }), materialeModello('tronco.jpg', false), false);
   const mesh = geometrie.map((g, i) => {
-    const m = new THREE.InstancedMesh(g, i === QUERCIA || i === QUERCIA_LONTANA ? vero : i === ROCCIA ? sasso : i === PINO || i === PINO_NEVE ? abete : materialeAlberi, CAPIENZA);
-    if (i === PINO || i === PINO_NEVE) m.customDepthMaterial = ombraDellAbete;
-    if (i === QUERCIA) m.customDepthMaterial = ombraDelVero;
-    // Le fronde non ricevono ombra: le carte se la farebbero l'una sull'altra e la chioma resterebbe nera.
-    const vera = i === QUERCIA || i === QUERCIA_LONTANA || i === PINO || i === PINO_NEVE;
+    const v = veri.get(i);
+    const m = new THREE.InstancedMesh(g, v?.materiale ?? materialeAlberi, CAPIENZA);
+    if (v?.ombra) m.customDepthMaterial = v.ombra;
+    const vera = v?.carte ?? false;
     m.count = 0;
     // Le cose minute non fanno ombra: sono tante, e la loro ombra non si noterebbe.
     m.castShadow = ombre && i < PRIMO_MINUTO;

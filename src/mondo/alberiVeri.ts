@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { QUERCIA_DATI } from './querciaDati.js';
+import { MODELLI_DATI } from './modelliDati.js';
 import { SASSO_DATI } from './sassoDati.js';
 
 /** Quanto ingrandire il modello (alto tre metri e mezzo) per farne una quercia del gioco. */
@@ -169,4 +170,73 @@ export function materialeAbete(): THREE.MeshLambertMaterial {
 
 export function ombraAbete(): THREE.MeshDepthMaterial {
   return new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: atlanteAbete(), alphaTest: 0.45 });
+}
+
+const fotoModelli = new Map<string, THREE.Texture>();
+function fotoModello(file: string): THREE.Texture {
+  let t = fotoModelli.get(file);
+  if (t) return t;
+  if (typeof document === 'undefined') {
+    t = new THREE.DataTexture(new Uint8Array([110, 120, 80, 255]), 1, 1);
+    t.needsUpdate = true;
+  } else {
+    t = new THREE.TextureLoader().load(`materiali/${file}`);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+  }
+  fotoModelli.set(file, t);
+  return t;
+}
+
+/**
+ * Una pianta o un legno vero, portato alla misura che serve: `alto` metri (oppure `lungo`, per ciò che sta
+ * sdraiato). Con più `copie` se ne fa un cespo: la stessa pianta ripetuta, girata e un po' sparsa.
+ */
+export function geometriaModello(nome: string, misura: { alto?: number; lungo?: number }, copie = 1, sparso = 0): THREE.BufferGeometry {
+  const d = MODELLI_DATI[nome]!;
+  let alto = 0;
+  let lungo = 0;
+  for (let i = 0; i < d.pos.length; i += 3) {
+    lungo = Math.max(lungo, Math.abs(d.pos[i]!) * 2, Math.abs(d.pos[i + 2]!) * 2);
+    alto = Math.max(alto, d.pos[i + 1]!);
+  }
+  const k = misura.alto !== undefined ? misura.alto / alto : (misura.lungo ?? 1) / lungo;
+  const l: Lista = { pos: [], nor: [], uv: [], ind: [] };
+  let seme = 11;
+  const caso = (): number => (seme = (seme * 16807) % 2147483647) / 2147483647;
+  for (let c = 0; c < copie; c++) {
+    const giro = c * 2.399 + caso();
+    const cs = Math.cos(giro);
+    const sn = Math.sin(giro);
+    const r = c === 0 ? 0 : Math.sqrt(caso()) * sparso;
+    const ox = Math.cos(giro * 1.7) * r;
+    const oz = Math.sin(giro * 1.7) * r;
+    const ks = k * (c === 0 ? 1 : 0.7 + caso() * 0.5);
+    const n = l.pos.length / 3;
+    for (let i = 0; i < d.pos.length; i += 3) {
+      const x = d.pos[i]! * ks;
+      const z = d.pos[i + 2]! * ks;
+      l.pos.push(ox + x * cs - z * sn, d.pos[i + 1]! * ks, oz + x * sn + z * cs);
+      const nx = d.nor[i]!;
+      const nz = d.nor[i + 2]!;
+      l.nor.push(nx * cs - nz * sn, d.nor[i + 1]!, nx * sn + nz * cs);
+    }
+    l.uv.push(...d.uv);
+    for (const i of d.ind) l.ind.push(n + i);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(l.pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(l.nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(l.uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(l.pos.length).fill(1), 3));
+  g.setIndex(l.ind);
+  return g;
+}
+
+/** Il materiale di una pianta vera (ritagliata lungo le foglie) o di un legno vero (pieno). */
+export function materialeModello(file: string, ritagliato: boolean): THREE.MeshLambertMaterial {
+  if (!ritagliato) return new THREE.MeshLambertMaterial({ map: fotoModello(file), vertexColors: true });
+  const m = materialeVero();
+  m.map = fotoModello(file);
+  return m;
 }
