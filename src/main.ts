@@ -35,8 +35,8 @@ import { Suoni } from './suoni.js';
 const ORA_SOLE = new THREE.Color(0xffb052);
 const ORA_ALTA = new THREE.Color(0x8a7ff0);
 const ORA_BASSA = new THREE.Color(0x7a5a86);
-const ORA_NEBBIA = new THREE.Color(0xa58fd6);
-const ORA_CIELO = new THREE.Color(0x2a2478);
+const ORA_NEBBIA = new THREE.Color(0x8672c4);
+const ORA_CIELO = new THREE.Color(0x1b1756);
 const NEBBIE = ZONE.map((z) => new THREE.Color(z.nebbia));
 const CIELI = ZONE.map((z) => new THREE.Color(z.cielo));
 const ALTE = ZONE.map((z) => new THREE.Color(z.luceAlta));
@@ -166,7 +166,7 @@ async function avvia(): Promise<void> {
   };
 
   /** La pennellata dell'ultima passata: quanto è larga (in punti dello schermo) e quanto si sente. */
-  const pennello = { passo: { value: new THREE.Vector2(0.001, 0.001) }, forza: { value: 0.85 } };
+  const pennello = { passo: { value: new THREE.Vector2(0.001, 0.001) }, forza: { value: 0.92 } };
   // --- bagliore attorno alle cose luminose (solo al computer) ---
   // L'immagine passa sempre da qui: bordi lisci, bagliore (se il dispositivo lo regge) e toni finali.
   const compositore = new EffectComposer(
@@ -237,8 +237,8 @@ async function avvia(): Promise<void> {
     renderer.setPixelRatio(densitaPixel);
     compositore.setPixelRatio(densitaPixel);
     compositore.setSize(w, h);
-    // La pennellata è larga uguale su ogni schermo: un quattrocentosessantesimo dell'altezza.
-    pennello.passo.value.set(h / (460 * w), 1 / 460);
+    // La pennellata è larga uguale su ogni schermo: un trecentotrentesimo dell'altezza.
+    pennello.passo.value.set(h / (330 * w), 1 / 330);
     scalaPunti.value = (h * densitaPixel) / (2 * Math.tan((camera.fov * Math.PI) / 360));
     massimoPunti.value = q.telefono ? 0.2 * h * densitaPixel : 600;
   };
@@ -742,7 +742,7 @@ async function avvia(): Promise<void> {
     soleZona.lerp(ORA_SOLE, 0.7);
     altaZona.lerp(ORA_ALTA, 0.62);
     bassaZona.lerp(ORA_BASSA, 0.45);
-    nebbiaZona.lerp(ORA_NEBBIA, 0.55);
+    nebbiaZona.lerp(ORA_NEBBIA, 0.68);
     cieloZona.lerp(ORA_CIELO, 0.8);
     const chiaro = (1 - umoreVero.buio) * luceZona;
     atmosfera.luce.value = chiaro;
@@ -753,8 +753,8 @@ async function avvia(): Promise<void> {
     const nebbia = scena.fog as THREE.FogExp2;
     nebbia.color.copy(atmosfera.nebbiaColore.value);
     nebbia.density = densita;
-    luceCielo.intensity = 1.45 * (0.3 + 0.7 * chiaro);
-    sole.intensity = 3.9 * (0.25 + 0.75 * chiaro);
+    luceCielo.intensity = 1.05 * (0.3 + 0.7 * chiaro);
+    sole.intensity = 4.7 * (0.25 + 0.75 * chiaro);
     // Ogni terra ha la sua luce: quella che scende dal cielo, quella che rimbalza dal suolo, quella del sole.
     luceCielo.color.copy(altaZona);
     luceCielo.groundColor.copy(bassaZona);
@@ -832,7 +832,7 @@ async function avvia(): Promise<void> {
   const mostra = (nuovo: number): void => {
     livello = Math.max(0, Math.min(LIVELLO_MASSIMO, nuovo));
     bagliore.enabled = q.bagliore && livello < 1;
-    pennello.forza.value = livello < 5 ? 0.85 : 0;
+    pennello.forza.value = livello < 5 ? 0.92 : 0;
     // La nitidezza si tocca per ultima e mai sotto una volta e mezza: un'immagine sgranata è peggio di una povera.
     densitaPixel = livello >= 6 ? Math.min(q.densitaPixel, 1.5) : livello >= 2 ? Math.min(q.densitaPixel, 1.75) : q.densitaPixel;
     prato.densita(livello >= 7 ? 0.35 : livello >= 3 ? 0.6 : 1);

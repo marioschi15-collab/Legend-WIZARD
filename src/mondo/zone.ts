@@ -67,12 +67,13 @@ const gradoni = (x: number, z: number): number => {
 export const ZONE: readonly Zona[] = [
   {
     nome: 'La Radura', caldo: 0, umido: 0, terra: 0x35702f, nebbia: 0xbcd7ea, cielo: 0x2a6bdb, densitaNebbia: 0.002, luce: 1,
-    luceAlta: 0xd6e8ff, luceBassa: 0x70804e, sole: 0xfff1dc, erba: [1, 0, 0, 0], luoghi: ['borgo', 'fattoria', 'vedetta', 'borgo'],
+    luceAlta: 0xd6e8ff, luceBassa: 0x70804e, sole: 0xfff1dc, erba: [1, 0, 0, 0], luoghi: ['borgo', 'fattoria', 'vedetta', 'borgo'], aria: 'lucciole',
     suolo: (x, z) => (rumoreStrati(x * 0.013 + 10, z * 0.013 + 7) - 0.36) * 15,
     piante: [
       { tipo: 'quercia', parte: 16, scala: [0.8, 1.6], bosco: 0.44 }, { tipo: 'quercia', parte: 16, scala: [0.9, 1.8], bosco: 0.44, tinta: 0xff8a18, carica: 3 },
       { tipo: 'pino', parte: 24, scala: [0.9, 2.1], bosco: 0.5, tinta: 0x8fb4c4, carica: 1.3 },
-      { tipo: 'cespuglio', parte: 10, scala: [0.6, 1.3] }, { tipo: 'roccia', parte: 3, scala: [0.4, 1.1] },
+      { tipo: 'cespuglio', parte: 8, scala: [0.6, 1.3] }, { tipo: 'cespuglio', parte: 9, scala: [0.3, 0.7], tinta: 0x6a5cff, carica: 3.2 },
+      { tipo: 'cespuglio', parte: 4, scala: [0.3, 0.6], tinta: 0xff5ab0, carica: 3 }, { tipo: 'roccia', parte: 3, scala: [0.4, 1.1] },
     ],
   },
   {

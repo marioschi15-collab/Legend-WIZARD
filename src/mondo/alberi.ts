@@ -165,6 +165,38 @@ function geometriaCristallo(): THREE.BufferGeometry {
 }
 
 export const materialeAlberi = new THREE.MeshLambertMaterial({ vertexColors: true });
+// Le chiome non sono tinte unite: macchie di colore più chiare e più scure, come date a colpi di pennello.
+materialeAlberi.onBeforeCompile = (sh) => {
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vPennello;')
+    .replace(
+      '#include <project_vertex>',
+      `#include <project_vertex>
+       #ifdef USE_INSTANCING
+         vPennello = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+       #else
+         vPennello = (modelMatrix * vec4(transformed, 1.0)).xyz;
+       #endif`,
+    );
+  sh.fragmentShader = sh.fragmentShader
+    .replace(
+      '#include <common>',
+      `#include <common>
+       varying vec3 vPennello;
+       float granaP(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+       float macchia(vec2 p) {
+         vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+         return mix(mix(granaP(i), granaP(i + vec2(1, 0)), f.x), mix(granaP(i + vec2(0, 1)), granaP(i + vec2(1, 1)), f.x), f.y);
+       }`,
+    )
+    .replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+       float tocco = macchia(vec2(vPennello.x + vPennello.z * 0.8, vPennello.y * 1.4) * 1.7) * 0.6
+         + macchia(vec2(vPennello.x - vPennello.z * 0.6, vPennello.y * 1.2) * 4.3) * 0.4;
+       diffuseColor.rgb *= mix(0.5, 1.0, smoothstep(0.3, 0.45, tocco)) * mix(1.0, 1.45, smoothstep(0.6, 0.7, tocco));`,
+    );
+};
 
 export interface Bosco {
   readonly oggetti: THREE.Object3D[];

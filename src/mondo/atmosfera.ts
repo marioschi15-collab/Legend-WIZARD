@@ -15,12 +15,12 @@ export const atmosfera = {
   tempo: { value: 0 },
 };
 
-/** Le ombre delle nuvole che scorrono sul terreno: un numero tra 0,7 (ombra) e 1 (sole). */
+/** Le ombre delle nuvole che scorrono sul terreno: pozze di luce dorata in una valle in penombra (da 0,4 a poco più di 1). */
 export const NUBI_GLSL = /* glsl */ `
   float ombraNubi(vec2 w, float t) {
     vec2 p = w * 0.011 + vec2(t * 0.012, t * 0.004);
     float n = sin(p.x * 1.7 + sin(p.y * 1.3)) * sin(p.y * 1.9 + sin(p.x * 0.7)) * 0.5 + 0.5;
-    return mix(0.68, 1.0, smoothstep(0.25, 0.6, n));
+    return mix(0.4, 1.12, smoothstep(0.3, 0.62, n));
   }
 `;
 
