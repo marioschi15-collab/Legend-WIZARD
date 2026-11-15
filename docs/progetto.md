@@ -64,21 +64,33 @@ I due pilastri:
 
 ## Le tappe
 
-1. **Il mago** — vita, mana, livelli e punti da spendere; essenze; morte e rinascita. Una creatura semplice nel
-   prato. *Si prova: avere un costo e un pericolo cambia il modo di giocare?*
-2. **Le parole** — l'incantesimo scritto a parole al posto dell'officina a gettoni, con le prime venti parole e
-   il costo in mana. *Si prova: scrivere «pioggia di fuoco piccola» e vederla accadere dà gioia?*
-3. **Le missioni** — abitanti nel villaggio, le prime cinque missioni con più soluzioni, il premio alla fantasia,
-   parole nuove come ricompensa. *Si prova: viene voglia di inventare una soluzione diversa?*
-4. **Le terre** — creature e regole di ogni terra, guardiani dei luoghi, viaggio rapido, difficoltà che cresce
-   con la distanza, missioni generate per ogni tipo di luogo.
-5. **Il grande vocabolario** — comportamenti e bersagli, parole rare, quaderno delle soluzioni, incantesimi con
-   firma da scambiare.
-6. **Costruire** — parole per posare e modellare (la parte «tipo Minecraft»), la propria torre che resta salvata.
-7. **Online** — vedere gli altri maghi, duelli, alleanze, missioni insieme. Serve un server: è l'ultima tappa.
+Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa ha tre parti**:
+
+- **Gioco**: che cosa si aggiunge da fare.
+- **Grafica**: che cosa diventa più bello in quella tappa (la grafica non è una tappa a parte: migliora sempre).
+- **Prova**: la domanda a cui il fondatore risponde giocando. Se la risposta è no, si corregge prima di andare avanti.
+
+| Tappa | Gioco | Grafica | Prova |
+| --- | --- | --- | --- |
+| **0. Le basi belle** | Niente di nuovo da fare: si sistema ciò che si vede | Luce, colori, erba, alberi, acqua, case meno «a scatole», schermate e scritte più curate | Guardando il gioco fermo, viene voglia di entrarci? |
+| **1. Il mago** | Vita, mana, livelli e punti da spendere; essenze; rinascita. Una creatura semplice nel prato | Le mani e il bastone del mago, la prima creatura, barre e numeri chiari sullo schermo | Avere un costo e un pericolo cambia il modo di giocare? |
+| **2. Le parole** | L'incantesimo scritto a parole, con le prime venti parole e il costo in mana | Ogni parola si vede: forme, colori e scie diversi per ogni elemento e misura | Scrivere «pioggia di fuoco piccola» e vederla accadere dà gioia? |
+| **3. Le missioni** | Abitanti nel villaggio, cinque missioni con più soluzioni, premio alla fantasia, parole nuove in premio | Gli abitanti (con carattere e abitudini), il villaggio vivo: fumo dai camini, luci, oggetti | Viene voglia di inventare una soluzione diversa? |
+| **4. Le terre** | Creature e regole di ogni terra, guardiani, viaggio rapido, difficoltà che cresce con la distanza | Ogni terra con un aspetto suo e riconoscibile; guardiani imponenti; giorno e notte | Ogni terra sembra un posto diverso, non lo stesso con un altro colore? |
+| **5. Il grande vocabolario** | Comportamenti e bersagli, parole rare, quaderno delle soluzioni, incantesimi con firma da scambiare | Effetti speciali per le parole rare; il quaderno illustrato | Dopo una settimana c'è ancora qualcosa di nuovo da scoprire? |
+| **6. Costruire** | Parole per posare e modellare, la propria torre che resta salvata | Pezzi da costruzione belli, decorazioni | Si ha voglia di tornare alla propria torre? |
+| **7. Online** | Altri maghi, duelli, alleanze, missioni insieme; personaggi speciali con cui parlare liberamente e incantesimi a frase libera | I maghi degli altri, ognuno con il suo aspetto | Si gioca volentieri con un amico? |
 
 Ciò che esiste già resta la base: mondo senza confini, cinque terre, luoghi che crollano, incantesimi, colonne di
 luce, mete sullo schermo.
+
+### Personaggi e intelligenza
+
+- **Tutti gli abitanti** hanno nome, mestiere, carattere, una giornata e una memoria di ciò che chi gioca ha fatto
+  loro. Gira tutto dentro il gioco e non costa nulla (dalla tappa 3).
+- **L'intelligenza vera** (parlare liberamente, capire un incantesimo scritto con qualsiasi frase) ha bisogno di un
+  server e costa a ogni frase: è riservata a pochi personaggi speciali e a qualche «incantesimo libero» al giorno,
+  e arriva con l'online (tappa 7).
 
 ## Regole del progetto
 
