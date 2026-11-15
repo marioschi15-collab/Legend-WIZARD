@@ -1,0 +1,4 @@
+# Un solo progetto in questo repository.
+packages: []
+onlyBuiltDependencies:
+  - esbuild
