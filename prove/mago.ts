@@ -301,6 +301,32 @@ verifica(ricco.spendiEssenze(15) && ricco.essenze === 5 && !ricco.spendiEssenze(
   verifica(preso === 0, 'svegliato, non colpisce subito: deve ricominciare il preavviso');
 }
 
+// --- le creature dentro la fisica: una spinta le scaglia, e cadendo da alto si fanno male ---
+{
+  const c8 = new Creature(() => 0, suolo, -0.55, caso);
+  c8.nasci(800, 808, 2, true, 'golem');
+  const lontano = new THREE.Vector3(800, 0, 700);
+  c8.spingi(800, -1.5, 808, 8, 30, 1.2);
+  let massimo = 0;
+  for (let i = 0; i < 60; i++) {
+    c8.aggiorna(1 / 60, lontano);
+    massimo = Math.max(massimo, c8.bersagli(new THREE.Vector3(800, 0, 808), 40)[0]?.y ?? 0);
+  }
+  verifica(massimo > 4, `una spinta forte da sotto manda il golem in aria (fino a ${massimo.toFixed(1)} m)`);
+  for (let i = 0; i < 60 * 4; i++) c8.aggiorna(1 / 60, lontano);
+  const giu = c8.bersagli(new THREE.Vector3(800, 0, 808), 60)[0];
+  verifica(giu === undefined || giu.y < 0.1, 'poi ricade a terra');
+  verifica(c8.ritiraColpi().some((x) => x.quanto > 5) || c8.ritira().length > 0, 'e la caduta gli fa male (o lo sbriciola)');
+  // Un vortice lo tiene sollevato finché dura.
+  const c9 = new Creature(() => 0, suolo, -0.55, caso);
+  c9.nasci(800, 808, 1, true, 'golem');
+  for (let i = 0; i < 120; i++) {
+    c9.vortice(800, 0, 806, 10, 9, 20, 30, 8, 1 / 60);
+    c9.aggiorna(1 / 60, lontano);
+  }
+  verifica((c9.bersagli(new THREE.Vector3(800, 0, 808), 40)[0]?.y ?? 0) > 2, 'dentro un tornado il golem resta sollevato');
+}
+
 // --- le parole in premio e gli incantesimi che si imparano con i livelli ---
 {
   const note = new Set(PAROLE.filter((x) => x.prezzo === 0).map((x) => x.parola));

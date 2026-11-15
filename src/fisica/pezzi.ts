@@ -351,8 +351,12 @@ export class Pezzi {
     this.svegli = svegli;
   }
 
+  /** Chi vuole sapere di ogni spinta (le creature: ciò che scaglia i pezzi scaglia anche loro). */
+  onSpinta: (x: number, y: number, z: number, raggio: number, forza: number, alzata: number) => void = () => undefined;
+
   /** Spinta a raggiera da un punto: è lo scoppio. `alzata` aggiunge una spinta verso l'alto. */
   spinta(x: number, y: number, z: number, raggio: number, forza: number, alzata = 0.4): void {
+    this.onSpinta(x, y, z, raggio, forza, alzata);
     const r2 = raggio * raggio;
     for (let i = 0; i < this.n; i++) {
       const dx = this.pos[i * 3]! - x;

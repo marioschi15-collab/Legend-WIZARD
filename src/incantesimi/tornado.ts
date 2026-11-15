@@ -94,6 +94,8 @@ class Tornado implements Effetto {
       g.suoni.vento();
     }
 
+    // Anche le creature finiscono nel vortice: girano, salgono, e quando il tornado passa ricadono.
+    g.poteri.vortice(this.p, RAGGIO + 1, 9 * vigore, 20 * vigore, 30 * vigore, ALTO * 0.7, dt);
     // Solleva e fa ruotare i pezzi dentro il vortice.
     const pos = g.pezzi.pos;
     for (let i = 0; i < g.pezzi.n; i++) {

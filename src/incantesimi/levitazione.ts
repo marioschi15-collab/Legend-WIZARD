@@ -31,6 +31,8 @@ export class Levitazione implements Effetto {
     const vigore = Math.min(1, this.eta * 2) * Math.min(1, (this.DURATA - this.eta) * 1.5);
     this.bolla.scale.setScalar(Math.max(0.01, this.RAGGIO * (0.6 + 0.4 * Math.min(1, this.eta * 2))));
     this.bolla.material.opacity = 0.13 * vigore + Math.sin(this.eta * 3) * 0.015;
+    // Dentro la bolla il peso sparisce anche per le creature: galleggiano, e quando la bolla finisce cadono.
+    g.poteri.vortice(new THREE.Vector3(this.c.x, this.c.y - this.RAGGIO * 0.5, this.c.z), this.RAGGIO, 0, 2 * vigore, 19 * vigore, this.RAGGIO * 0.6, dt);
     // Dentro la bolla il peso sparisce: i pezzi salgono piano e ruotano lenti attorno al centro.
     const pos = g.pezzi.pos;
     for (let i = 0; i < g.pezzi.n; i++) {

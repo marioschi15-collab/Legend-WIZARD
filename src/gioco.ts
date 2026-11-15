@@ -33,6 +33,10 @@ export interface Poteri {
   ferisci(a: THREE.Vector3, raggio: number, danno: number, tipo?: Elemento): number;
   /** A che distanza un raggio incontra il corpo di una creatura ostile (o -1 se non ne incontra entro `lungo`). */
   sulRaggio(origine: THREE.Vector3, direzione: THREE.Vector3, lungo: number): number;
+  /** Spinge le creature via da un punto (forza negativa: le tira dentro); `alzata` le manda anche in su. */
+  spingi(a: THREE.Vector3, raggio: number, forza: number, alzata: number): void;
+  /** Un vortice che dura: tira le creature al centro, le fa girare e le tiene sollevate fino a `tetto` metri. */
+  vortice(a: THREE.Vector3, raggio: number, dentro: number, giro: number, su: number, tetto: number, dt: number): void;
   /** Fa nascere un golem amico che combatte per chi gioca. */
   evoca(a: THREE.Vector3, secondi: number): void;
   /** Costruisce qualcosa in un punto (un blocco, una parete, una torre…). */

@@ -192,6 +192,8 @@ async function avvia(): Promise<void> {
   };
   const creature = new Creature(altezza, { cella: (x, z) => campo.cella(x, z), fuoco: campo.fuoco, gelo: campo.gelo, accendi: (x, z, r) => campo.accendi(x, z, r, 10) }, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
+  // Ciò che scaglia i pezzi delle case scaglia anche le creature.
+  pezzi.onSpinta = (x, y, z, raggio, forza, alzata) => creature.spingi(x, y, z, raggio, forza, alzata);
   // Le creature girano attorno ai muri: un raggio all'altezza del petto dice se davanti c'è qualcosa di solido.
   const raggioCreatura = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
   creature.libero = (x, y, z, dx, dz, lungo) => {
@@ -249,6 +251,8 @@ async function avvia(): Promise<void> {
     stato: (a, raggio, che, secondi) => creature.stato(a, raggio, che, secondi),
     ferisci: (a, raggio, danno, tipo) => creature.ferisciIntorno(a, raggio, danno, tipo),
     sulRaggio: (da, verso, lungo) => creature.sottoMira(da, verso, lungo)?.lontano ?? -1,
+    spingi: (a, raggio, forza, alzata) => creature.spingi(a.x, a.y, a.z, raggio, forza, alzata),
+    vortice: (a, raggio, dentro, giro, su, tetto, dt) => creature.vortice(a.x, a.y, a.z, raggio, dentro, giro, su, tetto, dt),
     evoca: (a, secondi) => creature.evoca(a.x, a.z, secondi),
     bersagli: (a, raggio) => creature.bersagli(a, raggio),
     costruisci: (che, a) => {

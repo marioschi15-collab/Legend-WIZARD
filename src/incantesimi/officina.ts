@@ -278,6 +278,8 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number, m: Memoria
         break;
       case 'solleva':
         for (const i of g.pezzi.vicini(p.x, p.y, p.z, raggio, 500)) g.pezzi.accelera(i, 0, 10 * forza + Math.random() * 3, 0, 1);
+        // Anche le creature volano in su (e ricadendo si fanno male).
+        g.poteri.spingi(new THREE.Vector3(p.x, suolo.y - 2, p.z), raggio + 2, 14 * forza, 1.2);
         break;
       case 'vortice':
         for (const i of g.pezzi.vicini(p.x, p.y, p.z, raggio, 500)) {
@@ -286,6 +288,7 @@ function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number, m: Memoria
           const d = Math.hypot(dx, dz) + 0.1;
           g.pezzi.accelera(i, (-dz / d) * 12 * forza, 3.5 * forza, (dx / d) * 12 * forza, 1);
         }
+        g.poteri.spingi(new THREE.Vector3(p.x, suolo.y - 1, p.z), raggio, 10 * forza, 0.8);
         break;
       case 'brucia':
         g.campo.accendi(p.x, p.z, raggio * 0.6, 7 + r.potenza * 3);

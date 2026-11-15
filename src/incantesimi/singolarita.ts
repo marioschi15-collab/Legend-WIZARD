@@ -65,6 +65,8 @@ class Singolarita implements Effetto {
       });
     }
 
+    // Le creature vengono risucchiate verso il buco e gli girano attorno finché non collassa.
+    g.poteri.vortice(new THREE.Vector3(this.c.x, this.c.y - 6, this.c.z), RAGGIO * 0.8, 22 * forza, 12 * forza, 26 * forza, 7, dt);
     // Attira i pezzi e li fa orbitare.
     const pos = g.pezzi.pos;
     for (let i = 0; i < g.pezzi.n; i++) {

@@ -65,6 +65,11 @@ interface Golem {
   /** Dove è nata: un guardiano non si allontana troppo dal suo luogo. */
   readonly casaX: number;
   readonly casaZ: number;
+  /** La velocità con cui sta volando, se una magia l'ha scagliata in aria. */
+  vola: boolean;
+  vx: number;
+  vy: number;
+  vz: number;
   /** Secondi per cui resta in allarme dopo essere stata colpita: intanto insegue anche da lontano. */
   allerta: number;
   /** Vero se l'ultimo danno da mostrare ha toccato il suo punto debole; e l'attesa prima di ridire «immune». */
@@ -312,7 +317,7 @@ export class Creature {
     gruppo.position.set(x, this.quota(x, z), z);
     this.gruppo.add(gruppo);
     const vita = (34 + livello * 14) * specie.vita * (guardiano ? 3 : 1);
-    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, propri, casaX: x, casaZ: z, allerta: 0, debole: false, attesaImmune: 0, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, mossa: 0, slancio: 0, slancioX: 0, slancioZ: 0, avviso, dannoDaDire: 0, attesaNumero: 0, rinforzi: false, lato: this.caso() < 0.5 ? 1 : -1, bloccato: 0, deviaX: 0, deviaZ: 0, deviaPer: 0, lampo: 0, passo: this.caso() * 6 });
+    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, propri, casaX: x, casaZ: z, vola: false, vx: 0, vy: 0, vz: 0, allerta: 0, debole: false, attesaImmune: 0, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, mossa: 0, slancio: 0, slancioX: 0, slancioZ: 0, avviso, dannoDaDire: 0, attesaNumero: 0, rinforzi: false, lato: this.caso() < 0.5 ? 1 : -1, bloccato: 0, deviaX: 0, deviaZ: 0, deviaPer: 0, lampo: 0, passo: this.caso() * 6 });
     return this.contatore;
   }
 
@@ -358,6 +363,63 @@ export class Creature {
   private dentro(g: Golem, dove: THREE.Vector3, raggio: number): boolean {
     const p = g.gruppo.position;
     return Math.hypot(p.x - dove.x, p.z - dove.z) <= raggio && Math.abs(p.y - dove.y) < raggio + 5;
+  }
+
+  /**
+   * Una spinta: scaglia le creature via da un punto (o le tira dentro, con forza negativa), come fa con i pezzi
+   * delle case. Le più grosse si muovono meno. Chi vola non combatte, e ricadendo da alto si fa male.
+   */
+  spingi(x: number, y: number, z: number, raggio: number, forza: number, alzata: number): void {
+    for (const g of this.golem) {
+      const p = g.gruppo.position;
+      const s = g.gruppo.scale.x;
+      const dx = p.x - x;
+      const dy = p.y + s - y;
+      const dz = p.z - z;
+      const d = Math.hypot(dx, dy, dz) + 0.001;
+      if (d > raggio) continue;
+      const k = ((1 - d / raggio) * forza * 0.8) / Math.max(1, s * s * 0.8);
+      g.vx += (dx / d) * k;
+      g.vy += (dy / d + alzata) * k;
+      g.vz += (dz / d) * k;
+      if (g.vy > 2.5 || Math.hypot(g.vx, g.vz) > 3) {
+        g.vola = true;
+        g.mossa = 0;
+        g.slancio = 0;
+        g.avviso.visible = false;
+        if (g.amico <= 0) g.allerta = 14;
+      } else g.vx = g.vy = g.vz = 0;
+    }
+  }
+
+  /**
+   * Un vortice che dura (tornado, singolarità, bolla senza peso): finché c'è, tira le creature verso il centro,
+   * le fa girare attorno e le tiene sollevate fino a una certa altezza.
+   */
+  vortice(x: number, y: number, z: number, raggio: number, dentro: number, giro: number, su: number, tetto: number, dt: number): void {
+    for (const g of this.golem) {
+      const p = g.gruppo.position;
+      const dx = x - p.x;
+      const dz = z - p.z;
+      const d = Math.hypot(dx, dz);
+      if (d > raggio || p.y - y > tetto + 4) continue;
+      const k = (1 - d / raggio + 0.2) / Math.max(1, g.gruppo.scale.x * 0.9);
+      const inv = 1 / (d + 0.3);
+      g.vola = true;
+      g.mossa = 0;
+      g.slancio = 0;
+      g.avviso.visible = false;
+      g.vx += (dx * inv * dentro - dz * inv * giro) * k * dt;
+      g.vz += (dz * inv * dentro + dx * inv * giro) * k * dt;
+      g.vy += (p.y - y < tetto ? su : -4) * k * dt;
+      // Dentro un vortice non si prende velocità all'infinito.
+      const v = Math.hypot(g.vx, g.vy, g.vz);
+      if (v > 22) {
+        g.vx *= 22 / v;
+        g.vy *= 22 / v;
+        g.vz *= 22 / v;
+      }
+    }
   }
 
   /** Toglie dal mondo una creatura senza premio (il golem di una missione lasciata a metà). */
@@ -539,7 +601,30 @@ export class Creature {
       let torna = false;
       g.allerta = Math.max(0, g.allerta - dt);
       g.attesaImmune = Math.max(0, g.attesaImmune - dt);
-      if (g.amico > 0) {
+      if (g.vola) {
+        // Scagliata in aria da una magia: vola, rotola, e quando tocca terra (o sbatte contro un muro) si fa male.
+        g.vy -= 16 * dt;
+        const piano = Math.hypot(g.vx, g.vz);
+        if (piano > 0.5 && !this.libero(p.x, p.y + 1, p.z, g.vx / piano, g.vz / piano, piano * dt + 0.7)) {
+          this.ferisci(g, piano * 2.2, 'botto');
+          g.vx = g.vz = 0;
+        }
+        p.x += g.vx * dt;
+        p.y += g.vy * dt;
+        p.z += g.vz * dt;
+        g.gruppo.rotation.x += dt * 3.5;
+        const terra = Math.max(this.quota(p.x, p.z), this.quotaAcqua - 0.9);
+        if (p.y <= terra && g.vy <= 0) {
+          const botta = Math.max(0, -g.vy - 7);
+          if (botta > 0) this.ferisci(g, botta * 4, 'botto');
+          this.urtoATerra(p);
+          p.y = terra;
+          g.vola = false;
+          g.vx = g.vy = g.vz = 0;
+          g.gruppo.rotation.x = 0;
+          g.attesaColpo = Math.max(g.attesaColpo, 1.2);
+        }
+      } else if (g.amico > 0) {
         // Il golem amico: va addosso alla creatura ostile più vicina; se non ce ne sono, segue chi gioca.
         g.amico -= dt;
         if (g.amico <= 0) g.vita = 0;
@@ -663,8 +748,8 @@ export class Creature {
         }
       }
       // Dove l'acqua è alta le creature restano a galla con il busto fuori, invece di camminare sul fondo.
-      p.y = Math.max(this.quota(p.x, p.z), this.quotaAcqua - 0.9);
-      if (g.specie.forma === 'lume') {
+      if (!g.vola) p.y = Math.max(this.quota(p.x, p.z), this.quotaAcqua - 0.9);
+      if (g.specie.forma === 'lume' && !g.vola) {
         // Il lume non cammina: galleggia, e i lumini gli girano attorno.
         g.passo += dt * 2;
         p.y += Math.sin(g.passo) * 0.25;
