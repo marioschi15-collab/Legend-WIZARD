@@ -75,7 +75,8 @@ la metà. La prima volta, ogni abitante insegna una parola nuova.
 **Le terre hanno le loro creature.** Oltre al golem di sassi ci sono la sentinella di ghiaccio (il gelo non le fa
 nulla, il fuoco la scioglie), lo scorpione di sabbia (svelto, quasi insensibile al fuoco, il gelo lo ferma), il lume
 di palude (i botti gli passano attraverso, il gelo lo spegne) e il diavoletto di lava (nel fuoco ci sguazza, il gelo
-lo spacca). La prima volta che se ne incontra una, il gioco dice come si comporta.
+lo spacca). La prima volta che se ne incontra una, il gioco dice come si comporta. Le creature girano attorno ai
+muri invece di attraversarli (tranne i lumi, che sono fatti di luce).
 
 **Ogni terra ha la sua regola e la sua sfida.** Tra i ghiacci e nella tundra il fuoco si spegne quasi subito; nel
 deserto, nella savana, nelle gole e sul vulcano è il gelo a sciogliersi; in palude e nella giungla il fuoco dura

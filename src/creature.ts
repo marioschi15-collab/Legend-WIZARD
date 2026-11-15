@@ -70,6 +70,13 @@ interface Golem {
   /** Vero per sempre se è nato da un'evocazione. */
   evocato: boolean;
   taglia: number;
+  /** Da che lato sta girando attorno a un ostacolo, e da quanti secondi non riesce a passare. */
+  lato: number;
+  bloccato: number;
+  /** La deviazione che sta tenendo, e per quanti secondi ancora. */
+  deviaX: number;
+  deviaZ: number;
+  deviaPer: number;
   lampo: number;
   passo: number;
 }
@@ -110,6 +117,54 @@ export class Creature {
     /** Il numero della terra in un punto: decide quale razza nasce lì. */
     private readonly terra: (x: number, z: number) => number = () => 0,
   ) {}
+
+  /**
+   * Dice se tra due punti la strada è sgombra (niente muri in mezzo). La dà il gioco vero, che conosce i muri;
+   * senza, le creature camminano dritte.
+   */
+  libero: (x: number, y: number, z: number, dx: number, dz: number, lungo: number) => boolean = () => true;
+
+  /**
+   * Un passo in una direzione. Se davanti c'è un muro la creatura prova a girarci attorno (prima di poco, poi di
+   * più, da un lato e dall'altro); i lumi passano attraverso tutto. Chi resta bloccato a lungo scavalca.
+   */
+  private muovi(g: Golem, dx: number, dz: number, passo: number, dt: number): void {
+    const p = g.gruppo.position;
+    if (g.specie.forma !== 'lume' && g.bloccato < 3) {
+      // Una volta scelta una deviazione la tiene per un po': altrimenti, girato lo spigolo, tornerebbe subito a
+      // puntare dritto e ci resterebbe incollata.
+      if (g.deviaPer > 0 && this.libero(p.x, p.y + 1, p.z, g.deviaX, g.deviaZ, passo + 1.1)) {
+        g.deviaPer -= dt;
+        p.x += g.deviaX * passo;
+        p.z += g.deviaZ * passo;
+        return;
+      }
+      g.deviaPer = 0;
+      // Se l'ultima volta ha dovuto girare, continua da quel lato: altrimenti dondolerebbe davanti al muro.
+      for (const giro of [0, 0.8 * g.lato, 1.57 * g.lato, 2.2 * g.lato, -0.8 * g.lato, -1.57 * g.lato, -2.2 * g.lato]) {
+        const cs = Math.cos(giro);
+        const sn = Math.sin(giro);
+        const vx = dx * cs - dz * sn;
+        const vz = dx * sn + dz * cs;
+        if (!this.libero(p.x, p.y + 1, p.z, vx, vz, passo + 1.1)) continue;
+        if (giro !== 0) {
+          g.lato = Math.sign(giro);
+          g.deviaX = vx;
+          g.deviaZ = vz;
+          g.deviaPer = 0.7;
+        }
+        p.x += vx * passo;
+        p.z += vz * passo;
+        g.bloccato = Math.max(0, g.bloccato - dt);
+        return;
+      }
+      g.bloccato += dt;
+      return;
+    }
+    p.x += dx * passo;
+    p.z += dz * passo;
+    g.bloccato = Math.max(0, g.bloccato - dt * 0.5);
+  }
 
   get vive(): number {
     return this.golem.length;
@@ -191,7 +246,7 @@ export class Creature {
     gruppo.position.set(x, this.quota(x, z), z);
     this.gruppo.add(gruppo);
     const vita = (34 + livello * 14) * specie.vita * (guardiano ? 3 : 1);
-    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, lampo: 0, passo: this.caso() * 6 });
+    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, lato: this.caso() < 0.5 ? 1 : -1, bloccato: 0, deviaX: 0, deviaZ: 0, deviaPer: 0, lampo: 0, passo: this.caso() * 6 });
     return this.contatore;
   }
 
@@ -344,8 +399,7 @@ export class Creature {
         const md = Math.hypot(mx, mz);
         if (md > (preda ? 1.8 : 4)) {
           g.gruppo.rotation.y = Math.atan2(mx, mz);
-          p.x += (mx / md) * 4.5 * dt;
-          p.z += (mz / md) * 4.5 * dt;
+          this.muovi(g, mx / md, mz / md, 4.5 * dt, dt);
           g.passo += dt * 9;
           insegue = true;
         }
@@ -361,8 +415,7 @@ export class Creature {
         if (d > 0.1 && d < 60) {
           const v = mite ? 1.2 : passo;
           g.gruppo.rotation.y = Math.atan2(-dx, -dz);
-          p.x -= (dx / d) * v * dt;
-          p.z -= (dz / d) * v * dt;
+          this.muovi(g, -dx / d, -dz / d, v * dt, dt);
           g.passo += dt * v * 2.2;
           insegue = true;
         }
@@ -371,8 +424,7 @@ export class Creature {
         if (insegue) {
           g.gruppo.rotation.y = Math.atan2(dx, dz);
           if (d > 2.4) {
-            p.x += (dx / d) * passo * dt;
-            p.z += (dz / d) * passo * dt;
+            this.muovi(g, dx / d, dz / d, passo * dt, dt);
             g.passo += dt * passo * 2.2;
           }
           g.attesaColpo -= dt;

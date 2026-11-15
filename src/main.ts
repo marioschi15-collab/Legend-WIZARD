@@ -188,6 +188,13 @@ async function avvia(): Promise<void> {
   };
   const creature = new Creature(altezza, campo, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
+  // Le creature girano attorno ai muri: un raggio all'altezza del petto dice se davanti c'è qualcosa di solido.
+  const raggioCreatura = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+  creature.libero = (x, y, z, dx, dz, lungo) => {
+    raggioCreatura.origin = { x, y, z };
+    raggioCreatura.dir = { x: dx, y: 0.12, z: dz };
+    return fisica.castRay(raggioCreatura, lungo, true, undefined, undefined, undefined, giocatore.corpo) === null;
+  };
   const magoUi = new MagoUi(mago, () => suoni.scoperta());
   // I globi di luce degli incantesimi: al massimo tre accesi insieme, il più vecchio lascia il posto.
   const globi = [0, 1, 2].map(() => {

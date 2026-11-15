@@ -92,6 +92,25 @@ g1.aggiorna(1 / 60, new THREE.Vector3(600, 0, 700));
 const pg = g1.ritira();
 verifica(pg.length === 1 && pg[0]!.guardiano && pg[0]!.numero === gn && pg[0]!.esperienza >= 100, 'battuto, il guardiano lascia un premio ricco');
 
+// Davanti a un muro la creatura non lo attraversa: gli gira attorno e arriva lo stesso.
+const labirinto = new Creature(() => 0, suolo, -0.55, caso);
+// Un muro lungo dodici metri, messo di traverso tra la creatura e chi gioca.
+labirinto.libero = (x, _y, z, dx, dz, lungo) => {
+  for (let t = 0; t <= lungo; t += 0.2) if (Math.abs(x + dx * t - 810) < 0.6 && Math.abs(z + dz * t - 800) < 6) return false;
+  return true;
+};
+const mu = labirinto.nasci(820, 800, 1, true);
+const meta = new THREE.Vector3(800, 0, 800);
+let dentroIlMuro = false;
+let colpito = 0;
+for (let i = 0; i < 60 * 25; i++) {
+  colpito += labirinto.aggiorna(1 / 60, meta);
+  const q = labirinto.vicina(meta)!;
+  if (Math.abs(q.x - 810) < 0.4 && Math.abs(q.z - 800) < 5.5) dentroIlMuro = true;
+}
+verifica(labirinto.vivo(mu) && !dentroIlMuro, 'la creatura non attraversa il muro');
+verifica(colpito > 0, 'ma gli gira attorno e raggiunge chi gioca');
+
 // Vicino al villaggio non nasce nulla.
 const casa = new Creature(() => 0, suolo, -0.55, caso);
 for (let i = 0; i < 60 * 30; i++) casa.aggiorna(1 / 60, new THREE.Vector3(10, 0, 30));
