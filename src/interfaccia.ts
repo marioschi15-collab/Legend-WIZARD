@@ -1,6 +1,6 @@
 import { graficaScelta, ricordaGrafica, type Grafica } from './base/qualita.js';
 import type { Incantesimo } from './gioco.js';
-import { pesiZone, terraferma, ZONE, type Luogo } from './mondo/zone.js';
+import { N_ZONE, pesiZone, terraferma, ZONE, type Luogo } from './mondo/zone.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -122,7 +122,7 @@ export class Interfaccia {
     this.sfondoMappa.width = this.sfondoMappa.height = lato;
     const c = this.sfondoMappa.getContext('2d')!;
     const punti = c.createImageData(lato, lato);
-    const pesi = new Float32Array(5);
+    const pesi = new Float32Array(N_ZONE);
     const terre = ZONE.map((zona) => [(zona.terra >> 16) & 255, (zona.terra >> 8) & 255, zona.terra & 255]);
     for (let j = 0; j < lato; j++) {
       for (let i = 0; i < lato; i++) {

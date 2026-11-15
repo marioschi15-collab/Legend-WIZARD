@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { coloreDelSuolo } from './terreno.js';
-import { campiona, type Campione } from './zone.js';
+import { campiona, N_ZONE, type Campione } from './zone.js';
 
 const PASSO = 48;
 const CELLE = 56;
@@ -18,7 +18,7 @@ export function creaLontano(): { mesh: THREE.Mesh; segui(x: number, z: number, s
   const pos = new Float32Array(PUNTI * PUNTI * 3);
   const col = new Float32Array(PUNTI * PUNTI * 3);
   const quote = new Float32Array(PUNTI * PUNTI);
-  const pesi = new Float32Array(PUNTI * PUNTI * 5);
+  const pesi = new Float32Array(PUNTI * PUNTI * N_ZONE);
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(PUNTI * PUNTI * 3), 3));
   g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(PUNTI * PUNTI * 3), 3));
   const indici: number[] = [];
@@ -38,7 +38,7 @@ export function creaLontano(): { mesh: THREE.Mesh; segui(x: number, z: number, s
   let nuovoX = 0;
   let nuovoZ = 0;
   let riga = -1;
-  const punto: Campione = { h: 0, pesi: new Float32Array(5) };
+  const punto: Campione = { h: 0, pesi: new Float32Array(N_ZONE) };
 
   const calcolaRiga = (j: number): void => {
     for (let i = 0; i < PUNTI; i++) {
@@ -47,7 +47,7 @@ export function creaLontano(): { mesh: THREE.Mesh; segui(x: number, z: number, s
       const z = nuovoZ + (j - CELLE / 2) * PASSO;
       const c = campiona(x, z);
       quote[k] = c.h;
-      pesi.set(c.pesi, k * 5);
+      pesi.set(c.pesi, k * N_ZONE);
       pos[k * 3] = x;
       pos[k * 3 + 2] = z;
     }
@@ -61,7 +61,7 @@ export function creaLontano(): { mesh: THREE.Mesh; segui(x: number, z: number, s
         const sz = quote[Math.max(0, j - 1) * PUNTI + i]! - quote[Math.min(CELLE, j + 1) * PUNTI + i]!;
         const su = (2 * PASSO) / Math.hypot(sx, 2 * PASSO, sz);
         punto.h = quote[k]!;
-        punto.pesi.set(pesi.subarray(k * 5, k * 5 + 5));
+        punto.pesi.set(pesi.subarray(k * N_ZONE, (k + 1) * N_ZONE));
         coloreDelSuolo(punto, pos[k * 3]!, pos[k * 3 + 2]!, su, col, k * 3);
         const d = Math.max(Math.abs(pos[k * 3]! - nuovoX), Math.abs(pos[k * 3 + 2]! - nuovoZ));
         pos[k * 3 + 1] = quote[k]! - (d < VICINO ? 40 : 3);

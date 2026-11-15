@@ -5,7 +5,7 @@ import type { Campo } from './campo.js';
 import { atmosfera, NEBBIA_GLSL, NUBI_GLSL } from './atmosfera.js';
 import { DIREZIONE_SOLE } from './cielo.js';
 import { rumore } from '../base/matematica.js';
-import { altezzaEsatta, campiona, lava, PALUDE, QUOTA_ACQUA, VULCANO, ZONE, type Campione } from './zone.js';
+import { altezzaEsatta, campiona, lava, N_ZONE, QUOTA_ACQUA, VULCANO, ZONE, type Campione } from './zone.js';
 
 const TERRE = ZONE.map((z) => new THREE.Color(z.terra));
 
@@ -16,8 +16,10 @@ const TERRE = ZONE.map((z) => new THREE.Color(z.terra));
  */
 export function coloreDelSuolo(c: Campione, x: number, z: number, su: number, esito: Float32Array, k: number): number {
   let r = 0, g = 0, b = 0;
+  let rivaScura = 0;
   for (let n = 0; n < ZONE.length; n++) {
     const w = c.pesi[n]!;
+    if (ZONE[n]!.rivaScura) rivaScura += w;
     r += TERRE[n]!.r * w;
     g += TERRE[n]!.g * w;
     b += TERRE[n]!.b * w;
@@ -26,7 +28,7 @@ export function coloreDelSuolo(c: Campione, x: number, z: number, su: number, es
   const roccia = gradino(0.9, 0.7, su) * 0.85;
   const fango = gradino(QUOTA_ACQUA + 0.5, QUOTA_ACQUA - 0.2, h) * 0.6;
   // Sabbia chiara lungo mari, laghi e fiumi (non in palude né sul vulcano, dove la riva è fango o cenere).
-  const sabbia = gradino(0.55, -0.15, h) * (1 - c.pesi[PALUDE]! - c.pesi[VULCANO]!) * (1 - fango) * 0.9;
+  const sabbia = gradino(0.55, -0.15, h) * (1 - rivaScura) * (1 - fango) * 0.9;
   // La neve comincia più o meno a cinquanta metri, con un bordo frastagliato, e non attacca sulle pareti.
   const neve = gradino(48, 60, h + rumore(x * 0.05, z * 0.05) * 9) * (1 - roccia);
   const m = (colore: number, quanto: number, v: number): number => v + (colore - v) * quanto;
@@ -195,8 +197,8 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
     zolle.push({ cx: NaN, cz: NaN, pronta: false, mesh, quote: new Float32Array(PUNTI * PUNTI), collisore: null });
   }
 
-  const pesiPunto = new Float32Array(PUNTI * PUNTI * 5);
-  const puntoQui: Campione = { h: 0, pesi: new Float32Array(5) };
+  const pesiPunto = new Float32Array(PUNTI * PUNTI * N_ZONE);
+  const puntoQui: Campione = { h: 0, pesi: new Float32Array(N_ZONE) };
   // Altezze di una zolla più un bordo di un punto tutt'intorno: serve a calcolare le pendenze senza scalini ai confini.
   const BORDO = PUNTI + 2;
   const blocco = new Float32Array(BORDO * BORDO);
@@ -238,7 +240,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         const l = lava(x, z, c.pesi[VULCANO]!);
         lav[k] = l;
         // Il colore vero arriva nel secondo giro, quando si conosce la pendenza: qui si tengono da parte i pesi.
-        pesiPunto.set(c.pesi, k * 5);
+        pesiPunto.set(c.pesi, k * N_ZONE);
         // Nelle immagini per l'erba ogni zolla scrive i suoi punti tranne l'ultima fila e colonna (sono della vicina).
         if (i < CELLE && j < CELLE) {
           const t = resto(cz * CELLE + j, LATO_IMMAGINE) * LATO_IMMAGINE + resto(cx * CELLE + i, LATO_IMMAGINE);
@@ -261,7 +263,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         nor[k * 3 + 1] = (2 * PASSO) / lung;
         nor[k * 3 + 2] = dz / lung;
         puntoQui.h = zolla.quote[k]!;
-        puntoQui.pesi.set(pesiPunto.subarray(k * 5, k * 5 + 5));
+        puntoQui.pesi.set(pesiPunto.subarray(k * N_ZONE, (k + 1) * N_ZONE));
         const fertile = coloreDelSuolo(puntoQui, x0 + i * PASSO, z0 + j * PASSO, nor[k * 3 + 1]!, col, k * 3);
         if (i < CELLE && j < CELLE) {
           const t = resto(cz * CELLE + j, LATO_IMMAGINE) * LATO_IMMAGINE + resto(cx * CELLE + i, LATO_IMMAGINE);

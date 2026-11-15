@@ -7,13 +7,19 @@ tredici incantesimi e migliaia di pezzi da far crollare, bruciare, gelare, solle
 ## Il mondo
 
 Il mondo **non ha confini**: terreno, terre e luoghi nascono attorno a chi gioca mentre cammina, in qualunque
-direzione, e sono sempre gli stessi ogni volta che ci si torna (la "sorte" dipende solo dal punto della mappa).
-Si parte dal villaggio della **Radura**; il clima cambia dolcemente da un posto all'altro e fa nascere le **Dune
-d'Ambra** (piramidi, templi, case di sabbia), le **Terre Gelate** (castelli di ghiaccio, igloo, guglie), la **Palude
-dei Lumi** (palafitte, torri storte, funghi giganti) e il **Monte Brace** (vulcani con lava, fortezze nere, altari).
-Nei prati ci sono borghi, fattorie e torri di vedetta. La mappa in alto a sinistra segue chi gioca: i luoghi vicini
-sono cerchietti, che diventano pieni quando li si scopre. Il gioco ricorda le scoperte e il punto in cui si è
-arrivati; il pulsante "Al villaggio" riporta alla partenza.
+direzione, e sono sempre gli stessi ogni volta che ci si torna.
+
+- **Il rilievo**: catene di montagne con la neve in cima, vallate, altipiani a gradoni, fiumi in pianura, laghi,
+  il mare con spiagge e isole. La vista arriva a più di un chilometro.
+- **Quindici terre**, decise da caldo e umidità: la Radura (dove si parte), Selva Fitta, Bosco d'Autunno, Giungla
+  Smeraldo, Savana d'Oro, Steppa del Vento, Tundra Grigia, Terre Gelate, Dune d'Ambra, Gole Rosse, Saline Bianche,
+  Palude dei Lumi, Bosco dei Funghi, Campi di Cristallo, Monte Brace. Ognuna ha il suo suolo, le sue piante, la
+  sua luce, la sua nebbia e ciò che vola nell'aria (neve, foglie, spore, lucciole, sabbia, faville).
+- **I luoghi costruiti** (borghi, fattorie, torri, piramidi, templi, castelli di ghiaccio, igloo, palafitte,
+  fortezze, altari…) li mette la sorte, e ogni terra ha i suoi. La mappa in alto a sinistra segue chi gioca.
+
+Il gioco ricorda le scoperte e il punto in cui si è arrivati; il pulsante «Al villaggio» riporta alla partenza.
+Le terre e le loro regole sono tutte in `src/mondo/zone.ts`: per aggiungerne una basta una voce in più nell'elenco.
 
 ## Come si gioca
 

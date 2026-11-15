@@ -28,7 +28,7 @@ import { costruisciLuogo } from './mondo/costruzioni.js';
 import { creaPrato } from './mondo/erba.js';
 import { creaLontano } from './mondo/lontano.js';
 import { altezza, creaTerreno } from './mondo/terreno.js';
-import { luoghiVicini, pesiZone, ZONE, type Luogo } from './mondo/zone.js';
+import { luoghiVicini, N_ZONE, pesiZone, ZONE, type Luogo } from './mondo/zone.js';
 import type { Gruppo } from './fisica/pezzi.js';
 import { Suoni } from './suoni.js';
 
@@ -383,7 +383,7 @@ async function avvia(): Promise<void> {
   const v = new THREE.Vector3();
   const metaLuce = new THREE.Vector3();
   const metaTinta = new THREE.Color();
-  const pesi = new Float32Array(5);
+  const pesi = new Float32Array(N_ZONE);
   const nebbiaZona = new THREE.Color();
   const cieloZona = new THREE.Color();
   const altaZona = new THREE.Color();
@@ -508,7 +508,7 @@ async function avvia(): Promise<void> {
     ui.disegnaMappa(p.x, p.z, giocatore.imbardata, luoghiInVista, scoperti, rasi);
   };
 
-  /** Quel che vola nell'aria di ogni zona: neve, faville, lucciole, sabbia. */
+  /** Quel che vola nell'aria di ogni terra: neve, faville, lucciole, sabbia, foglie, spore. */
   const polvereDelPosto = (dt: number): void => {
     const p = giocatore.posizione;
     const a = Math.random() * Math.PI * 2;
@@ -516,28 +516,47 @@ async function avvia(): Promise<void> {
     const x = p.x + Math.cos(a) * r;
     const z = p.z + Math.sin(a) * r;
     const quante = dt * 60;
-    if (pesi[2]! > 0.5 && Math.random() < 2.5 * quante) {
+    const forte = (tipo: string): boolean => {
+      let w = 0;
+      for (let i = 0; i < N_ZONE; i++) if (ZONE[i]!.aria === tipo) w += pesi[i]!;
+      return w > 0.5;
+    };
+    if (forte('neve') && Math.random() < 2.5 * quante) {
       scintille.emetti({
         x, y: p.y + 2 + Math.random() * 9, z, vx: 1.2, vy: -1.6 - Math.random(), vz: 0.4,
         vita: 3.5, dim: 0.1, dimFine: 0.08, r: 0.95, g: 1, b: 1.1, alfa: 0.9,
       });
     }
-    if (pesi[4]! > 0.5 && Math.random() < 0.8 * quante) {
+    if (forte('faville') && Math.random() < 0.8 * quante) {
       scintille.emetti({
         x, y: altezza(x, z) + 0.2, z, vx: (Math.random() - 0.5) * 1.5, vy: 1.5 + Math.random() * 3, vz: (Math.random() - 0.5) * 1.5,
         vita: 2 + Math.random() * 2, dim: 0.11, dimFine: 0.04, r: 2, g: 0.8, b: 0.2, alfa: 1, attrito: 0.3,
       });
     }
-    if (pesi[3]! > 0.5 && Math.random() < 0.35 * quante) {
+    if (forte('lucciole') && Math.random() < 0.35 * quante) {
       scintille.emetti({
         x, y: altezza(x, z) + 0.6 + Math.random() * 2.5, z, vx: (Math.random() - 0.5) * 0.8, vy: (Math.random() - 0.5) * 0.4, vz: (Math.random() - 0.5) * 0.8,
         vita: 3 + Math.random() * 2, dim: 0.16, dimFine: 0.12, r: 1.2, g: 1.7, b: 0.5, alfa: 1,
       });
     }
-    if (pesi[1]! > 0.5 && Math.random() < 0.25 * quante) {
+    if (forte('spore') && Math.random() < 0.9 * quante) {
+      const viola = Math.random() < 0.5;
+      scintille.emetti({
+        x, y: altezza(x, z) + 0.3 + Math.random() * 4, z, vx: (Math.random() - 0.5) * 0.5, vy: 0.3 + Math.random() * 0.5, vz: (Math.random() - 0.5) * 0.5,
+        vita: 4 + Math.random() * 3, dim: 0.13, dimFine: 0.05, r: viola ? 1.3 : 0.5, g: viola ? 0.6 : 1.5, b: 1.7, alfa: 0.9,
+      });
+    }
+    if (forte('sabbia') && Math.random() < 0.25 * quante) {
       fumo.emetti({
         x, y: altezza(x, z) + 0.4, z, vx: 5 + Math.random() * 3, vy: 0.3, vz: 2,
         vita: 2.5, dim: 1.5, dimFine: 4, r: 0.85, g: 0.74, b: 0.5, alfa: 0.12,
+      });
+    }
+    if (forte('foglie') && Math.random() < 0.6 * quante) {
+      const tinta = Math.random();
+      fumo.emetti({
+        x, y: p.y + 3 + Math.random() * 7, z, vx: 1.5 + Math.random(), vy: -1 - Math.random() * 0.8, vz: 0.6,
+        vita: 4, dim: 0.16, dimFine: 0.14, r: 0.9, g: 0.25 + tinta * 0.45, b: 0.08, alfa: 0.95,
       });
     }
   };
