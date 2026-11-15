@@ -19,6 +19,9 @@ import { OfficinaUi } from './officinaUi.js';
 import { leggiTrovati, PERDUTI, salvaTrovati } from './incantesimi/perduti.js';
 import { Mete, type Fatti } from './mete.js';
 import { Sigilli } from './mondo/sigilli.js';
+import { Creature } from './creature.js';
+import { costoDi, Mago } from './mago.js';
+import { MagoUi } from './magoUi.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
 import { atmosfera } from './mondo/atmosfera.js';
@@ -28,7 +31,7 @@ import { costruisciLuogo } from './mondo/costruzioni.js';
 import { creaPrato } from './mondo/erba.js';
 import { creaLontano } from './mondo/lontano.js';
 import { altezza, creaTerreno } from './mondo/terreno.js';
-import { luoghiVicini, N_ZONE, pesiZone, ZONE, type Luogo } from './mondo/zone.js';
+import { luoghiVicini, N_ZONE, pesiZone, QUOTA_ACQUA, ZONE, type Luogo } from './mondo/zone.js';
 import type { Gruppo } from './fisica/pezzi.js';
 import { Suoni } from './suoni.js';
 
@@ -141,6 +144,12 @@ async function avvia(): Promise<void> {
   const lampi = new Lampi(scena, q.telefono ? 2 : 3);
   const comandi = new Comandi(ui.tela, ui.leva, ui.pomello);
 
+  // --- il mago (vita, mana, livelli) e le creature ---
+  const mago = new Mago();
+  mago.carica();
+  const creature = new Creature(altezza, campo, QUOTA_ACQUA);
+  scena.add(creature.gruppo);
+  const magoUi = new MagoUi(mago, () => suoni.scoperta());
   const effetti: Effetto[] = [];
   let scossa = 0;
   const umore = { buio: 0, r: 1, g: 1, b: 1 };
@@ -150,6 +159,8 @@ async function avvia(): Promise<void> {
     scossa(forza, dove) {
       const d = dove.distanceTo(camera.position);
       scossa = Math.max(scossa, forza * Math.min(1, 14 / (d + 1)));
+      // Ogni botto che fa tremare la terra ferisce anche le creature lì attorno.
+      creature.urto(dove, forza);
     },
     umore(buio, r, gg, b) {
       if (buio < umore.buio) return;
@@ -302,6 +313,13 @@ async function avvia(): Promise<void> {
   };
   const lancia = (indice: number): void => {
     const magia = magie[indice]!;
+    if (magoUi.aperta) return;
+    if (!mago.spendi(costoDi(magia))) {
+      // Senza mana non si lancia: si aspetta che torni, o si sceglie un incantesimo che costa meno.
+      ui.colpo(`Mana insufficiente (serve ${costoDi(magia)})`, '#7ad0ff');
+      attese[indice] = 0.6;
+      return;
+    }
     camera.updateMatrixWorld();
     const aTerra = mira();
     bastone.punta(origine);
@@ -603,6 +621,33 @@ async function avvia(): Promise<void> {
     if ((comandi.lancia || comandi.colpoSingolo) && comandi.attivi && !g.impegnato && attese[scelto]! <= 0) lancia(scelto);
     comandi.colpoSingolo = false;
 
+    // Il mago e le creature: il mana torna, i golem inseguono e colpiscono, il fuoco sotto i piedi scotta.
+    mago.aggiorna(dt);
+    let ferita = creature.aggiorna(dt, giocatore.posizione);
+    if (ferita > 0) {
+      suoni.tonfo(1.4);
+      scossa = Math.max(scossa, 0.5);
+      ui.colpo(`−${Math.round(ferita)} vita`, '#ff8a5a');
+    }
+    const sotto = campo.cella(giocatore.posizione.x, giocatore.posizione.z);
+    if (sotto >= 0 && campo.fuoco[sotto]! > 0 && !giocatore.aNuoto) ferita += 12 * dt;
+    for (const premio of creature.ritira()) {
+      suoni.tonfo(1);
+      ui.colpo(`+${premio.esperienza} esperienza · ◆ ${premio.essenze}`, '#e9c46a');
+      if (mago.guadagna(premio.esperienza, premio.essenze) > 0) {
+        ui.annuncia(`Livello ${mago.livello}`, 'Hai un punto da spendere: tocca il pulsante dorato', true);
+        suoni.tesoro();
+      }
+    }
+    if (mago.ferisci(ferita)) {
+      const perse = mago.rinasci();
+      creature.svuota();
+      spostati(0, 41, 0);
+      ui.annuncia('Sei caduto', perse > 0 ? `Rinasci al villaggio · hai perso ◆ ${perse}` : 'Rinasci al villaggio', true);
+      suoni.sveglia();
+    }
+    magoUi.aggiorna();
+
     umore.buio = 0;
     for (let i = effetti.length - 1; i >= 0; i--) {
       if (!effetti[i]!.aggiorna(dt, g)) effetti.splice(i, 1);
@@ -803,7 +848,7 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature,
     luoghi: () => luoghiInVista,
     magie: () => magie.map((m) => m.nome),
     fermo: false,

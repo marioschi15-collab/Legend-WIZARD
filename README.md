@@ -30,6 +30,12 @@ Le terre e le loro regole sono tutte in `src/mondo/zone.ts`: per aggiungerne una
 
 ## Che cosa c'è da fare
 
+**Il mago cresce.** In alto a sinistra ci sono la vita (rossa) e il mana (azzurro). Ogni incantesimo costa mana, che
+torna piano da solo: i più potenti costano di più. Lontano dal villaggio girano i **golem di sassi**: ti inseguono e
+colpiscono da vicino; il fuoco li consuma, il gelo li rallenta, i botti li sbriciolano. Più ci si allontana, più sono
+forti. Battendoli si guadagnano esperienza ed essenze (◆); a ogni livello c'è un punto da spendere in vita, mana o
+ricarica. Se la vita finisce si rinasce al villaggio perdendo un quinto delle essenze, mai i progressi.
+
 - **Una meta sempre sullo schermo** (sotto la mappa): le prime insegnano il gioco in un paio di minuti (bruciare,
   spegnere, afferrare, riparare, inventare, esplorare), poi diventano traguardi di esplorazione senza fine.
 - **Incantesimi perduti**: in ogni tipo di luogo ce n'è uno nascosto, segnalato da una colonna di luce dorata che si
@@ -62,6 +68,8 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 ```
 
 ## Dove sta cosa
+
+- `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: i golem.
 
 - `src/mondo/`: `zone.ts` (il clima che decide le terre, e la sorte che decide i luoghi), `terreno.ts` (zolle che
   nascono attorno a chi gioca e vengono riusate), cielo, erba e fiori, vegetazione, e `costruzioni.ts` che disegna

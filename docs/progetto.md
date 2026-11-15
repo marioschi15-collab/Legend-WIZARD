@@ -83,6 +83,10 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 | **6. Costruire** | Parole per posare e modellare, la propria torre che resta salvata | Pezzi da costruzione belli, decorazioni | Si ha voglia di tornare alla propria torre? |
 | **7. Online** | Altri maghi, duelli, alleanze, missioni insieme; personaggi speciali con cui parlare liberamente e incantesimi a frase libera | I maghi degli altri, ognuno con il suo aspetto | Si gioca volentieri con un amico? |
 
+**A che punto siamo.** Della tappa 0 sono fatti rilievo e biomi (restano la vita e il cielo). Per scelta del
+fondatore si è passati intanto alle funzionalità: della tappa 1 ci sono vita, mana con costo per incantesimo, livelli
+con punti da spendere, essenze, rinascita al villaggio e il golem di sassi (più forte lontano dal villaggio).
+
 Ciò che esiste già resta la base: mondo senza confini, cinque terre, luoghi che crollano, incantesimi, colonne di
 luce, mete sullo schermo.
 
