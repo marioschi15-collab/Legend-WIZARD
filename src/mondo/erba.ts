@@ -118,8 +118,8 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         p.y += t * alto * (1.0 - 0.18 * dot(piega, piega) * t);
 
         float chiazza = sin(w.x * 0.07) * sin(w.y * 0.09 + 1.7) * 0.5 + 0.5;
-        vec3 base = mix(vec3(0.045, 0.19, 0.03), vec3(0.09, 0.23, 0.03), chiazza);
-        vec3 punta = mix(vec3(0.30, 0.62, 0.10), vec3(0.55, 0.72, 0.16), chiazza * aCaso.z);
+        vec3 base = mix(vec3(0.015, 0.09, 0.07), vec3(0.04, 0.13, 0.05), chiazza);
+        vec3 punta = mix(vec3(0.13, 0.38, 0.16), vec3(0.36, 0.48, 0.12), chiazza * aCaso.z);
         punta = mix(punta, vec3(0.22, 0.78, 0.16), stato.b * 0.7);
         vec3 c = mix(base, punta, t);
         float naturale = 1.0 - stato.b;
@@ -129,10 +129,10 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         c = mix(c, vec3(0.02, 0.016, 0.012), stato.r * 0.96);
         c = mix(c, vec3(0.78, 0.92, 1.0), stato.g * (0.45 + 0.5 * t));
         c *= ombraNubi(w, uTempo);
-        c *= mix(vec3(0.42, 0.48, 0.56), vec3(1.0), soleQui(vec3(w.x, terra + 0.3, w.y)));
+        c *= mix(vec3(0.34, 0.36, 0.62), vec3(1.0), soleQui(vec3(w.x, terra + 0.3, w.y)));
         // Guardando verso il sole le punte si accendono in controluce; il vento fa correre onde di luce sul prato.
         float controluce = pow(max(dot(normalize(rel + 1e-4), normalize(uSole.xz)), 0.0), 2.0);
-        c += vec3(0.20, 0.19, 0.03) * controluce * t * (1.0 - stato.r) * presente;
+        c += vec3(0.42, 0.27, 0.04) * controluce * t * (1.0 - stato.r) * presente;
         c *= 1.0 + 0.12 * onda * t;
         // Un filo di luce in più sulle punte rivolte al sole: dà lucentezza al prato.
         c += vec3(0.10, 0.11, 0.03) * t * t * (0.5 + 0.5 * sin(aCaso.x * 40.0)) * (1.0 - stato.r) * presente;
@@ -172,7 +172,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
   const basiFiori = new Float32Array(q.fiori * 2);
   const casiFiori = new Float32Array(q.fiori * 4);
   const coloriFiori = new Float32Array(q.fiori * 3);
-  const tavolozza = [0xe8302a, 0x2f5fe0, 0xf07ab0, 0xfff4e0, 0xf5c518, 0xe8302a, 0x9a5bf0].map(
+  const tavolozza = [0x3f55f0, 0x7a48f0, 0x2f7df0, 0xf07ab0, 0x9a5bf0, 0xfff0d0, 0x5a3ff0, 0xf5a518].map(
     (c) => new THREE.Color(c),
   );
   for (let i = 0; i < q.fiori; i++) {
@@ -206,10 +206,10 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float aiuola = sin(w.x * 0.11 + 1.3) * sin(w.y * 0.13 + 0.7) + 0.45 * sin(w.x * 0.31 + w.y * 0.27);
         vec4 bio = texture2D(uBiomi, uvAltezze(w));
         float prato = bio.r * (1.0 - bio.g) * (1.0 - bio.b) * (1.0 - bio.a);
-        float spontaneo = smoothstep(0.15, 0.6, aiuola) * step(aCaso.z, 0.55) * smoothstep(0.6, 0.9, prato) * smoothstep(-0.5, -0.15, terra);
+        float spontaneo = smoothstep(-0.1, 0.4, aiuola) * step(aCaso.z, 0.8) * smoothstep(0.6, 0.9, prato) * smoothstep(-0.5, -0.15, terra);
         float magico = smoothstep(aCaso.w * 0.7, aCaso.w * 0.7 + 0.25, stato.b);
         float mostra = max(spontaneo, magico) * (1.0 - smoothstep(0.1, 0.5, stato.r)) * bordo;
-        float raggio = mix(0.05, 0.09, aCaso.x) * mostra * (1.0 + 0.4 * stato.b);
+        float raggio = mix(0.065, 0.115, aCaso.x) * mostra * (1.0 + 0.4 * stato.b);
         float gambo = (0.5 + aCaso.y * 0.45) * (1.0 + 1.3 * stato.b);
         float onda = sin(uTempo * 1.5 + w.x * 0.32 + w.y * 0.21) * 0.6;
         vec3 centro = vec3(w.x, terra + gambo, w.y);
@@ -223,7 +223,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float cuore = 1.0 - step(0.5, length(position.xz));
         vec3 c = mix(aColore, vec3(1.0, 0.78, 0.1), cuore);
         c = mix(c, vec3(0.85, 0.95, 1.0), stato.g * 0.6);
-        vColore = c * ombraNubi(w, uTempo) * mix(vec3(0.42, 0.48, 0.56), vec3(1.0), soleQui(centro));
+        vColore = c * ombraNubi(w, uTempo) * mix(vec3(0.34, 0.36, 0.62), vec3(1.0), soleQui(centro));
         vec4 mv = viewMatrix * vec4(p, 1.0);
         vDistanza = -mv.z;
         gl_Position = projectionMatrix * mv;

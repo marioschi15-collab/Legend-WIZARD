@@ -32,6 +32,11 @@ import { luoghiVicini, N_ZONE, pesiZone, ZONE, type Luogo } from './mondo/zone.j
 import type { Gruppo } from './fisica/pezzi.js';
 import { Suoni } from './suoni.js';
 
+const ORA_SOLE = new THREE.Color(0xffb052);
+const ORA_ALTA = new THREE.Color(0x8a7ff0);
+const ORA_BASSA = new THREE.Color(0x7a5a86);
+const ORA_NEBBIA = new THREE.Color(0xa58fd6);
+const ORA_CIELO = new THREE.Color(0x2a2478);
 const NEBBIE = ZONE.map((z) => new THREE.Color(z.nebbia));
 const CIELI = ZONE.map((z) => new THREE.Color(z.cielo));
 const ALTE = ZONE.map((z) => new THREE.Color(z.luceAlta));
@@ -160,6 +165,8 @@ async function avvia(): Promise<void> {
     impegnato: false,
   };
 
+  /** La pennellata dell'ultima passata: quanto è larga (in punti dello schermo) e quanto si sente. */
+  const pennello = { passo: { value: new THREE.Vector2(0.001, 0.001) }, forza: { value: 0.85 } };
   // --- bagliore attorno alle cose luminose (solo al computer) ---
   // L'immagine passa sempre da qui: bordi lisci, bagliore (se il dispositivo lo regge) e toni finali.
   const compositore = new EffectComposer(
@@ -176,17 +183,36 @@ async function avvia(): Promise<void> {
   compositore.addPass(
     new ShaderPass(
       new THREE.ShaderMaterial({
-        uniforms: { tDiffuse: { value: null }, uTempo: atmosfera.tempo },
+        uniforms: { tDiffuse: { value: null }, uTempo: atmosfera.tempo, uPasso: pennello.passo, uPennello: pennello.forza },
         vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
         fragmentShader: /* glsl */ `
-          uniform sampler2D tDiffuse; uniform float uTempo; varying vec2 vUv;
+          uniform sampler2D tDiffuse; uniform float uTempo; uniform vec2 uPasso; uniform float uPennello; varying vec2 vUv;
+          // Una «pennellata»: la media dei colori in un angolo attorno al punto, e quanto quell'angolo è uniforme.
+          vec4 angolo(vec2 verso) {
+            vec3 a = texture2D(tDiffuse, vUv + verso * uPasso * vec2(0.6, 0.6)).rgb;
+            vec3 b = texture2D(tDiffuse, vUv + verso * uPasso * vec2(2.6, 0.8)).rgb;
+            vec3 c = texture2D(tDiffuse, vUv + verso * uPasso * vec2(0.8, 2.6)).rgb;
+            vec3 d = texture2D(tDiffuse, vUv + verso * uPasso * vec2(2.4, 2.4)).rgb;
+            vec3 m = (a + b + c + d) * 0.25;
+            vec3 s = (a * a + b * b + c * c + d * d) * 0.25 - m * m;
+            return vec4(m, (s.r + s.g + s.b) / (dot(m, m) + 0.02));
+          }
           void main() {
             vec3 c = texture2D(tDiffuse, vUv).rgb;
+            if (uPennello > 0.0) {
+              // Come dipinto: per ogni punto si tiene l'angolo più uniforme. I bordi restano netti, il resto si
+              // scioglie in macchie di colore.
+              vec4 p = angolo(vec2(1.0, 1.0));
+              vec4 o = angolo(vec2(-1.0, 1.0)); if (o.a < p.a) p = o;
+              o = angolo(vec2(1.0, -1.0)); if (o.a < p.a) p = o;
+              o = angolo(vec2(-1.0, -1.0)); if (o.a < p.a) p = o;
+              c = mix(c, p.rgb, uPennello);
+            }
             float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-            c *= mix(vec3(0.95, 0.99, 1.06), vec3(1.04, 1.0, 0.94), smoothstep(0.05, 0.9, l));
-            c = mix(vec3(l), c, 1.2);
+            c *= mix(vec3(0.86, 0.9, 1.2), vec3(1.1, 1.0, 0.84), smoothstep(0.04, 0.8, l));
+            c = mix(vec3(l), c, 1.32);
             vec2 q = vUv - 0.5;
-            c *= 1.0 - 0.32 * smoothstep(0.25, 0.85, dot(q, q) * 2.0);
+            c *= 1.0 - 0.36 * smoothstep(0.25, 0.85, dot(q, q) * 2.0);
             gl_FragColor = vec4(max(c, 0.0), 1.0);
             #include <tonemapping_fragment>
             #include <colorspace_fragment>
@@ -211,6 +237,8 @@ async function avvia(): Promise<void> {
     renderer.setPixelRatio(densitaPixel);
     compositore.setPixelRatio(densitaPixel);
     compositore.setSize(w, h);
+    // La pennellata è larga uguale su ogni schermo: un quattrocentosessantesimo dell'altezza.
+    pennello.passo.value.set(h / (460 * w), 1 / 460);
     scalaPunti.value = (h * densitaPixel) / (2 * Math.tan((camera.fov * Math.PI) / 360));
     massimoPunti.value = q.telefono ? 0.2 * h * densitaPixel : 600;
   };
@@ -710,6 +738,12 @@ async function avvia(): Promise<void> {
       densita += ZONE[i]!.densitaNebbia * w;
       luceZona += ZONE[i]!.luce * w;
     }
+    // L'ora dorata: ovunque il sole è basso e d'oro, le ombre e il cielo viola. Ogni terra tiene un po' del suo colore.
+    soleZona.lerp(ORA_SOLE, 0.7);
+    altaZona.lerp(ORA_ALTA, 0.62);
+    bassaZona.lerp(ORA_BASSA, 0.45);
+    nebbiaZona.lerp(ORA_NEBBIA, 0.55);
+    cieloZona.lerp(ORA_CIELO, 0.8);
     const chiaro = (1 - umoreVero.buio) * luceZona;
     atmosfera.luce.value = chiaro;
     atmosfera.tinta.value.copy(umoreVero.tinta);
@@ -719,8 +753,8 @@ async function avvia(): Promise<void> {
     const nebbia = scena.fog as THREE.FogExp2;
     nebbia.color.copy(atmosfera.nebbiaColore.value);
     nebbia.density = densita;
-    luceCielo.intensity = 2.1 * (0.3 + 0.7 * chiaro);
-    sole.intensity = 3.1 * (0.25 + 0.75 * chiaro);
+    luceCielo.intensity = 1.45 * (0.3 + 0.7 * chiaro);
+    sole.intensity = 3.9 * (0.25 + 0.75 * chiaro);
     // Ogni terra ha la sua luce: quella che scende dal cielo, quella che rimbalza dal suolo, quella del sole.
     luceCielo.color.copy(altaZona);
     luceCielo.groundColor.copy(bassaZona);
@@ -798,6 +832,7 @@ async function avvia(): Promise<void> {
   const mostra = (nuovo: number): void => {
     livello = Math.max(0, Math.min(LIVELLO_MASSIMO, nuovo));
     bagliore.enabled = q.bagliore && livello < 1;
+    pennello.forza.value = livello < 5 ? 0.85 : 0;
     // La nitidezza si tocca per ultima e mai sotto una volta e mezza: un'immagine sgranata è peggio di una povera.
     densitaPixel = livello >= 6 ? Math.min(q.densitaPixel, 1.5) : livello >= 2 ? Math.min(q.densitaPixel, 1.75) : q.densitaPixel;
     prato.densita(livello >= 7 ? 0.35 : livello >= 3 ? 0.6 : 1);

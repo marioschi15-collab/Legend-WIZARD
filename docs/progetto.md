@@ -68,6 +68,8 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 
 - **Gioco**: che cosa si aggiunge da fare.
 - **Grafica**: che cosa diventa più bello in quella tappa (la grafica non è una tappa a parte: migliora sempre).
+  Lo stile scelto dal fondatore è «il quadro fantasy»: ora dorata, sole basso, ombre e cielo viola con le stelle,
+  colori pieni, fiori blu e viola, alberi d'oro e pini scuri, e l'immagine sciolta in pennellate come un dipinto.
 - **Prova**: la domanda a cui il fondatore risponde giocando. Se la risposta è no, si corregge prima di andare avanti.
 
 | Tappa | Gioco | Grafica | Prova |

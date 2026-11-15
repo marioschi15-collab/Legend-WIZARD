@@ -159,7 +159,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          // Dove i fili d'erba finiscono, il terreno prende il loro colore medio: senza, il prato sembrava un
          // tappeto rotondo e chiaro che seguiva chi cammina sopra un suolo più scuro.
          vec4 bio = texture2D(uBiomi, uvAltezze(vMondo.xz));
-         vec3 erbaMedia = vec3(0.20, 0.40, 0.07);
+         vec3 erbaMedia = vec3(0.09, 0.25, 0.10);
          erbaMedia = mix(erbaMedia, vec3(0.6, 0.5, 0.2), bio.g);
          erbaMedia = mix(erbaMedia, erbaMedia * vec3(0.3, 0.5, 0.46), bio.a);
          erbaMedia = mix(erbaMedia, vec3(0.88, 0.94, 1.0), bio.b * 0.6);
