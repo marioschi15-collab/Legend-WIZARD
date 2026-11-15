@@ -66,6 +66,12 @@ nulla, il fuoco la scioglie), lo scorpione di sabbia (svelto, quasi insensibile 
 di palude (i botti gli passano attraverso, il gelo lo spegne) e il diavoletto di lava (nel fuoco ci sguazza, il gelo
 lo spacca). La prima volta che se ne incontra una, il gioco dice come si comporta.
 
+**Ogni terra ha la sua regola e la sua sfida.** Tra i ghiacci e nella tundra il fuoco si spegne quasi subito; nel
+deserto, nella savana, nelle gole e sul vulcano è il gelo a sciogliersi; in palude e nella giungla il fuoco dura
+poco; tra i funghi la vita torna da sola; tra i cristalli il mana torna il doppio più in fretta. La prima volta che
+si entra in una terra parte una sfida (sbriciolare tre delle sue creature): vinta quella, la terra è «domata» e
+insegna una parola.
+
 **Guardiani e viaggio rapido.** Ogni luogo fuori dal villaggio ha un guardiano con la corona, più grosso e più duro.
 Batterlo libera il luogo: insegna una parola, ci si rinasce se si cade lì vicino, e ci si torna quando si vuole con
 il pulsante «🧭 Viaggio rapido».
@@ -104,6 +110,7 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 ## Dove sta cosa
 
 - `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: le creature di ogni terra e i guardiani. `src/viaggioUi.ts`: il viaggio rapido. `src/quadernoUi.ts`: il quaderno.
+- `src/sfide.ts`: le regole di ogni terra e le sfide.
 - `src/missioni.ts`, `src/abitanti.ts`: le missioni con il loro quaderno delle soluzioni, e gli abitanti che le danno.
 - `src/incantesimi/parole.ts`, `src/paroleUi.ts`: il vocabolario, la lettura di un incantesimo scritto, il foglio per scriverlo.
 

@@ -30,6 +30,7 @@ import { ViaggioUi, type Meta } from './viaggioUi.js';
 import { QuadernoUi, type Capitolo } from './quadernoUi.js';
 import { SPECIE } from './creature.js';
 import { MISSIONI } from './missioni.js';
+import { REGOLE, Sfide } from './sfide.js';
 import { leggiConosciute } from './incantesimi/parole.js';
 import { creaBosco } from './mondo/alberi.js';
 import { AlberiMagici } from './mondo/alberiMagici.js';
@@ -423,6 +424,9 @@ async function avvia(): Promise<void> {
   // --- le missioni: gli abitanti aspettano all'ingresso del villaggio e chiedono una mano ---
   const missioni = new Missioni();
   missioni.carica();
+  const sfide = new Sfide();
+  sfide.carica();
+  let attesaRegola = 0;
   const abitanti = new Abitanti(altezza);
   scena.add(abitanti.gruppo);
   /** Quanta parte di un cerchio di prato ha una certa qualità (fiorito, gelato, in fiamme, bruciato). */
@@ -515,6 +519,15 @@ async function avvia(): Promise<void> {
       voci: Object.values(SPECIE).map((sp) => ({ nome: razzeViste.has(sp.nome) ? sp.nome : '???', nota: razzeViste.has(sp.nome) ? sp.indizio : 'Non l’hai ancora incontrata: vive in un’altra terra.', fatto: razzeViste.has(sp.nome) })),
     },
     {
+      titolo: 'Terre e sfide',
+      riassunto: `Terre viste ${terreViste.size} su ${ZONE.length} · domate ${sfide.domate.size}. Ogni terra, la prima volta, ti sfida a sbriciolare tre delle sue creature.`,
+      voci: [...terreViste].filter((z) => z !== 0).map((z) => ({
+        nome: ZONE[z]!.nome + (sfide.domate.has(z) ? ' · domata' : sfide.attiva?.zona === z ? ` · sfida in corso (${sfide.attiva.fatte} su ${sfide.attiva.servono})` : ''),
+        nota: REGOLE[z]!.testo || 'Nessuna regola particolare.',
+        fatto: sfide.domate.has(z),
+      })),
+    },
+    {
       titolo: 'Luoghi liberati',
       riassunto: liberati.length > 0 ? 'Ci torni quando vuoi con il viaggio rapido.' : 'Nessuno, per ora: ogni luogo fuori dal villaggio ha un guardiano con la corona.',
       voci: liberati.map((l) => ({ nome: l.nome, nota: `a ${Math.round(Math.hypot(l.x, l.z) / 10) * 10} metri dal villaggio`, fatto: true })),
@@ -531,7 +544,10 @@ async function avvia(): Promise<void> {
 
   function scriviObiettivo(): void {
     const m = missioni.attiva;
-    ui.scriviMeta(m ? `✦ ${m.chi} ${m.mestiere}: ${m.inBreve}` : mete.attuale());
+    const s = sfide.attiva;
+    if (m) ui.scriviMeta(`✦ ${m.chi} ${m.mestiere}: ${m.inBreve}`);
+    else if (s) ui.scriviMeta(`⚔ Sfida · ${ZONE[s.zona]!.nome}: sbriciola ${s.servono} creature di questa terra (${s.fatte} su ${s.servono})`);
+    else ui.scriviMeta(mete.attuale());
   }
   const curaMissioni = (dt: number): void => {
     const incontrato = abitanti.aggiorna(dt, giocatore.posizione, missioni.attiva?.id ?? null);
@@ -812,8 +828,12 @@ async function avvia(): Promise<void> {
     if (zona !== zonaAttuale && pesi[zona]! > 0.6) {
       zonaAttuale = zona;
       terreViste.add(zona);
-      ui.annuncia(ZONE[zona]!.nome, 'Sei entrato in una nuova zona');
+      // Ogni terra ha la sua regola, e la prima volta una sfida.
+      const sfida = sfide.entra(zona);
+      const regola = REGOLE[zona]!.testo;
+      ui.annuncia(ZONE[zona]!.nome, sfida ? `${regola} Sfida: sbriciola ${sfida.servono} creature di questa terra.`.trim() : regola || 'Sei entrato in una nuova zona', sfida !== null);
       suoni.scoperta();
+      scriviObiettivo();
     }
     for (const l of luoghiInVista) {
       // Ogni luogo ha un guardiano che lo aspetta sul bordo, dalla parte di chi arriva.
@@ -907,6 +927,18 @@ async function avvia(): Promise<void> {
 
     // Il mago e le creature: il mana torna, i golem inseguono e colpiscono, il fuoco sotto i piedi scotta.
     mago.aggiorna(dt);
+    // La regola della terra in cui si è: fuoco o gelo che non durano, mana più svelto, vita che torna.
+    const regola = REGOLE[zonaAttuale]!;
+    mago.manaDellaTerra = regola.mana;
+    mago.vitaDellaTerra = regola.vita;
+    attesaRegola += dt;
+    if (regola.fuocoMuore > 0 && attesaRegola >= regola.fuocoMuore) {
+      attesaRegola = 0;
+      campo.spegni(giocatore.posizione.x, giocatore.posizione.z, 90);
+    } else if (regola.geloSiScioglie > 0 && attesaRegola >= regola.geloSiScioglie) {
+      attesaRegola = 0;
+      campo.sciogli(giocatore.posizione.x, giocatore.posizione.z, 90);
+    } else if (attesaRegola > 10) attesaRegola = 0;
     giocatore.passoMagico = mago.svelto > 0 ? 1.8 : 1;
     giocatore.saltoMagico = mago.balzo > 0 ? 1.9 : 1;
     for (const gl of globi) {
@@ -926,6 +958,19 @@ async function avvia(): Promise<void> {
     if (sotto >= 0 && campo.fuoco[sotto]! > 0 && !giocatore.aNuoto) ferita += 12 * dt;
     for (const premio of creature.ritira()) {
       if (premio.guardiano) libera(premio.numero);
+      const sfidaVinta = sfide.sbriciolata(terraIn(premio.dove.x, premio.dove.z));
+      if (sfidaVinta) {
+        // La terra è domata: oltre al premio, insegna la parola più a buon mercato tra quelle che mancano.
+        const nuova = PAROLE.filter((x) => !conosciute.has(x.parola)).sort((a, b) => a.prezzo - b.prezzo)[0];
+        if (nuova) {
+          conosciute.add(nuova.parola);
+          salvaConosciute(conosciute);
+        }
+        ui.annuncia('Terra domata', `${ZONE[sfidaVinta.zona]!.nome}` + (nuova ? ` · impari la parola «${nuova.parola}»` : ''), true);
+        suoni.tesoro();
+        mago.guadagna(sfidaVinta.esperienza, sfidaVinta.essenze);
+      }
+      scriviObiettivo();
       suoni.tonfo(1);
       ui.colpo(`+${premio.esperienza} esperienza · ◆ ${premio.essenze}`, '#e9c46a');
       if (mago.guadagna(premio.esperienza, premio.essenze) > 0) {
@@ -1157,7 +1202,7 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, quadernoUi, luoghi2: () => luoghiInVista,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, quadernoUi, sfide, luoghi2: () => luoghiInVista,
     luoghi: () => luoghiInVista,
     magie: () => magie.map((m) => m.nome),
     fermo: false,

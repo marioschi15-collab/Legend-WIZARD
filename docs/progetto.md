@@ -100,7 +100,8 @@ premio pieno per le soluzioni nuove e dimezzato per quelle ripetute, e una parol
 carattere e giornata degli abitanti, il villaggio vivo, missioni nelle altre terre, il quaderno da sfogliare.
 Della tappa 4 ci sono cinque razze di creature distribuite sulle quindici terre, ognuna con un'immunità e un punto
 debole, i guardiani dei luoghi (batterli insegna una parola e rende il luogo sicuro) e il viaggio rapido. Mancano:
-le regole proprie di ogni terra (legno bagnato, fuoco che muore tra i ghiacci), creature che girano attorno ai muri.
+creature che girano attorno ai muri. Le regole delle terre ci sono (fuoco che muore al freddo e nell'umido, gelo che
+si scioglie al caldo, vita tra i funghi, mana tra i cristalli) e ogni terra ha una sfida di caccia che insegna una parola.
 
 Ciò che esiste già resta la base: mondo senza confini, cinque terre, luoghi che crollano, incantesimi, colonne di
 luce, mete sullo schermo.

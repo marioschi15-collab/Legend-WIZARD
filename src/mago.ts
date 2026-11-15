@@ -35,6 +35,9 @@ export class Mago {
   punti = 0;
   essenze = 0;
   readonly potenziamenti: Record<Potenziamento, number> = { vita: 0, mana: 0, ricarica: 0 };
+  /** Quello che cambia la terra in cui si è: quanto più svelto torna il mana, e se la vita torna sempre. */
+  manaDellaTerra = 1;
+  vitaDellaTerra = false;
   /** Secondi che restano agli incantesimi su di sé: scudo, passo svelto, balzo, invisibilità. */
   scudo = 0;
   svelto = 0;
@@ -57,13 +60,13 @@ export class Mago {
   }
 
   aggiorna(dt: number): void {
-    this.mana = Math.min(this.manaMassimo, this.mana + this.ricarica * dt);
+    this.mana = Math.min(this.manaMassimo, this.mana + this.ricarica * this.manaDellaTerra * dt);
     this.quiete += dt;
     this.scudo = Math.max(0, this.scudo - dt);
     this.svelto = Math.max(0, this.svelto - dt);
     this.balzo = Math.max(0, this.balzo - dt);
     this.invisibile = Math.max(0, this.invisibile - dt);
-    if (this.quiete > 6) this.vita = Math.min(this.vitaMassima, this.vita + 4 * dt);
+    if (this.quiete > 6 || this.vitaDellaTerra) this.vita = Math.min(this.vitaMassima, this.vita + 4 * dt);
   }
 
   /** Toglie il mana di un lancio; dice falso (e non toglie nulla) se non basta. */

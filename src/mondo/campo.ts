@@ -142,6 +142,13 @@ export class Campo {
     this.cerchio(x, z, raggio, (i) => this.spegniCella(i));
   }
 
+  /** Scioglie il gelo in un cerchio (nelle terre calde non dura). */
+  sciogli(x: number, z: number, raggio: number): void {
+    this.cerchio(x, z, raggio, (i) => {
+      this.gelo[i] = 0;
+    });
+  }
+
   /** Toglie bruciature, gelo e fiamme senza far crescere nulla: il prato torna com'era. */
   risana(x: number, z: number, raggio: number): void {
     this.cerchio(x, z, raggio, (i) => {
