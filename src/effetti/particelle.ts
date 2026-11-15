@@ -15,18 +15,50 @@ export interface Scintilla {
   attrito?: number;
 }
 
+let macchie: THREE.DataTexture | null = null;
+/** Una piccola immagine di macchie morbide, che si ripete: dà a fiamme e fumo il loro contorno irregolare. */
+function sbuffi(): THREE.DataTexture {
+  if (macchie) return macchie;
+  const lato = 64;
+  const dati = new Uint8Array(lato * lato * 4);
+  let seme = 99;
+  const caso = (): number => (seme = (seme * 16807) % 2147483647) / 2147483647;
+  // Due strati di onde con fasi a caso: si ripetono senza cuciture.
+  const onde = Array.from({ length: 10 }, (_, k) => ({ fx: Math.round(1 + caso() * (k < 5 ? 2 : 6)), fy: Math.round(1 + caso() * (k < 5 ? 2 : 6)), fase: caso() * 6.28, peso: k < 5 ? 1 : 0.45 }));
+  for (let y = 0; y < lato; y++) {
+    for (let x = 0; x < lato; x++) {
+      let v = 0;
+      let tot = 0;
+      for (const o of onde) {
+        v += Math.sin(((x * o.fx + y * o.fy) / lato) * 6.2832 + o.fase) * o.peso;
+        tot += o.peso;
+      }
+      const g = Math.max(0, Math.min(255, Math.round((0.5 + (v / tot) * 1.6) * 255)));
+      dati.set([g, g, g, 255], (y * lato + x) * 4);
+    }
+  }
+  macchie = new THREE.DataTexture(dati, lato, lato);
+  macchie.wrapS = macchie.wrapT = THREE.RepeatWrapping;
+  macchie.magFilter = macchie.minFilter = THREE.LinearFilter;
+  macchie.needsUpdate = true;
+  return macchie;
+}
+
 function materialePunti(luminoso: boolean, scala: { value: number }): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
     blending: luminoso ? THREE.AdditiveBlending : THREE.NormalBlending,
-    uniforms: { uScala: scala, uMassimo: massimoPunti, uLuce: atmosfera.luce, uLuminoso: { value: luminoso ? 1 : 0 } },
+    uniforms: { uScala: scala, uMassimo: massimoPunti, uLuce: atmosfera.luce, uLuminoso: { value: luminoso ? 1 : 0 }, uSbuffi: { value: sbuffi() } },
     vertexShader: /* glsl */ `
       attribute vec4 colore; attribute float dim;
       uniform float uScala; uniform float uMassimo;
-      varying vec4 vColore;
+      varying vec4 vColore; varying float vGrande; varying float vSeme;
       void main() {
         vColore = colore;
+        // I puntini grandi (fiamme, fumo) hanno una forma irregolare, ognuno la sua; le scintille restano tonde.
+        vGrande = smoothstep(0.3, 1.0, dim);
+        vSeme = fract(float(gl_VertexID) * 0.6180339) * 37.0;
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         gl_PointSize = min(dim * uScala / max(-mv.z, 0.1), uMassimo);
         // Da vicinissimo i puntini grandi si attenuano: altrimenti una fiammata accanto a chi gioca lo acceca.
@@ -38,11 +70,21 @@ function materialePunti(luminoso: boolean, scala: { value: number }): THREE.Shad
     `,
     fragmentShader: /* glsl */ `
       uniform float uLuce; uniform float uLuminoso;
-      varying vec4 vColore;
+      varying vec4 vColore; varying float vGrande; varying float vSeme;
+      uniform sampler2D uSbuffi;
       void main() {
-        float d = length(gl_PointCoord - 0.5) * 2.0;
+        vec2 q = gl_PointCoord - 0.5;
+        float d = length(q) * 2.0;
         float a = smoothstep(1.0, 0.0, d);
         a = mix(a, a * a, uLuminoso);
+        if (vGrande > 0.01) {
+          // Uno sbuffo, non un disco: il bordo si sfrangia secondo un disegno suo, e chi è luminoso (una fiamma)
+          // si allunga in lingue verso l'alto.
+          // Il disegno viene da una piccola immagine di macchie morbide, già pronta: costa una lettura sola.
+          float n = texture2D(uSbuffi, q * mix(vec2(0.55), vec2(0.62, 0.38), uLuminoso) + vSeme).r;
+          float forma = smoothstep(0.34, 0.78, n + (1.0 - d) * 0.75 - 0.32 - uLuminoso * max(-q.y, 0.0) * -0.5);
+          a *= mix(1.0, forma * 1.5, vGrande);
+        }
         if (a * vColore.a < 0.004) discard;
         vec3 c = vColore.rgb * mix(mix(0.35, 1.0, uLuce), 1.0, uLuminoso);
         gl_FragColor = vec4(c, a * vColore.a);

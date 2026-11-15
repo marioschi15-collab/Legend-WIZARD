@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Elemento, StatoCreatura } from './gioco.js';
+import { foto } from './mondo/materiali.js';
 
 /** Ciò che una creatura lascia quando si sbriciola. */
 export interface Premio {
@@ -248,7 +249,8 @@ export class Creature {
   nasci(x: number, z: number, livello: number, fisso = false, razza?: string, guardiano = false): number {
     const specie = SPECIE[razza ?? DI_CASA[this.terra(x, z)] ?? 'golem'] ?? SPECIE.golem!;
     // Un filo di luce propria: controsole, al tramonto, il golem restava una sagoma nera.
-    const corpo = new THREE.MeshLambertMaterial({ color: new THREE.Color(specie.colore).multiplyScalar(1 - Math.min(0.4, (livello - 1) * 0.06)), emissive: 0xffffff, emissiveIntensity: 1 });
+    // La pelle è pietra fotografata dal vero, tinta del colore della razza (l'immagine è a mezzo grigio: per due torna il colore pieno).
+    const corpo = new THREE.MeshLambertMaterial({ color: new THREE.Color(specie.colore).multiplyScalar(2 * (1 - Math.min(0.4, (livello - 1) * 0.06))), map: foto('roccia'), emissive: 0xffffff, emissiveIntensity: 1 });
     corpo.emissive.setScalar(0.1);
     const occhi = new THREE.MeshBasicMaterial({ color: specie.occhi });
     const propri: THREE.Material[] = [corpo, occhi];
