@@ -21,6 +21,7 @@ import { Mete, type Fatti } from './mete.js';
 import { Sigilli } from './mondo/sigilli.js';
 import { Abitanti } from './abitanti.js';
 import { Creature } from './creature.js';
+import { caricaCreatureVere } from './creatureVere.js';
 import { Missioni, type MondoMissioni } from './missioni.js';
 import { PAROLE, parolaInPremio, salvaConosciute } from './incantesimi/parole.js';
 import { costoDi, Mago } from './mago.js';
@@ -82,6 +83,8 @@ async function avvia(): Promise<void> {
   const ui = new Interfaccia(magie, q.telefono);
   const officina = new OfficinaUi();
   await RAPIER.init();
+  // I modelli veri delle creature: se non arrivano, restano quelle a blocchi.
+  await caricaCreatureVere();
 
   // --- schermo ---
   const renderer = new THREE.WebGLRenderer({ canvas: ui.tela, antialias: false, powerPreference: 'high-performance' });

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Elemento, StatoCreatura } from './gioco.js';
+import { nuovoGolemVero, type CorpoVero } from './creatureVere.js';
 import { foto } from './mondo/materiali.js';
 
 /** Ciò che una creatura lascia quando si sbriciola. */
@@ -65,6 +66,9 @@ interface Golem {
   /** Dove è nata: un guardiano non si allontana troppo dal suo luogo. */
   readonly casaX: number;
   readonly casaZ: number;
+  /** Il corpo animato, se c'è il modello vero; e il movimento che sta facendo. */
+  vero: CorpoVero | null;
+  movimento: string;
   /** La velocità con cui sta volando, se una magia l'ha scagliata in aria. */
   vola: boolean;
   vx: number;
@@ -255,9 +259,11 @@ export class Creature {
     const specie = SPECIE[razza ?? DI_CASA[this.terra(x, z)] ?? 'golem'] ?? SPECIE.golem!;
     // Un filo di luce propria: controsole, al tramonto, il golem restava una sagoma nera.
     // La pelle è pietra fotografata dal vero, tinta del colore della razza (l'immagine è a mezzo grigio: per due torna il colore pieno).
-    const corpo = new THREE.MeshLambertMaterial({ color: new THREE.Color(specie.colore).multiplyScalar(2 * (1 - Math.min(0.4, (livello - 1) * 0.06))), map: foto('roccia'), emissive: 0xffffff, emissiveIntensity: 1 });
-    corpo.emissive.setScalar(0.1);
-    const occhi = new THREE.MeshBasicMaterial({ color: specie.occhi });
+    const scuro = 1 - Math.min(0.4, (livello - 1) * 0.06);
+    // Il golem vero, modellato e animato, quando c'è; altrimenti quello a blocchi.
+    const vero = specie.forma === 'golem' ? nuovoGolemVero(new THREE.Color(specie.colore).multiplyScalar(scuro), specie.occhi) : null;
+    const corpo = vero?.pelle ?? new THREE.MeshLambertMaterial({ color: new THREE.Color(specie.colore).multiplyScalar(2 * scuro), map: foto('roccia'), emissive: 0xffffff, emissiveIntensity: 1 });
+    const occhi = vero?.occhi ?? new THREE.MeshBasicMaterial({ color: specie.occhi });
     const propri: THREE.Material[] = [corpo, occhi];
     const gruppo = new THREE.Group();
     const pezzo = (sx: number, sy: number, sz: number, x0: number, y0: number, z0: number, m: THREE.Material = corpo): THREE.Mesh => {
@@ -297,6 +303,10 @@ export class Creature {
       arti = [arto(-0.75, 0.75, 0.6, 0.28), arto(0.75, 0.75, 0.6, 0.28), arto(-0.55, 0.5, 0.4, 0.22), arto(0.55, 0.5, 0.4, 0.22)];
       arti[0]!.position.z = arti[1]!.position.z = 0.7;
       arti[2]!.position.z = arti[3]!.position.z = -0.4;
+    } else if (vero) {
+      gruppo.add(vero.radice);
+      // Le braccia e le gambe le muove lo scheletro: questi quattro perni vuoti tengono solo il posto.
+      arti = [0, 1, 2, 3].map(() => new THREE.Object3D());
     } else {
       gruppo.add(pezzo(1.0, 0.9, 0.6, 0, 1.25, 0), pezzo(0.7, 0.35, 0.5, 0, 0.72, 0), pezzo(0.56, 0.5, 0.5, 0, 1.98, 0.02));
       gruppo.add(pezzo(0.1, 0.08, 0.04, -0.13, 2.02, 0.28, occhi), pezzo(0.1, 0.08, 0.04, 0.13, 2.02, 0.28, occhi));
@@ -317,7 +327,7 @@ export class Creature {
     gruppo.position.set(x, this.quota(x, z), z);
     this.gruppo.add(gruppo);
     const vita = (34 + livello * 14) * specie.vita * (guardiano ? 3 : 1);
-    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, propri, casaX: x, casaZ: z, vola: false, vx: 0, vy: 0, vz: 0, allerta: 0, debole: false, attesaImmune: 0, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, mossa: 0, slancio: 0, slancioX: 0, slancioZ: 0, avviso, dannoDaDire: 0, attesaNumero: 0, rinforzi: false, lato: this.caso() < 0.5 ? 1 : -1, bloccato: 0, deviaX: 0, deviaZ: 0, deviaPer: 0, lampo: 0, passo: this.caso() * 6 });
+    this.golem.push({ specie, guardiano, gruppo, arti, barra, corpo, propri, casaX: x, casaZ: z, vero, movimento: 'fermo', vola: false, vx: 0, vy: 0, vz: 0, allerta: 0, debole: false, attesaImmune: 0, vita, vitaMassima: vita, forza: (9 + livello * 3) * specie.forza * (guardiano ? 1.4 : 1), livello, attesaColpo: 0.6, numero: ++this.contatore, fisso, stati: { sonno: 0, pecora: 0, paura: 0, lento: 0, veleno: 0, piccolo: 0 }, amico: 0, evocato: false, taglia: gruppo.scale.x, mossa: 0, slancio: 0, slancioX: 0, slancioZ: 0, avviso, dannoDaDire: 0, attesaNumero: 0, rinforzi: false, lato: this.caso() < 0.5 ? 1 : -1, bloccato: 0, deviaX: 0, deviaZ: 0, deviaPer: 0, lampo: 0, passo: this.caso() * 6 });
     return this.contatore;
   }
 
@@ -565,6 +575,8 @@ export class Creature {
     for (let i = this.golem.length - 1; i >= 0; i--) {
       const g = this.golem[i]!;
       const p = g.gruppo.position;
+      const x0 = p.x;
+      const z0 = p.z;
       const dx = giocatore.x - p.x;
       const dz = giocatore.z - p.z;
       const d = Math.hypot(dx, dz);
@@ -762,6 +774,22 @@ export class Creature {
         g.arti[3]!.rotation.x = dondolo;
         // Le braccia alzate prima del pugno vincono sul dondolio del passo.
         if (g.mossa > 0 && g.specie.attacco === 'pugno') g.arti[0]!.rotation.x = g.arti[1]!.rotation.x = -2.6;
+      }
+      if (g.vero) {
+        // Il corpo vero: cammina quando si sposta davvero, alza le braccia mentre prepara il pugno, altrimenti respira.
+        const passi = Math.hypot(p.x - x0, p.z - z0) / Math.max(dt, 0.001);
+        const vuole = g.mossa > 0 && g.specie.attacco === 'pugno' ? 'pugno' : passi > 0.6 && !g.vola ? 'cammina' : 'fermo';
+        if (vuole !== g.movimento) {
+          g.vero.azioni[g.movimento]?.fadeOut(0.15);
+          g.vero.azioni[vuole]?.reset().fadeIn(0.15).play();
+          g.movimento = vuole;
+        }
+        const azione = g.vero.azioni[vuole];
+        if (azione && vuole === 'pugno') {
+          // Il pugno va a tempo con il colpo vero: le braccia calano nell'istante in cui fa male.
+          azione.time = Math.min(0.999, 1 - g.mossa / 0.75) * azione.getClip().duration;
+          g.vero.mixer.update(0);
+        } else g.vero.mixer.update(st.sonno > 0 ? 0 : vuole === 'cammina' ? (dt * passi) / 2.6 : dt);
       }
       g.attesaNumero -= dt;
       if (g.dannoDaDire >= 1 && g.attesaNumero <= 0) {
