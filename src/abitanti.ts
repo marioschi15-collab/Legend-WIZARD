@@ -5,6 +5,11 @@ interface Abitante {
   readonly id: string;
   readonly gruppo: THREE.Group;
   readonly segno: THREE.Object3D;
+  readonly lanterna: THREE.Object3D;
+  /** Il suo posto, e il punto lì attorno verso cui sta passeggiando. */
+  readonly casa: THREE.Vector2;
+  readonly meta: THREE.Vector2;
+  sosta: number;
   vicino: boolean;
 }
 
@@ -20,7 +25,7 @@ export class Abitanti {
   private readonly tutti: Abitante[] = [];
   private tempo = 0;
 
-  constructor(quota: (x: number, z: number) => number) {
+  constructor(private readonly quota: (x: number, z: number) => number) {
     const pelle = new THREE.MeshLambertMaterial({ color: 0xf0c8a0 });
     const oro = new THREE.MeshBasicMaterial({ color: 0xffd24a });
     MISSIONI.forEach((m, i) => {
@@ -49,9 +54,14 @@ export class Abitanti {
       segno.add(asta, punto);
       segno.position.y = 2.1;
       gruppo.add(segno);
+      // Di notte ognuno tiene in mano una lanterna accesa.
+      const lanterna = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffc060 }));
+      lanterna.position.set(0.42, 0.75, 0.12);
+      lanterna.visible = false;
+      gruppo.add(lanterna);
       gruppo.position.set(x, quota(x, z), z);
       this.gruppo.add(gruppo);
-      this.tutti.push({ id: m.id, gruppo, segno, vicino: false });
+      this.tutti.push({ id: m.id, gruppo, segno, lanterna, casa: new THREE.Vector2(x, z), meta: new THREE.Vector2(x, z), sosta: 1 + i, vicino: false });
     });
   }
 
@@ -59,7 +69,7 @@ export class Abitanti {
    * Fa girare gli abitanti verso chi gioca e muove i segni. Restituisce la missione dell'abitante a cui ci si è
    * appena avvicinati (una volta sola per ogni avvicinamento), oppure null. `inCorso` è la missione attiva.
    */
-  aggiorna(dt: number, giocatore: THREE.Vector3, inCorso: string | null): string | null {
+  aggiorna(dt: number, giocatore: THREE.Vector3, inCorso: string | null, notte = false): string | null {
     this.tempo += dt;
     let incontrato: string | null = null;
     for (const a of this.tutti) {
@@ -67,7 +77,27 @@ export class Abitanti {
       const dx = giocatore.x - p.x;
       const dz = giocatore.z - p.z;
       const d = Math.hypot(dx, dz);
-      if (d < 14) a.gruppo.rotation.y = Math.atan2(dx, dz);
+      a.lanterna.visible = notte;
+      if (d < 6) {
+        // Quando chi gioca è vicino si fermano e lo guardano.
+        a.gruppo.rotation.y = Math.atan2(dx, dz);
+      } else {
+        // Altrimenti passeggiano attorno al loro posto: qualche passo, una sosta, qualche passo.
+        a.sosta -= dt;
+        const mx = a.meta.x - p.x;
+        const mz = a.meta.y - p.z;
+        const md = Math.hypot(mx, mz);
+        if (md > 0.15) {
+          a.gruppo.rotation.y = Math.atan2(mx, mz);
+          p.x += (mx / md) * 0.9 * dt;
+          p.z += (mz / md) * 0.9 * dt;
+          p.y = this.quota(p.x, p.z) + Math.abs(Math.sin(this.tempo * 7 + a.casa.x)) * 0.04;
+        } else if (a.sosta <= 0) {
+          const ang = Math.random() * Math.PI * 2;
+          a.meta.set(a.casa.x + Math.cos(ang) * 1.4, a.casa.y + Math.sin(ang) * 1.4);
+          a.sosta = 3 + Math.random() * 5;
+        }
+      }
       a.segno.visible = a.id !== inCorso;
       a.segno.position.y = 2.1 + Math.sin(this.tempo * 3 + p.x) * 0.07;
       const vicino = d < (a.vicino ? 3.4 : 2.4);

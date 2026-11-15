@@ -1,4 +1,4 @@
-# Radura
+# Legend Wizard
 
 Un gioco "sandbox del mago" che gira nel browser: un mondo senza confini con cinque tipi di terra, un bastone,
 tredici incantesimi e migliaia di pezzi da far crollare, bruciare, gelare, sollevare e rimettere a posto.
@@ -57,6 +57,11 @@ qualsiasi frase.
 ha peso, si può abbattere e riparare come le altre, e resta salvata sul dispositivo. Blocchi, pareti e scale si
 accostano e si impilano; gli edifici vogliono terreno piano, asciutto e libero. Si possono avere fino a sei edifici e
 sessanta costruzioni in tutto; «smonta» le toglie.
+
+**Giorno e notte.** Un giorno intero dura dieci minuti: sei di giorno, uno di tramonto, due di notte, uno d'alba. Di
+notte c'è meno luce e si vedono più stelle; le creature sono di più e colpiscono più forte, ma lasciano la metà di
+essenze in più. Gli abitanti passeggiano attorno al loro posto, di notte accendono la lanterna, e si ricordano di chi
+gioca: salutano diversamente chi li ha già aiutati, e chi ha ridotto il villaggio in macerie.
 
 **Il quaderno.** Il pulsante «📖 Quaderno» mostra il mago, le soluzioni trovate per ogni missione, le parole imparate
 per famiglia, le creature incontrate con il loro punto debole e i luoghi liberati.
@@ -117,6 +122,7 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
 
 - `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: le creature di ogni terra e i guardiani. `src/viaggioUi.ts`: il viaggio rapido. `src/quadernoUi.ts`: il quaderno.
 - `src/cantiere.ts`: ciò che chi gioca costruisce, e come si ricorda.
+- `src/giornata.ts`: il giro del giorno e della notte.
 - `src/sfide.ts`: le regole di ogni terra e le sfide.
 - `src/missioni.ts`, `src/abitanti.ts`: le missioni con il loro quaderno delle soluzioni, e gli abitanti che le danno.
 - `src/incantesimi/parole.ts`, `src/paroleUi.ts`: il vocabolario, la lettura di un incantesimo scritto, il foglio per scriverlo.

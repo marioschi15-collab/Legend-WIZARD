@@ -1,4 +1,7 @@
-# Radura — il progetto di gioco
+# Legend Wizard — il progetto di gioco
+
+Il gioco si chiama **Legend Wizard** (nome scelto dal fondatore). «Radura» resta il nome della prima terra e delle
+cartelle del codice.
 
 **Stato: direzione scelta dal fondatore.** Questo documento dice *che gioco è* Radura. Ogni lavoro lo segue; se il
 gioco deve cambiare strada, si cambia prima questo documento. Si costruisce una tappa per volta: non si passa alla
@@ -82,6 +85,9 @@ Si lavora a passi piccoli, e il gioco cresce un pezzo alla volta. **Ogni tappa h
 | **5. Il grande vocabolario** | Comportamenti e bersagli, parole rare, quaderno delle soluzioni, incantesimi con firma da scambiare | Effetti speciali per le parole rare; il quaderno illustrato | Dopo una settimana c'è ancora qualcosa di nuovo da scoprire? |
 | **6. Costruire** | Parole per posare e modellare, la propria torre che resta salvata | Pezzi da costruzione belli, decorazioni | Si ha voglia di tornare alla propria torre? |
 | **7. Online** | Altri maghi, duelli, alleanze, missioni insieme; personaggi speciali con cui parlare liberamente e incantesimi a frase libera | I maghi degli altri, ognuno con il suo aspetto | Si gioca volentieri con un amico? |
+
+**Rifiniture fatte:** giorno e notte (dieci minuti, la notte è più pericolosa e più ricca), abitanti che passeggiano,
+hanno la lanterna e si ricordano di chi gioca, titolo «Legend Wizard» nella schermata d'ingresso.
 
 **Tappa 6, costruire:** ci sono le parole per posare blocchi, pareti, scale e sette tipi di edificio, che restano
 salvati e si smontano con una parola. Mancano: modellare pezzo per pezzo (ruotare, colorare), decorazioni, una «casa»

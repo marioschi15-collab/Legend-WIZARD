@@ -7,6 +7,7 @@ import { PAROLE } from '../src/incantesimi/parole.js';
 import { Mago } from '../src/mago.js';
 import { REGOLE, Sfide } from '../src/sfide.js';
 import { ZONE } from '../src/mondo/zone.js';
+import { DURATA_GIORNO, Giornata } from '../src/giornata.js';
 
 const errori: string[] = [];
 const verifica = (vero: boolean, che: string): void => {
@@ -100,6 +101,16 @@ vispo.ferisci(30);
 vispo.vitaDellaTerra = true;
 vispo.aggiorna(1);
 verifica(vispo.vita > 70, 'tra i funghi la vita torna subito, senza aspettare la quiete');
+
+// --- il giorno e la notte ---
+const gg = new Giornata();
+verifica(gg.momento === 'giorno' && gg.luce === 1 && !gg.notte, 'si comincia di giorno, in piena luce');
+gg.aggiorna(DURATA_GIORNO * 0.65);
+verifica(gg.momento === 'tramonto' && gg.luce > 0 && gg.luce < 1, 'al tramonto la luce cala piano');
+gg.aggiorna(DURATA_GIORNO * 0.15);
+verifica(gg.notte && gg.luce === 0, 'poi è notte');
+gg.aggiorna(DURATA_GIORNO * 0.25);
+verifica(gg.momento === 'giorno' && gg.luce === 1, 'e dopo l’alba torna il giorno');
 
 if (errori.length > 0) {
   console.error('Prova fallita:\n - ' + errori.join('\n - '));

@@ -16,6 +16,7 @@ export function creaCielo(): THREE.Mesh {
       uLuce: atmosfera.luce,
       uTinta: atmosfera.tinta,
       uTempo: atmosfera.tempo,
+      uNotte: atmosfera.notte,
     },
     vertexShader: /* glsl */ `
       varying vec3 vDir;
@@ -27,7 +28,7 @@ export function creaCielo(): THREE.Mesh {
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uSole; uniform vec3 uOrizzonte; uniform vec3 uTinta; uniform vec3 uAlto;
-      uniform float uLuce; uniform float uTempo;
+      uniform float uLuce; uniform float uTempo; uniform float uNotte;
       varying vec3 vDir;
       float grana(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float rumore(vec2 p) {
@@ -64,7 +65,7 @@ export function creaCielo(): THREE.Mesh {
         vec3 cella = floor(d * 170.0);
         float stella = fract(sin(dot(cella, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
         float brilla = 0.75 + 0.25 * sin(uTempo * 2.0 + stella * 90.0);
-        colore += vec3(0.9, 0.9, 1.0) * step(0.9965, stella) * smoothstep(0.3, 0.75, su) * brilla * lume * 0.9;
+        colore += vec3(0.9, 0.9, 1.0) * step(mix(0.9965, 0.990, uNotte), stella) * smoothstep(mix(0.3, 0.04, uNotte), 0.75, su) * brilla * lume * (0.9 + 7.0 * uNotte);
         if (d.y > 0.01) {
           vec2 uv = d.xz / (d.y + 0.12) * 0.9 + vec2(uTempo * 0.006, uTempo * 0.002);
           float n = strati(uv);

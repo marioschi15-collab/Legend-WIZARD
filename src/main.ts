@@ -31,6 +31,8 @@ import { QuadernoUi, type Capitolo } from './quadernoUi.js';
 import { SPECIE } from './creature.js';
 import { MISSIONI } from './missioni.js';
 import { REGOLE, Sfide } from './sfide.js';
+import { Giornata } from './giornata.js';
+import { luogoDiCasella } from './mondo/zone.js';
 import { Cantiere, mattoniDi, OPERE, type Opera } from './cantiere.js';
 import { leggiConosciute } from './incantesimi/parole.js';
 import { creaBosco } from './mondo/alberi.js';
@@ -477,6 +479,11 @@ async function avvia(): Promise<void> {
   };
 
   // --- le missioni: gli abitanti aspettano all'ingresso del villaggio e chiedono una mano ---
+  const giornata = new Giornata();
+  const tintaNotte = new THREE.Color();
+  const tintaOra = new THREE.Color();
+  let momento = giornata.momento;
+  const chiaveVillaggio = luogoDiCasella(0, 0)?.chiave ?? '';
   const missioni = new Missioni();
   missioni.carica();
   const sfide = new Sfide();
@@ -605,11 +612,15 @@ async function avvia(): Promise<void> {
     else ui.scriviMeta(mete.attuale());
   }
   const curaMissioni = (dt: number): void => {
-    const incontrato = abitanti.aggiorna(dt, giocatore.posizione, missioni.attiva?.id ?? null);
+    const incontrato = abitanti.aggiorna(dt, giocatore.posizione, missioni.attiva?.id ?? null, giornata.luce < 0.5);
+    if (incontrato && incontrato === missioni.attiva?.id) ui.annuncia(missioni.attiva.chi, `Conto su di te: ${missioni.attiva.inBreve.toLowerCase()}.`);
     if (incontrato && incontrato !== missioni.attiva?.id) {
+      // Gli abitanti si ricordano di chi gioca: di quante volte li ha aiutati, e di che fine ha fatto il villaggio.
+      const volte = missioni.risolte(incontrato);
+      const saluto = rasi.has(chiaveVillaggio) ? 'Hai ridotto il villaggio in macerie… ma ho ancora bisogno di te. ' : volte >= 3 ? 'Ecco il mio mago preferito! ' : volte >= 1 ? 'Bentornato! ' : '';
       const m = missioni.accetta(incontrato, mondoMissioni);
       if (m) {
-        ui.annuncia(`${m.chi}, ${m.mestiere}`, m.richiesta, true);
+        ui.annuncia(`${m.chi}, ${m.mestiere}`, saluto + m.richiesta, true);
         suoni.scoperta();
         mostraCerchio();
         scriviObiettivo();
@@ -1004,6 +1015,13 @@ async function avvia(): Promise<void> {
       if (gl.resta < 2) gl.luce.intensity = 30 * Math.max(0, gl.resta);
       if (gl.resta <= 0) gl.luce.visible = false;
     }
+    giornata.aggiorna(dt);
+    creature.notte = giornata.notte;
+    if (giornata.momento !== momento) {
+      momento = giornata.momento;
+      if (momento === 'notte') ui.annuncia('Scende la notte', 'Le creature sono di più e colpiscono più forte, ma lasciano più essenze.');
+      else if (momento === 'giorno') ui.annuncia('Spunta il giorno', 'Le creature tornano più tranquille.');
+    }
     let ferita = creature.aggiorna(dt, giocatore.posizione, mago.invisibile > 0);
     if (ferita > 0) {
       suoni.tonfo(1.4);
@@ -1028,8 +1046,10 @@ async function avvia(): Promise<void> {
       }
       scriviObiettivo();
       suoni.tonfo(1);
-      ui.colpo(`+${premio.esperienza} esperienza · ◆ ${premio.essenze}`, '#e9c46a');
-      if (mago.guadagna(premio.esperienza, premio.essenze) > 0) {
+      // Di notte le creature lasciano la metà in più.
+      const essenze = Math.round(premio.essenze * (giornata.notte ? 1.5 : 1));
+      ui.colpo(`+${premio.esperienza} esperienza · ◆ ${essenze}`, '#e9c46a');
+      if (mago.guadagna(premio.esperienza, essenze) > 0) {
         ui.annuncia(`Livello ${mago.livello}`, 'Hai un punto da spendere: tocca il pulsante dorato', true);
         suoni.tesoro();
       }
@@ -1200,12 +1220,18 @@ async function avvia(): Promise<void> {
     bassaZona.lerp(ORA_BASSA, 0.45);
     nebbiaZona.lerp(ORA_NEBBIA, 0.68);
     cieloZona.lerp(ORA_CIELO, 0.8);
-    const chiaro = (1 - umoreVero.buio) * luceZona;
+    // Il giorno e la notte: di notte c'è poco più di un terzo della luce, e tutto vira al blu.
+    const buioNotte = 1 - giornata.luce;
+    atmosfera.notte.value = buioNotte;
+    tintaNotte.setRGB(1 - 0.4 * buioNotte, 1 - 0.3 * buioNotte, 1 + 0.15 * buioNotte);
+    // La tinta di adesso: quella degli incantesimi per quella della notte (senza toccare la prima, che ha memoria).
+    tintaOra.copy(umoreVero.tinta).multiply(tintaNotte);
+    const chiaro = (1 - umoreVero.buio) * luceZona * (1 - 0.64 * buioNotte);
     atmosfera.luce.value = chiaro;
-    atmosfera.tinta.value.copy(umoreVero.tinta);
+    atmosfera.tinta.value.copy(tintaOra);
     atmosfera.cieloAlto.value.copy(cieloZona);
     atmosfera.nebbiaDensita.value = densita;
-    atmosfera.nebbiaColore.value.copy(nebbiaZona).multiply(umoreVero.tinta).multiplyScalar(0.25 + 0.75 * (1 - umoreVero.buio));
+    atmosfera.nebbiaColore.value.copy(nebbiaZona).multiply(tintaOra).multiplyScalar(0.25 + 0.75 * (1 - umoreVero.buio));
     const nebbia = scena.fog as THREE.FogExp2;
     nebbia.color.copy(atmosfera.nebbiaColore.value);
     nebbia.density = densita;
@@ -1214,7 +1240,7 @@ async function avvia(): Promise<void> {
     // Ogni terra ha la sua luce: quella che scende dal cielo, quella che rimbalza dal suolo, quella del sole.
     luceCielo.color.copy(altaZona);
     luceCielo.groundColor.copy(bassaZona);
-    sole.color.copy(soleZona).multiply(umoreVero.tinta);
+    sole.color.copy(soleZona).multiply(tintaOra);
     // L'erba non usa le luci vere: le si passa il colore della luce di qui rispetto a quello della Radura.
     atmosfera.ambiente.value.setRGB(
       (altaZona.r * 0.67 + soleZona.r * 0.61) / (ALTE[0]!.r * 0.67 + SOLI[0]!.r * 0.61),
@@ -1259,7 +1285,7 @@ async function avvia(): Promise<void> {
 
   // Maniglia per le prove automatiche: lanciare incantesimi senza mouse, fermare il tempo o mandarlo avanti.
   const prova = {
-    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, quadernoUi, sfide, cantiere, luoghi2: () => luoghiInVista,
+    g, giocatore, comandi, scegli, lancia, ricostruisci, effetti, officina, costruiti, mago, creature, paroleUi, missioni, mondoMissioni, guardiani, liberati, viaggioUi, quadernoUi, sfide, cantiere, giornata, luoghi2: () => luoghiInVista,
     luoghi: () => luoghiInVista,
     magie: () => magie.map((m) => m.nome),
     fermo: false,

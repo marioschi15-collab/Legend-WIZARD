@@ -13,6 +13,8 @@ export const atmosfera = {
   luce: { value: 1 },
   tinta: { value: new THREE.Color(1, 1, 1) },
   tempo: { value: 0 },
+  /** Quanto è notte (0 giorno, 1 notte fonda): accende le stelle. */
+  notte: { value: 0 },
 };
 
 /** Le ombre delle nuvole che scorrono sul terreno: pozze di luce dorata in una valle in penombra (da 0,4 a poco più di 1). */

@@ -96,6 +96,8 @@ export class Creature {
   private readonly golem: Golem[] = [];
   private readonly schegge: Scheggia[] = [];
   private attesaNascita = 3;
+  /** Di notte le creature sono di più e colpiscono più forte. */
+  notte = false;
   private contatore = 0;
   private readonly premi: Premio[] = [];
   private readonly materialeScheggia = new THREE.MeshLambertMaterial({ color: PIETRA });
@@ -284,7 +286,7 @@ export class Creature {
     this.attesaNascita -= dt;
     if (this.attesaNascita <= 0) {
       this.attesaNascita = 2.5;
-      if (!alSicuro && this.golem.filter((g) => !g.fisso).length < 4) {
+      if (!alSicuro && this.golem.filter((g) => !g.fisso).length < (this.notte ? 6 : 4)) {
         const a = this.caso() * Math.PI * 2;
         const r = 38 + this.caso() * 24;
         const x = giocatore.x + Math.cos(a) * r;
@@ -376,7 +378,7 @@ export class Creature {
           g.attesaColpo -= dt;
           if (d < 2.9 && Math.abs(giocatore.y - p.y) < 3.5 && g.attesaColpo <= 0) {
             g.attesaColpo = 1.3;
-            danno += g.forza * (st.piccolo > 0 ? 0.4 : 1);
+            danno += g.forza * (st.piccolo > 0 ? 0.4 : 1) * (this.notte ? 1.3 : 1);
             g.passo += 1.5;
           }
         }
