@@ -9,7 +9,7 @@ const crea = <K extends keyof HTMLElementTagNameMap>(tag: K, stile: string, padr
   padre.appendChild(e);
   return e;
 };
-const TITOLI = { forma: 'Come parte', effetto: 'Che cosa fa', misura: 'Quanto è grande e forte' } as const;
+const TITOLI = { forma: 'Come parte', effetto: 'Che cosa fa', misura: 'Quanto è grande e forte', modo: 'Come si comporta' } as const;
 const PILLOLA = 'display:inline-block;margin:3px;padding:6px 10px;border-radius:999px;font:600 13px system-ui,sans-serif;';
 
 /** Il foglio dove si scrive un incantesimo a parole, si vedono le parole conosciute e se ne imparano di nuove. */
@@ -113,7 +113,7 @@ export class ParoleUi {
   private scriviElenco(): void {
     this.elenco.replaceChildren();
     crea('div', 'margin-bottom:4px;font-weight:700', this.elenco, `Le tue essenze: ◆ ${this.mago.essenze}`);
-    for (const famiglia of ['forma', 'effetto', 'misura'] as const) {
+    for (const famiglia of ['forma', 'effetto', 'misura', 'modo'] as const) {
       crea('div', 'margin:10px 0 2px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.65', this.elenco, TITOLI[famiglia]);
       for (const x of PAROLE.filter((y) => y.famiglia === famiglia)) {
         const nota = this.conosciute.has(x.parola);

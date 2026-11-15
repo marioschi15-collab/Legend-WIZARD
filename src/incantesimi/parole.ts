@@ -1,7 +1,7 @@
 import { COLORI, type Ricetta } from './officina.js';
 
 /** Le famiglie di parole: come parte l'incantesimo, che cosa fa, quanto è grande e quanto è forte. */
-export type Famiglia = 'forma' | 'effetto' | 'misura';
+export type Famiglia = 'forma' | 'effetto' | 'misura' | 'modo';
 
 export interface Parola {
   /** La parola come la si legge negli elenchi. */
@@ -14,6 +14,7 @@ export interface Parola {
   readonly effetto?: string;
   readonly potenza?: number;
   readonly ampiezza?: number;
+  readonly modo?: string;
   /** Quante essenze costa impararla; 0 = la si conosce dall'inizio. */
   readonly prezzo: number;
   readonly cosaFa: string;
@@ -75,6 +76,11 @@ export const PAROLE: readonly Parola[] = [
   p('lieve', 'misura', ['debole', 'deboli', 'leggerissimo', 'delicato', 'delicata'], { potenza: 1 }, 0, 'meno forza, meno mana'),
   p('forte', 'misura', ['forti', 'potente', 'potenti'], { potenza: 3 }, 30, 'più forza, più mana'),
   p('gigante', 'misura', ['giganti', 'enorme', 'enormi', 'immenso', 'immensa', 'gigantesco', 'gigantesca'], { potenza: 3, ampiezza: 3 }, 45, 'il più grande e il più forte'),
+
+  p('doppio', 'modo', ['doppia', 'doppi', 'bis', 'due'], { modo: 'doppio' }, 30, 'succede due volte di fila'),
+  p('ritardato', 'modo', ['ritardata', 'ritardo', 'dopo', 'miccia'], { modo: 'ritardato' }, 20, 'scatta dopo due secondi e mezzo'),
+  p('rimbalza', 'modo', ['rimbalzo', 'rimbalzante', 'saltella', 'rimbalzi'], { modo: 'rimbalza' }, 35, 'rimbalza altre due volte più avanti'),
+  p('contagioso', 'modo', ['contagiosa', 'contagio', 'dilaga', 'epidemia'], { modo: 'contagioso' }, 45, 'salta addosso alle creature lì attorno'),
 ];
 
 /** Le parolette che non contano: si saltano senza dire nulla. */
@@ -168,7 +174,8 @@ export function leggi(testo: string, conosciute: ReadonlySet<string>): Lettura {
   }
   const scritto = testo.trim().replace(/\s+/g, ' ').replace(/[<>&"']/g, '');
   const nome = (scritto.charAt(0).toUpperCase() + scritto.slice(1)).slice(0, 18);
-  const ricetta: Ricetta = { nome, simbolo: SIMBOLO[effetti[0]!]!, colore: COLORE[effetti[0]!]!, forma, effetti, potenza, ampiezza };
+  const modi = [...new Set(capite.filter((x) => x.modo).map((x) => x.modo!))];
+  const ricetta: Ricetta = { nome, simbolo: SIMBOLO[effetti[0]!]!, colore: COLORE[effetti[0]!]!, forma, effetti, potenza, ampiezza, ...(modi.length > 0 ? { modi } : {}) };
   const fa = capite.filter((x) => x.famiglia !== 'misura').map((x) => x.cosaFa).join('; ');
   return { ricetta, capite, daImparare, ignote, messaggio: fa };
 }

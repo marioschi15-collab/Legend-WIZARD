@@ -20,6 +20,8 @@ export interface Ricetta {
   potenza: number;
   /** 1 stretta, 2 media, 3 vasta. */
   ampiezza: number;
+  /** Come si comporta dopo il primo colpo (doppio, ritardato, rimbalza, contagioso); può mancare. */
+  modi?: string[];
 }
 
 export interface Scelta {
@@ -79,7 +81,15 @@ export const EFFETTI: readonly Scelta[] = [
 export const SIMBOLI = ['✨', '🌙', '☀️', '⭐', '👁️', '🐉', '🦋', '🍄', '🌊', '🪄', '💀', '👑', '🌈', '🕯️', '🦅', '🐺', '💚', '🛡️', '💨', '🦘', '👻', '🚪', '💡', '💧', '🌳', '🧱', '🪨', '🌋', '💤', '🐑', '😱', '🕸️', '☠️', '🐜', '🩸', '🗿'];
 export const COLORI = [0xff5a3a, 0xffb02e, 0xffe14a, 0x6dff6a, 0x4fe0c8, 0x6fb8ff, 0xa56bff, 0xff7ad0];
 export const MASSIMO_EFFETTI = 3;
-export const MASSIMO_RICETTE = 8;
+export const MASSIMO_RICETTE = 12;
+
+/** I comportamenti: non cambiano che cosa fa l'incantesimo, ma quante volte e dove succede. */
+export const MODI: readonly Scelta[] = [
+  { id: 'doppio', nome: 'Doppio', simbolo: '✌️', cosaFa: 'succede due volte di fila' },
+  { id: 'ritardato', nome: 'Ritardato', simbolo: '⏲️', cosaFa: 'scatta dopo due secondi e mezzo' },
+  { id: 'rimbalza', nome: 'Rimbalza', simbolo: '🏀', cosaFa: 'rimbalza altre due volte più avanti' },
+  { id: 'contagioso', nome: 'Contagioso', simbolo: '🦠', cosaFa: 'salta addosso alle creature lì attorno' },
+];
 
 /** Rimette in riga una ricetta arrivata da fuori (un codice incollato, la memoria del browser): solo valori che esistono. */
 export function ripulisci(dato: unknown): Ricetta | null {
@@ -92,7 +102,9 @@ export function ripulisci(dato: unknown): Ricetta | null {
   const intero = (v: unknown, min: number, max: number, base: number): number =>
     typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : base;
   const nome = typeof d.nome === 'string' ? d.nome.replace(/[<>&"']/g, '').trim().slice(0, 18) : '';
+  const modi = Array.isArray(d.modi) ? [...new Set(d.modi.filter((m): m is string => MODI.some((x) => x.id === m)))] : [];
   return {
+    ...(modi.length > 0 ? { modi } : {}),
     nome: nome || 'Senza nome',
     simbolo: typeof d.simbolo === 'string' && SIMBOLI.includes(d.simbolo) ? d.simbolo : SIMBOLI[0]!,
     colore: intero(d.colore, 0, 0xffffff, COLORI[0]!),
@@ -107,7 +119,7 @@ const PREFISSO = 'RAD1.';
 
 /** Il codice da passare a un amico: la ricetta scritta in poche lettere. */
 export function codifica(r: Ricetta): string {
-  const testo = JSON.stringify([r.nome, r.simbolo, r.colore, r.forma, r.effetti, r.potenza, r.ampiezza]);
+  const testo = JSON.stringify([r.nome, r.simbolo, r.colore, r.forma, r.effetti, r.potenza, r.ampiezza, ...(r.modi?.length ? [r.modi] : [])]);
   const bytes = new TextEncoder().encode(testo);
   let binario = '';
   for (const b of bytes) binario += String.fromCharCode(b);
@@ -122,7 +134,7 @@ export function decodifica(codice: string): Ricetta | null {
     const bytes = Uint8Array.from(binario, (c) => c.charCodeAt(0));
     const a = JSON.parse(new TextDecoder().decode(bytes)) as unknown[];
     if (!Array.isArray(a)) return null;
-    return ripulisci({ nome: a[0], simbolo: a[1], colore: a[2], forma: a[3], effetti: a[4], potenza: a[5], ampiezza: a[6] });
+    return ripulisci({ nome: a[0], simbolo: a[1], colore: a[2], forma: a[3], effetti: a[4], potenza: a[5], ampiezza: a[6], modi: a[7] });
   } catch {
     return null;
   }
@@ -153,8 +165,37 @@ export function salvaRicette(ricette: readonly Ricetta[]): void {
 const FORZE = [0, 0.7, 1.1, 1.6, 2.1];
 const RAGGI = [0, 4.2, 7, 10.5, 13.5];
 
-/** Quello che succede in un punto: i bagliori del colore scelto e, uno dopo l'altro, gli effetti della ricetta. */
+/**
+ * Un colpo dell'incantesimo, con i suoi comportamenti: può scattare in ritardo, ripetersi, rimbalzare più avanti,
+ * saltare addosso alle creature vicine. Le repliche sono più deboli e non si replicano a loro volta.
+ */
 function impatto(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
+  const modi = r.modi ?? [];
+  if (modi.length === 0) return colpo(g, r, p, scala);
+  const attesa = modi.includes('ritardato') ? 2.5 : 0;
+  const dopo = (secondi: number, dove: THREE.Vector3, quanto: number): void => g.aggiungi(new Dopo(attesa + secondi, (gg) => colpo(gg, r, dove, quanto)));
+  if (attesa > 0) dopo(0, p, scala);
+  else colpo(g, r, p, scala);
+  if (modi.includes('doppio')) dopo(0.6, p, scala * 0.8);
+  if (modi.includes('rimbalza')) {
+    const via = new THREE.Vector3(p.x - g.poteri.dove.x, 0, p.z - g.poteri.dove.z);
+    if (via.lengthSq() < 0.01) via.set(0, 0, -1);
+    via.normalize().multiplyScalar(RAGGI[r.ampiezza]! * 1.5);
+    for (let i = 1; i <= 2; i++) {
+      const x = p.x + via.x * i;
+      const z = p.z + via.z * i;
+      dopo(0.45 * i, new THREE.Vector3(x, altezza(x, z) + 0.3, z), scala * (0.85 - i * 0.15));
+    }
+  }
+  if (modi.includes('contagioso')) {
+    const raggio = RAGGI[r.ampiezza]!;
+    g.poteri.bersagli(p, raggio * 3).filter((b) => b.distanceTo(p) > raggio * 0.7).slice(0, 3)
+      .forEach((b, i) => dopo(0.35 + i * 0.2, new THREE.Vector3(b.x, b.y + 0.4, b.z), scala * 0.6));
+  }
+}
+
+/** Quello che succede in un punto: i bagliori del colore scelto e, uno dopo l'altro, gli effetti della ricetta. */
+function colpo(g: Gioco, r: Ricetta, p: THREE.Vector3, scala: number): void {
   const forza = FORZE[r.potenza]! * scala;
   const raggio = RAGGI[r.ampiezza]! * (0.6 + 0.4 * scala);
   const suolo = new THREE.Vector3(p.x, altezza(p.x, p.z), p.z);
@@ -446,10 +487,10 @@ export function creaDaRicetta(r: Ricetta): Incantesimo {
   const nomi = r.effetti.map((e) => EFFETTI.find((x) => x.id === e)!.nome.toLowerCase());
   return {
     nome: r.nome,
-    cosaFa: `${forma.nome}: ${nomi.join(', ')}`,
+    cosaFa: `${forma.nome}: ${[...nomi, ...(r.modi ?? [])].join(', ')}`,
     simbolo: r.simbolo,
     colore: r.colore,
-    ricarica: 0.4 + 0.35 * r.effetti.length + 0.4 * (r.potenza - 1) + 0.3 * (r.ampiezza - 1) + (r.forma === 'pioggia' ? 1 : 0),
+    ricarica: 0.4 + 0.35 * r.effetti.length + 0.4 * (r.potenza - 1) + 0.3 * (r.ampiezza - 1) + (r.forma === 'pioggia' ? 1 : 0) + 0.5 * (r.modi?.length ?? 0),
     lancia(g, l) {
       const p = l.bersaglio.clone();
       const c = new THREE.Color(r.colore);

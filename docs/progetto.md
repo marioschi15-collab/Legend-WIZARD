@@ -92,6 +92,7 @@ ogni parola, le parole date in premio da missioni e guardiani.
 Su richiesta del fondatore («tantissimi incantesimi, di ogni tipo, come un mago vero») il vocabolario è salito a 45
 parole: oltre a rompere, la magia cura, protegge, sposta il mago, cambia il mondo, inganna le creature (sonno, pecora,
 paura, veleno…) ed evoca un golem amico; ci sono anche trappole e globi che inseguono.
+Ci sono le prime quattro parole di comportamento (doppio, ritardato, rimbalza, contagioso) e dodici posti sul bastone.
 Della tappa 3 ci sono cinque abitanti all'ingresso del villaggio, ognuno con una missione che si può rifare, il
 premio pieno per le soluzioni nuove e dimezzato per quelle ripetute, e una parola insegnata la prima volta. Mancano:
 carattere e giornata degli abitanti, il villaggio vivo, missioni nelle altre terre, il quaderno da sfogliare.

@@ -38,7 +38,7 @@ ricarica. Se la vita finisce si rinasce al villaggio perdendo un quinto delle es
 
 **Incantesimi a parole, di ogni tipo.** Il pulsante «✎ Scrivi un incantesimo» apre un foglio dove si scrive, per
 esempio, «pioggia di fuoco piccola» o «scudo e cura su di me»: il gioco riconosce le parole che il mago conosce e
-crea l'incantesimo, che resta sul bastone. Le parole sono 45:
+crea l'incantesimo, che resta sul bastone (c'è posto per dodici). Le parole sono 49:
 - **come parte** (9): palla, tocco, pioggia, cielo, onda, su di me, cerchio, trappola (scatta quando passa una
   creatura), sciame (globi che inseguono le creature);
 - **che cosa fa** (31): rompere (fuoco, ghiaccio, scoppio, vento, fulmine, risucchio, vortice, cristallo, peso,
@@ -46,6 +46,7 @@ crea l'incantesimo, che resta sul bastone. Le parole sono 45:
   luce), cambiare il mondo (fiori, acqua, albero, muro, bolla, tempo che ripara), ingannare le creature (sonno,
   pecora, paura, ragnatela, veleno, rimpicciolisci, vampiro che ruba vita) ed evocare un golem amico;
 - **quanto è grande e forte** (5): piccolo, grande, lieve, forte, gigante.
+- **come si comporta** (4): doppio, ritardato, rimbalza, contagioso (salta addosso alle creature vicine).
 Fino a tre effetti per incantesimo: le combinazioni sono decine di migliaia. Tredici parole si sanno dall'inizio, le
 altre si imparano con le essenze, dalle missioni e dai guardiani. Il gioco capisce solo il suo vocabolario, non
 qualsiasi frase.
