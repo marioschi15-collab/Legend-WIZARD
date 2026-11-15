@@ -48,11 +48,13 @@ import { luoghiVicini, N_ZONE, pesiZone, QUOTA_ACQUA, ZONE, type Luogo } from '.
 import type { Gruppo } from './fisica/pezzi.js';
 import { Suoni } from './suoni.js';
 
-const ORA_SOLE = new THREE.Color(0xffb052);
-const ORA_ALTA = new THREE.Color(0x8a7ff0);
-const ORA_BASSA = new THREE.Color(0x7a5a86);
-const ORA_NEBBIA = new THREE.Color(0x8672c4);
-const ORA_CIELO = new THREE.Color(0x1b1756);
+// La luce vera di un giorno sereno: sole bianco caldo, cielo azzurro dall'alto, il verde-bruno del suolo dal basso,
+// foschia grigio-azzurra come quella della fotografia del cielo. Ogni terra ci mette un po' del suo colore.
+const ORA_SOLE = new THREE.Color(0xfff0dc);
+const ORA_ALTA = new THREE.Color(0xb4ccff);
+const ORA_BASSA = new THREE.Color(0x8a8468);
+const ORA_NEBBIA = new THREE.Color(0xaebdcc);
+const ORA_CIELO = new THREE.Color(0x4a78c0);
 const NEBBIE = ZONE.map((z) => new THREE.Color(z.nebbia));
 const CIELI = ZONE.map((z) => new THREE.Color(z.cielo));
 const ALTE = ZONE.map((z) => new THREE.Color(z.luceAlta));
@@ -373,10 +375,11 @@ async function avvia(): Promise<void> {
               c = mix(c, p.rgb, uPennello);
             }
             float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-            c *= mix(vec3(0.86, 0.9, 1.2), vec3(1.1, 1.0, 0.84), smoothstep(0.04, 0.8, l));
-            c = mix(vec3(l), c, 1.32);
+            // Ritocchi leggeri, da fotografia: ombre appena fredde, colori un filo più pieni, angoli appena più scuri.
+            c *= mix(vec3(0.96, 0.98, 1.05), vec3(1.03, 1.0, 0.96), smoothstep(0.04, 0.8, l));
+            c = mix(vec3(l), c, 1.1);
             vec2 q = vUv - 0.5;
-            c *= 1.0 - 0.36 * smoothstep(0.25, 0.85, dot(q, q) * 2.0);
+            c *= 1.0 - 0.2 * smoothstep(0.25, 0.85, dot(q, q) * 2.0);
             gl_FragColor = vec4(max(c, 0.0), 1.0);
             #include <tonemapping_fragment>
             #include <colorspace_fragment>
@@ -1407,6 +1410,7 @@ async function avvia(): Promise<void> {
     // Il giorno e la notte: di notte c'è poco più di un terzo della luce, e tutto vira al blu.
     const buioNotte = 1 - giornata.luce;
     atmosfera.notte.value = buioNotte;
+    atmosfera.sera.value = Math.min(1, buioNotte * 2.5);
     tintaNotte.setRGB(1 - 0.4 * buioNotte, 1 - 0.3 * buioNotte, 1 + 0.15 * buioNotte);
     // La tinta di adesso: quella degli incantesimi per quella della notte (senza toccare la prima, che ha memoria).
     tintaOra.copy(umoreVero.tinta).multiply(tintaNotte);

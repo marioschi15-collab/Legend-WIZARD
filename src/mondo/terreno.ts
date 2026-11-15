@@ -163,10 +163,12 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          vec3 fotoPrato = texture2D(uFotoPrato, vMondo.xz * 0.23).rgb * 2.0 * mix(vec3(1.0), texture2D(uFotoPrato, vMondo.zx * 0.037 + 0.37).rgb * 2.0, 0.55);
          vec3 fotoSuolo = mix(fotoPrato, texture2D(uFotoTerra, vMondo.xz * 0.19).rgb * 2.0, nuda);
          diffuseColor.rgb *= mix(vec3(1.0), fotoSuolo, mix(0.3, 0.95, vicinoSuolo));
+         // I verdi veri sono più spenti di quelli di un disegno: si toglie un po' di colore e di luce.
+         diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11))), diffuseColor.rgb, 0.62) * 0.8;
          // Dove i fili d'erba finiscono, il terreno prende il loro colore medio: senza, il prato sembrava un
          // tappeto rotondo e chiaro che seguiva chi cammina sopra un suolo più scuro.
          vec4 bio = texture2D(uBiomi, uvAltezze(vMondo.xz));
-         vec3 erbaMedia = vec3(0.09, 0.25, 0.10);
+         vec3 erbaMedia = vec3(0.1, 0.17, 0.05);
          erbaMedia = mix(erbaMedia, vec3(0.6, 0.5, 0.2), bio.g);
          erbaMedia = mix(erbaMedia, erbaMedia * vec3(0.3, 0.5, 0.46), bio.a);
          erbaMedia = mix(erbaMedia, vec3(0.88, 0.94, 1.0), bio.b * 0.6);

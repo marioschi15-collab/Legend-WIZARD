@@ -171,7 +171,9 @@ vicino a chi gioca.
 - Niente si vende che dia un vantaggio: si paga il gioco o l'aspetto, mai la forza.
 - Aspetto realistico (deciso dal fondatore): il gioco usa superfici, cieli e modelli presi dal vero, gratuiti e liberi
   da diritti (Poly Haven, CC0), messi in `public/`. Le case restano fatte di pezzi che si sbriciolano. I suoni restano
-  fatti di codice. Si procede a pezzi: suolo e muri (fatto), cielo e luce, alberi e rocce, case più ricche, personaggi.
+  fatti di codice. Si procede a pezzi: suolo e muri (fatto), cielo e luce (fatto: due fotografie di cielo, luce naturale), querce, abeti
+  e rocce (fatto: tronco e rami veri, fronde ritratte dal modello su «carte»), poi piante minute e fiori, case più
+  ricche, creature fantasy realistiche, magie e animazioni.
 - Tono adatto a tutti: le creature si sbriciolano, non c'è sangue.
 
 ## Che cosa può andare storto, e come accorgersene presto

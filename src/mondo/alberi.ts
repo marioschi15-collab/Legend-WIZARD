@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { geometriaAbeteVero, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, ombraAbete, materialeSasso, materialeVero, ombraVera } from './alberiVeri.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { GEOMETRIE_MINUTE, MINUTI, TIPI_MINUTI } from './minuti.js';
@@ -257,12 +258,31 @@ export function creaBosco(ombre: boolean): Bosco {
     geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaQuercia(0),
     ...GEOMETRIE_MINUTE(),
   ];
+  // Le querce sono vere: tronco fotografato e fronde ritratte dal modello, con il loro materiale e la loro ombra.
+  geometrie[QUERCIA] = geometriaQuerciaVera();
+  geometrie[QUERCIA_LONTANA] = geometriaQuerciaVeraLontana();
+  const PINO = TIPI.indexOf('pino');
+  const PINO_NEVE = TIPI.indexOf('pinoInnevato');
+  geometrie[PINO] = geometriaAbeteVero();
+  // Lo stesso abete, imbiancato dalla neve.
+  geometrie[PINO_NEVE] = geometriaAbeteVero(2.1);
+  const abete = materialeAbete();
+  const ombraDellAbete = ombraAbete();
+  const ROCCIA = TIPI.indexOf('roccia');
+  geometrie[ROCCIA] = geometriaSassoVero();
+  const sasso = materialeSasso();
+  const vero = materialeVero();
+  const ombraDelVero = ombraVera();
   const mesh = geometrie.map((g, i) => {
-    const m = new THREE.InstancedMesh(g, materialeAlberi, CAPIENZA);
+    const m = new THREE.InstancedMesh(g, i === QUERCIA || i === QUERCIA_LONTANA ? vero : i === ROCCIA ? sasso : i === PINO || i === PINO_NEVE ? abete : materialeAlberi, CAPIENZA);
+    if (i === PINO || i === PINO_NEVE) m.customDepthMaterial = ombraDellAbete;
+    if (i === QUERCIA) m.customDepthMaterial = ombraDelVero;
+    // Le fronde non ricevono ombra: le carte se la farebbero l'una sull'altra e la chioma resterebbe nera.
+    const vera = i === QUERCIA || i === QUERCIA_LONTANA || i === PINO || i === PINO_NEVE;
     m.count = 0;
     // Le cose minute non fanno ombra: sono tante, e la loro ombra non si noterebbe.
     m.castShadow = ombre && i < PRIMO_MINUTO;
-    m.receiveShadow = ombre;
+    m.receiveShadow = ombre && !vera;
     m.frustumCulled = false;
     m.setColorAt(0, BIANCO);
     return m;

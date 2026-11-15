@@ -107,7 +107,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float alto = aCaso.y * 0.55 * (1.0 + 1.4 * stato.b + 0.5 * bio.a) * (1.0 - 0.82 * stato.r) * bordo * presente;
         float ang = aCaso.x * 6.2832;
         vec2 lato = vec2(cos(ang), sin(ang));
-        float larghezza = mix(0.075, 0.13, aCaso.z) * (1.0 + 0.5 * stato.b);
+        float larghezza = mix(0.035, 0.065, aCaso.z) * (1.0 + 0.5 * stato.b);
         vec3 p = vec3(w.x, terra, w.y);
         p.xz += lato * position.x * larghezza;
         float onda = sin(uTempo * 1.5 + w.x * 0.32 + w.y * 0.21) * 0.6
@@ -118,8 +118,8 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         p.y += t * alto * (1.0 - 0.18 * dot(piega, piega) * t);
 
         float chiazza = sin(w.x * 0.07) * sin(w.y * 0.09 + 1.7) * 0.5 + 0.5;
-        vec3 base = mix(vec3(0.015, 0.09, 0.07), vec3(0.04, 0.13, 0.05), chiazza);
-        vec3 punta = mix(vec3(0.08, 0.27, 0.13), vec3(0.3, 0.38, 0.1), chiazza * aCaso.z);
+        vec3 base = mix(vec3(0.02, 0.055, 0.015), vec3(0.04, 0.08, 0.02), chiazza);
+        vec3 punta = mix(vec3(0.11, 0.2, 0.05), vec3(0.27, 0.3, 0.09), chiazza * aCaso.z);
         punta = mix(punta, vec3(0.22, 0.78, 0.16), stato.b * 0.7);
         vec3 c = mix(base, punta, t);
         float naturale = 1.0 - stato.b;
@@ -129,10 +129,10 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         c = mix(c, vec3(0.02, 0.016, 0.012), stato.r * 0.96);
         c = mix(c, vec3(0.78, 0.92, 1.0), stato.g * (0.45 + 0.5 * t));
         c *= ombraNubi(w, uTempo);
-        c *= mix(vec3(0.24, 0.26, 0.52), vec3(1.0), soleQui(vec3(w.x, terra + 0.3, w.y)));
+        c *= mix(vec3(0.34, 0.4, 0.5), vec3(1.0), soleQui(vec3(w.x, terra + 0.3, w.y)));
         // Guardando verso il sole le punte si accendono in controluce; il vento fa correre onde di luce sul prato.
         float controluce = pow(max(dot(normalize(rel + 1e-4), normalize(uSole.xz)), 0.0), 2.0);
-        c += vec3(0.42, 0.27, 0.04) * controluce * t * (1.0 - stato.r) * presente;
+        c += vec3(0.2, 0.17, 0.04) * controluce * t * (1.0 - stato.r) * presente;
         c *= 1.0 + 0.12 * onda * t;
         // Un filo di luce in più sulle punte rivolte al sole: dà lucentezza al prato.
         c += vec3(0.10, 0.11, 0.03) * t * t * (0.5 + 0.5 * sin(aCaso.x * 40.0)) * (1.0 - stato.r) * presente;
@@ -223,7 +223,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float cuore = 1.0 - step(0.5, length(position.xz));
         vec3 c = mix(aColore, vec3(1.0, 0.78, 0.1), cuore);
         c = mix(c, vec3(0.85, 0.95, 1.0), stato.g * 0.6);
-        vColore = c * ombraNubi(w, uTempo) * mix(vec3(0.24, 0.26, 0.52), vec3(1.0), soleQui(centro));
+        vColore = c * ombraNubi(w, uTempo) * mix(vec3(0.34, 0.4, 0.5), vec3(1.0), soleQui(centro));
         vec4 mv = viewMatrix * vec4(p, 1.0);
         vDistanza = -mv.z;
         gl_Position = projectionMatrix * mv;
