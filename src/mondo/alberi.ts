@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { altezza, LATO_ZOLLA } from './terreno.js';
@@ -21,22 +21,32 @@ function colora(g: THREE.BufferGeometry, colore: number, variazione = 0): THREE.
   return g;
 }
 
-function unisci(parti: THREE.BufferGeometry[]): THREE.BufferGeometry {
+/**
+ * Unisce più forme in una sola. Di norma le superfici vengono lisce e tonde (chiome, tronchi, funghi): è ciò che
+ * dà l'aspetto morbido, da cartone animato. Con `spigoli` restano a facce piatte (rocce, cristalli, guglie).
+ */
+function unisci(parti: THREE.BufferGeometry[], spigoli = false): THREE.BufferGeometry {
   const pronte = parti.map((p) => {
-    const g = p.index ? p.toNonIndexed() : p;
-    g.deleteAttribute('uv');
-    return g;
+    p.deleteAttribute('uv');
+    p.deleteAttribute('normal');
+    if (spigoli) {
+      const g = p.index ? p.toNonIndexed() : p;
+      g.computeVertexNormals();
+      return g;
+    }
+    // Saldando i punti che coincidono, la luce scorre da una faccia all'altra senza scalini.
+    const g = mergeVertices(p, 1e-3);
+    g.computeVertexNormals();
+    return g.toNonIndexed();
   });
-  const unita = mergeGeometries(pronte)!;
-  unita.computeVertexNormals();
-  return unita;
+  return mergeGeometries(pronte)!;
 }
 
 /** Un pino: tronco e tre coni. Alto circa 9 metri. */
 export function geometriaPino(): THREE.BufferGeometry {
   const parti = [colora(new THREE.CylinderGeometry(0.22, 0.34, 2.4, 6).translate(0, 1.2, 0), 0x5a3a22)];
   for (let i = 0; i < 3; i++) {
-    const cono = new THREE.ConeGeometry(2.3 - i * 0.55, 3.4 - i * 0.4, 7);
+    const cono = new THREE.ConeGeometry(2.3 - i * 0.55, 3.4 - i * 0.4, 12);
     parti.push(colora(cono.translate(0, 3.4 + i * 2.1, 0), i === 2 ? 0x2f6f3a : 0x245a33, 0.5));
   }
   return unisci(parti);
@@ -54,7 +64,7 @@ export function geometriaQuercia(dettaglio = 1): THREE.BufferGeometry {
     [0.6, 4.3, -1.5, 1.4],
   ];
   for (const [x, y, z, r] of ciuffi) {
-    parti.push(colora(new THREE.IcosahedronGeometry(r, dettaglio).translate(x, y, z), 0x4f9a2e, 0.45));
+    parti.push(colora(new THREE.IcosahedronGeometry(r, dettaglio === 0 ? 0 : 2).translate(x, y, z), 0x4f9a2e, 0.45));
   }
   return unisci(parti);
 }
@@ -84,7 +94,7 @@ function geometriaCactus(): THREE.BufferGeometry {
 
 /** Un masso: prende il colore del posto in cui sta. */
 function geometriaRoccia(): THREE.BufferGeometry {
-  return unisci([colora(new THREE.IcosahedronGeometry(1, 1).scale(1.5, 0.95, 1.2).translate(0, 0.5, 0), 0xb4b0aa, 0.35)]);
+  return unisci([colora(new THREE.IcosahedronGeometry(1, 1).scale(1.5, 0.95, 1.2).translate(0, 0.5, 0), 0xb4b0aa, 0.35)], true);
 }
 
 /** Un albero spoglio, con tre rami storti. */
@@ -112,7 +122,7 @@ function geometriaGuglia(): THREE.BufferGeometry {
   return unisci([
     colora(new THREE.ConeGeometry(1.5, 8, 5).translate(0, 3.6, 0), 0x2c2628, 0.5),
     colora(new THREE.ConeGeometry(0.8, 4, 5).translate(1.1, 1.8, 0.4), 0x241f21, 0.5),
-  ]);
+  ], true);
 }
 
 /** Un'acacia: tronco sottile e chioma larga e piatta. */
@@ -151,10 +161,10 @@ function geometriaCespuglio(): THREE.BufferGeometry {
 function geometriaCristallo(): THREE.BufferGeometry {
   const punta = (h: number, r: number, x: number, z: number, piega: number): THREE.BufferGeometry =>
     colora(new THREE.OctahedronGeometry(1, 0).scale(r, h, r).translate(0, h * 0.8, 0).rotateZ(piega).translate(x, 0, z), 0xffffff, 0.6);
-  return unisci([punta(2.2, 0.5, 0, 0, 0.05), punta(1.4, 0.36, 0.6, 0.2, -0.45), punta(1.1, 0.3, -0.5, 0.3, 0.5), punta(0.9, 0.26, 0.1, -0.6, 0.2)]);
+  return unisci([punta(2.2, 0.5, 0, 0, 0.05), punta(1.4, 0.36, 0.6, 0.2, -0.45), punta(1.1, 0.3, -0.5, 0.3, 0.5), punta(0.9, 0.26, 0.1, -0.6, 0.2)], true);
 }
 
-export const materialeAlberi = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+export const materialeAlberi = new THREE.MeshLambertMaterial({ vertexColors: true });
 
 export interface Bosco {
   readonly oggetti: THREE.Object3D[];
@@ -205,7 +215,7 @@ export function creaBosco(ombre: boolean): Bosco {
   const semina = (cx: number, cz: number): Pianta[] => {
     const rnd = generatore(Math.floor(sorte(cx, cz, 9) * 4294967295));
     const piante: Pianta[] = [];
-    for (let tentativo = 0; tentativo < 30; tentativo++) {
+    for (let tentativo = 0; tentativo < 44; tentativo++) {
       const x = (cx + rnd()) * LATO_ZOLLA;
       const z = (cz + rnd()) * LATO_ZOLLA;
       const dado = rnd() * 100;

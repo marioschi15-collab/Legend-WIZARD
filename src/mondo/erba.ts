@@ -206,7 +206,7 @@ export function creaPrato(q: Qualita, campo: Campo, altezze: THREE.DataTexture, 
         float aiuola = sin(w.x * 0.11 + 1.3) * sin(w.y * 0.13 + 0.7) + 0.45 * sin(w.x * 0.31 + w.y * 0.27);
         vec4 bio = texture2D(uBiomi, uvAltezze(w));
         float prato = bio.r * (1.0 - bio.g) * (1.0 - bio.b) * (1.0 - bio.a);
-        float spontaneo = smoothstep(0.5, 0.85, aiuola) * step(aCaso.z, 0.3) * smoothstep(0.6, 0.9, prato) * smoothstep(-0.5, -0.15, terra);
+        float spontaneo = smoothstep(0.15, 0.6, aiuola) * step(aCaso.z, 0.55) * smoothstep(0.6, 0.9, prato) * smoothstep(-0.5, -0.15, terra);
         float magico = smoothstep(aCaso.w * 0.7, aCaso.w * 0.7 + 0.25, stato.b);
         float mostra = max(spontaneo, magico) * (1.0 - smoothstep(0.1, 0.5, stato.r)) * bordo;
         float raggio = mix(0.05, 0.09, aCaso.x) * mostra * (1.0 + 0.4 * stato.b);

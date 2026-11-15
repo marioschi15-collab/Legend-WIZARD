@@ -184,7 +184,7 @@ async function avvia(): Promise<void> {
             vec3 c = texture2D(tDiffuse, vUv).rgb;
             float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
             c *= mix(vec3(0.95, 0.99, 1.06), vec3(1.04, 1.0, 0.94), smoothstep(0.05, 0.9, l));
-            c = mix(vec3(l), c, 1.1);
+            c = mix(vec3(l), c, 1.2);
             vec2 q = vUv - 0.5;
             c *= 1.0 - 0.32 * smoothstep(0.25, 0.85, dot(q, q) * 2.0);
             gl_FragColor = vec4(max(c, 0.0), 1.0);
@@ -798,7 +798,8 @@ async function avvia(): Promise<void> {
   const mostra = (nuovo: number): void => {
     livello = Math.max(0, Math.min(LIVELLO_MASSIMO, nuovo));
     bagliore.enabled = q.bagliore && livello < 1;
-    densitaPixel = livello >= 6 ? Math.min(q.densitaPixel, 1.15) : livello >= 2 ? Math.min(q.densitaPixel, 1.5) : q.densitaPixel;
+    // La nitidezza si tocca per ultima e mai sotto una volta e mezza: un'immagine sgranata è peggio di una povera.
+    densitaPixel = livello >= 6 ? Math.min(q.densitaPixel, 1.5) : livello >= 2 ? Math.min(q.densitaPixel, 1.75) : q.densitaPixel;
     prato.densita(livello >= 7 ? 0.35 : livello >= 3 ? 0.6 : 1);
     scintille.rado = fumo.rado = livello >= 4;
     const ombre = q.ombre && livello < 5;

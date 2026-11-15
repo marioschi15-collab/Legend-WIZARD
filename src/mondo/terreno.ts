@@ -137,7 +137,12 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          uniform sampler2D uBiomi; uniform float uRaggioErba;
          varying vec3 vMondo; varying float vLava;
          ${NUBI_GLSL}
-         ${UV_ALTEZZE_GLSL}`,
+         ${UV_ALTEZZE_GLSL}
+         float granaSuolo(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+         float rumoreSuolo(vec2 p) {
+           vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+           return mix(mix(granaSuolo(i), granaSuolo(i + vec2(1.0, 0.0)), f.x), mix(granaSuolo(i + vec2(0.0, 1.0)), granaSuolo(i + vec2(1.0, 1.0)), f.x), f.y);
+         }`,
       )
       .replace(
         '#include <color_fragment>',
@@ -145,6 +150,12 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          vec4 stato = texture2D(uStato, vMondo.xz / uLatoCampo);
          float chiazza = sin(vMondo.x * 0.07) * sin(vMondo.z * 0.09 + 1.7) * 0.5 + 0.5;
          diffuseColor.rgb *= mix(0.84, 1.1, chiazza) * ombraNubi(vMondo.xz, uTempo);
+         // Il suolo non è una tinta unita: grana fine da vicino, macchie più grandi, chiazze di terra nuda.
+         float vicinoSuolo = 1.0 - smoothstep(40.0, 140.0, distance(vMondo.xz, cameraPosition.xz));
+         float dettaglio = rumoreSuolo(vMondo.xz * 1.6) * 0.55 + rumoreSuolo(vMondo.xz * 6.5) * 0.45;
+         diffuseColor.rgb *= mix(1.0, mix(0.8, 1.14, dettaglio), vicinoSuolo);
+         float nuda = smoothstep(0.6, 0.82, rumoreSuolo(vMondo.xz * 0.19 + 40.0));
+         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 0.68, 0.52), nuda * 0.45);
          // Dove i fili d'erba finiscono, il terreno prende il loro colore medio: senza, il prato sembrava un
          // tappeto rotondo e chiaro che seguiva chi cammina sopra un suolo più scuro.
          vec4 bio = texture2D(uBiomi, uvAltezze(vMondo.xz));
