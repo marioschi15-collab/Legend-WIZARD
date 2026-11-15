@@ -239,6 +239,8 @@ export function creaBosco(ombre: boolean): Bosco {
         if (dado >= soglia) continue;
         const asciutto = y > 0.5 || zona === PALUDE;
         if ((inAcqua || !asciutto) && !s.acqua) break;
+        // Le canne stanno solo sulle rive: in mezzo al prato erano un muro davanti agli occhi.
+        if (s.tipo === 'canne' && y > QUOTA_ACQUA + 0.9) break;
         // Le cose minute stanno a chiazze più piccole di quelle dei boschi, e ogni tipo ha le sue.
         const macchia = minute ? rumore(x * 0.09 + soglia * 1.7, z * 0.09 - soglia) : rumore(x * 0.03 + 5, z * 0.03);
         if (s.bosco !== undefined && macchia < s.bosco) break;
