@@ -100,7 +100,7 @@ export class Abitanti {
       }
       a.segno.visible = a.id !== inCorso;
       a.segno.position.y = 2.1 + Math.sin(this.tempo * 3 + p.x) * 0.07;
-      const vicino = d < (a.vicino ? 3.4 : 2.4);
+      const vicino = d < (a.vicino ? 4.2 : 3.1);
       if (vicino && !a.vicino) incontrato = a.id;
       a.vicino = vicino;
     }

@@ -1,6 +1,7 @@
 /**
- * Le mete: una sola cosa da fare, sempre scritta sullo schermo. Le prime insegnano il gioco in un paio di minuti
- * (distruggere, spegnere, afferrare, riparare, inventare, esplorare); poi diventano traguardi di esplorazione senza fine.
+ * Le mete: una sola cosa da fare, sempre scritta sullo schermo. Le prime accompagnano dentro il gioco un passo alla
+ * volta (bastone, abitanti e missioni, incantesimi a parole, creature, parole nuove, livelli, guardiani, costruire,
+ * altre terre); poi diventano traguardi di esplorazione senza fine.
  */
 export interface Fatti {
   /** Quante volte è stato lanciato ogni incantesimo, per nome. */
@@ -12,6 +13,16 @@ export interface Fatti {
   /** Quante terre diverse sono state visitate. */
   terre: number;
   perduti: number;
+  /** Missioni accettate e compiute, creature sbriciolate, parole imparate oltre a quelle di partenza. */
+  accettate: number;
+  missioni: number;
+  creature: number;
+  parole: number;
+  /** Punti di livello spesi, luoghi liberati, costruzioni fatte, terre domate. */
+  potenziamenti: number;
+  liberati: number;
+  costruzioni: number;
+  domate: number;
 }
 
 interface Meta {
@@ -22,18 +33,21 @@ interface Meta {
 const lanciato = (nome: string) => (f: Fatti): boolean => (f.lanci[nome] ?? 0) > 0;
 
 const GUIDATE: readonly Meta[] = [
-  { testo: (dita) => (dita ? 'Tieni premuto ✦ e lancia una palla di fuoco su una casa' : 'Fai clic e lancia una palla di fuoco su una casa'), fatta: lanciato('Fuoco') },
-  { testo: () => 'Scegli Esplosione 💥 e provala su una torre', fatta: lanciato('Esplosione') },
-  { testo: () => 'Dai fuoco a qualcosa, poi spegnilo con Gelo ❄️', fatta: (f) => f.spenti > 0 },
-  { testo: () => 'Afferra dei pezzi con Presa 🧲 e scagliali', fatta: lanciato('Presa') },
-  { testo: () => 'Rimetti tutto a posto con Rammendo ⏳', fatta: lanciato('Rammendo') },
-  { testo: () => 'Inventa un incantesimo tuo: tocca ＋', fatta: (f) => f.inventati > 0 },
-  { testo: () => 'Esci dal villaggio: raggiungi un cerchietto della mappa', fatta: (f) => f.luoghi >= 2 },
+  { testo: (dita) => (dita ? 'Prova il bastone: tieni premuto ✦ e lancia una palla di fuoco' : 'Prova il bastone: fai clic e lancia una palla di fuoco'), fatta: lanciato('Fuoco') },
+  { testo: () => 'Avvicinati a un abitante con il punto esclamativo dorato', fatta: (f) => f.accettate > 0 || f.missioni > 0 },
+  { testo: () => 'Porta a termine la missione di un abitante', fatta: (f) => f.missioni > 0 },
+  { testo: () => 'Tocca «✎ Scrivi un incantesimo» e creane uno tuo, per esempio «pioggia di ghiaccio»', fatta: (f) => f.inventati > 0 },
+  { testo: () => 'Esci dal villaggio e sbriciola una creatura', fatta: (f) => f.creature > 0 },
+  { testo: () => 'Impara una parola nuova: si comprano con le essenze ◆ nel foglio «Scrivi un incantesimo»', fatta: (f) => f.parole > 0 },
+  { testo: () => 'Sali di livello e spendi il punto (pulsante dorato accanto alla mappa)', fatta: (f) => f.potenziamenti > 0 },
+  { testo: () => 'Raggiungi un cerchietto della mappa e batti il guardiano con la corona', fatta: (f) => f.liberati > 0 },
+  { testo: () => 'Costruisci qualcosa di tuo: scrivi «tocco blocco»', fatta: (f) => f.costruzioni > 0 },
+  { testo: () => 'Trova un’altra terra e vinci la sua sfida', fatta: (f) => f.domate > 0 },
   { testo: () => 'Segui una colonna di luce: lì c’è un incantesimo perduto', fatta: (f) => f.perduti > 0 },
-  { testo: () => 'Trova un’altra terra: neve, sabbia, palude o fuoco', fatta: (f) => f.terre >= 2 },
 ];
 
-const CHIAVE = 'radura-mete';
+// La chiave è cambiata quando le mete sono state rifatte attorno al mago che cresce: chi aveva le vecchie riparte.
+const CHIAVE = 'radura-mete2';
 
 export class Mete {
   private indice = 0;

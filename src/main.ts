@@ -611,6 +611,37 @@ async function avvia(): Promise<void> {
   });
   quadernoUi.onChiudi = officina.onChiudi;
 
+  // --- i pulsanti in alto a destra: restano in vista i due che servono sempre, gli altri stanno dietro «Altro» ---
+  {
+    paroleUi.pulsante.style.top = '52px';
+    // Sugli schermi stretti la scritta lunga copriva livello ed essenze, lì accanto.
+    if (window.innerWidth < 560) paroleUi.pulsante.textContent = '✎ Scrivi';
+    const altro = document.createElement('button');
+    altro.type = 'button';
+    altro.textContent = '☰ Altro';
+    altro.style.cssText = paroleUi.pulsante.style.cssText;
+    altro.style.top = '94px';
+    altro.style.borderColor = 'rgba(255,255,255,.25)';
+    document.body.appendChild(altro);
+    const nascosti = [viaggioUi.pulsante, quadernoUi.pulsante, document.getElementById('casa')!];
+    let aperto = false;
+    const mostra = (): void => nascosti.forEach((b, i) => {
+      b.style.top = `${136 + i * 42}px`;
+      b.style.display = aperto ? '' : 'none';
+    });
+    altro.addEventListener('click', () => {
+      altro.blur();
+      aperto = !aperto;
+      mostra();
+    });
+    // Scelto un foglio, il menu si richiude; «Al villaggio» vuole due tocchi, quindi resta aperto.
+    for (const b of [viaggioUi.pulsante, quadernoUi.pulsante]) b.addEventListener('click', () => {
+      aperto = false;
+      mostra();
+    });
+    mostra();
+  }
+
   function scriviObiettivo(): void {
     const m = missioni.attiva;
     const s = sfide.attiva;
@@ -810,7 +841,8 @@ async function avvia(): Promise<void> {
   const puntoOmbra = 96 / q.latoOmbre;
 
   // --- le mete e ciò che chi gioca ha fatto finora ---
-  const fatti: Fatti = { lanci: {}, spenti: 0, inventati: 0, luoghi: 0, terre: 1, perduti: trovati.length };
+  const fatti: Fatti = { lanci: {}, spenti: 0, inventati: 0, luoghi: 0, terre: 1, perduti: trovati.length, accettate: 0, missioni: 0, creature: 0, parole: 0, potenziamenti: 0, liberati: 0, costruzioni: 0, domate: 0 };
+  const paroleDiPartenza = PAROLE.filter((x) => x.prezzo === 0).length;
   const mete = new Mete(q.telefono);
   scriviObiettivo();
   const terreViste = new Set<number>([0]);
@@ -1038,6 +1070,7 @@ async function avvia(): Promise<void> {
     const sotto = campo.cella(giocatore.posizione.x, giocatore.posizione.z);
     if (sotto >= 0 && campo.fuoco[sotto]! > 0 && !giocatore.aNuoto) ferita += 12 * dt;
     for (const premio of creature.ritira()) {
+      fatti.creature++;
       if (premio.guardiano) libera(premio.numero);
       const sfidaVinta = sfide.sbriciolata(terraIn(premio.dove.x, premio.dove.z));
       if (sfidaVinta) {
@@ -1280,6 +1313,13 @@ async function avvia(): Promise<void> {
       fatti.luoghi = scoperti.size;
       fatti.terre = terreViste.size;
       fatti.perduti = trovati.length;
+      fatti.accettate = missioni.attiva ? 1 : fatti.accettate;
+      fatti.missioni = MISSIONI.reduce((n, m) => n + missioni.risolte(m.id), 0);
+      fatti.parole = conosciute.size - paroleDiPartenza;
+      fatti.potenziamenti = mago.potenziamenti.vita + mago.potenziamenti.mana + mago.potenziamenti.ricarica;
+      fatti.liberati = liberati.length;
+      fatti.costruzioni = cantiere.opere.length;
+      fatti.domate = sfide.domate.size;
       const fatta = mete.controlla(fatti);
       if (fatta) {
         ui.annuncia('Fatto!', fatta);

@@ -88,8 +88,9 @@ insegna una parola.
 Batterlo libera il luogo: insegna una parola, ci si rinasce se si cade lì vicino, e ci si torna quando si vuole con
 il pulsante «🧭 Viaggio rapido».
 
-- **Una meta sempre sullo schermo** (sotto la mappa): le prime insegnano il gioco in un paio di minuti (bruciare,
-  spegnere, afferrare, riparare, inventare, esplorare), poi diventano traguardi di esplorazione senza fine.
+- **Una meta sempre sullo schermo** (sotto la mappa): le prime accompagnano dentro il gioco un passo alla volta
+  (bastone, abitanti e missioni, incantesimi a parole, creature, parole nuove, livelli, guardiani, costruire, altre
+  terre), poi diventano traguardi di esplorazione senza fine.
 - **Incantesimi perduti**: in ogni tipo di luogo ce n'è uno nascosto, segnalato da una colonna di luce dorata che si
   vede da lontano. Chi ci entra lo tiene per sempre (bordo d'oro nella barra). Sono tredici, e alcuni sono più forti
   di quanto l'officina permetta.
