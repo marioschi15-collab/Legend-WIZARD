@@ -1,4 +1,5 @@
 import { gradino, rumore, rumoreStrati } from '../base/matematica.js';
+import { pesoStrega, suoloStrega } from './stregaTerreno.js';
 
 /** Le prime cinque terre, per nome. L'ordine dell'elenco ZONE è lo stesso dei "pesi" restituiti da pesiZone. */
 export const PRATO = 0;
@@ -194,9 +195,9 @@ export const ZONE: readonly Zona[] = [
   {
     // Una terra fatta a mano, in un punto preciso: nebbia fitta, alberi spogli, la casa della strega in fondo a un
     // sentiero di pietra. Non nasce dal clima come le altre (caldo e umido sono fuori scala): vedi `pesiZone`.
-    nome: 'Bosco della Strega', caldo: 9, umido: 9, terra: 0x2e2b22, nebbia: 0x76858a, cielo: 0x55666c, densitaNebbia: 0.02, luce: 0.52,
-    luceAlta: 0x9fb0b8, luceBassa: 0x34342c, sole: 0xb8c4cc, erba: [0.35, 0.2, 0, 1], luoghi: ['strega'], aria: 'foglie', rivaScura: true,
-    suolo: colline(5, 0.011, 4.6, 91),
+    nome: 'Bosco della Strega', caldo: 9, umido: 9, terra: 0x4a3c2a, nebbia: 0x76858a, cielo: 0x55666c, densitaNebbia: 0.02, luce: 0.52,
+    luceAlta: 0x9fb0b8, luceBassa: 0x34342c, sole: 0xb8c4cc, erba: [0.35, 0.2, 0, 1], luoghi: [], aria: 'foglie', rivaScura: true,
+    suolo: suoloStrega,
     piante: [
       { tipo: 'alberoMorto', parte: 12, scala: [1.0, 1.9] }, { tipo: 'alberoMorto2', parte: 11, scala: [1.0, 2.1] }, { tipo: 'alberoMorto3', parte: 11, scala: [0.9, 1.8] },
       { tipo: 'pino', parte: 12, scala: [0.9, 1.9], tinta: 0x6a7a70 },
@@ -206,9 +207,8 @@ export const ZONE: readonly Zona[] = [
   },
 ];
 
-/** Il numero del Bosco della Strega, e dove sta il suo centro (lì c'è la casa). */
+/** Il numero del Bosco della Strega. */
 export const STREGA = ZONE.length - 1;
-export const CENTRO_STREGA = { x: -250, z: 380 };
 
 /** Quante terre ci sono: ogni elenco di "pesi" ha questa lunghezza. */
 export const N_ZONE = ZONE.length;
@@ -239,7 +239,7 @@ export function pesiZone(x: number, z: number, esito: Float32Array | number[]): 
     let f = Math.exp(-(dc * dc + du * du) / 0.085) + 1e-9;
     if (i === PRATO) f = f * 1.25 + casa * 40;
     // Il Bosco della Strega esiste solo attorno al suo centro, e lì vince su tutto.
-    if (i === STREGA) f = gradino(250, 150, Math.hypot(x - CENTRO_STREGA.x, z - CENTRO_STREGA.z)) * 60 + 1e-9;
+    if (i === STREGA) f = pesoStrega(x, z);
     esito[i] = f;
     somma += f;
   }
@@ -315,7 +315,8 @@ function grezza(x: number, z: number): number {
   const fiume = gradino(0.03, 0.009, dalFiume) * (1 - gradino(0, 0.25, catena)) * gradino(120, 200, r) * (1 - p[VULCANO]!) * (1 - p[STREGA]!);
   if (fiume > 0) {
     // La valle si allarga dolcemente attorno al letto, così le rive non sono muri.
-    const valle = gradino(0.09, 0.03, dalFiume) * gradino(18, 5, h);
+    // (nel Bosco della Strega niente valle: lì il terreno è disegnato a mano e deve restare com'è)
+    const valle = gradino(0.09, 0.03, dalFiume) * gradino(18, 5, h) * (1 - p[STREGA]!);
     h += (Math.min(h, 1.2) - h) * valle * 0.7;
     h += (-1.25 - h) * fiume * gradino(14, 4, h);
   }
@@ -389,9 +390,10 @@ export function luogoDiCasella(cx: number, cz: number): Luogo | null {
       const adatto = rilievo.terraferma > 0.98 && rilievo.monti < 0.08 && rilievo.fiume < 0.05;
       if (adatto && p[zona]! > 0.62 && lava(x, z, p[VULCANO]!) < 0.05) {
         const scelte = ZONE[zona]!.luoghi;
-        const tipo = scelte[Math.floor(sorte(cx, cz, 4) * scelte.length)]!;
-        const dati = TIPI[tipo]!;
-        luogo = { chiave, tipo, nome: dati.nome, x, z, raggio: dati.raggio, quota, seme: Math.floor(sorte(cx, cz, 5) * 1e6) };
+        const tipo = scelte[Math.floor(sorte(cx, cz, 4) * scelte.length)];
+        const dati = tipo === undefined ? undefined : TIPI[tipo];
+        // Una terra senza luoghi suoi (il Bosco della Strega è costruito tutto a mano) non ne fa nascere.
+        if (tipo !== undefined && dati) luogo = { chiave, tipo, nome: dati.nome, x, z, raggio: dati.raggio, quota, seme: Math.floor(sorte(cx, cz, 5) * 1e6) };
       }
     }
   }

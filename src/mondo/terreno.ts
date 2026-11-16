@@ -126,6 +126,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
     shader.uniforms.uRaggioErba = { value: latoErba / 2 };
     shader.uniforms.uFotoPrato = { value: foto('prato') };
     shader.uniforms.uFotoTerra = { value: foto('terra') };
+    shader.uniforms.uFotoFoglie = { value: foto('foglie') };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aLava; varying vec3 vMondo; varying float vLava;')
       .replace(
@@ -138,7 +139,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
         `#include <common>
          uniform sampler2D uStato; uniform float uLatoCampo; uniform float uTempo;
          uniform sampler2D uBiomi; uniform float uRaggioErba;
-         uniform sampler2D uFotoPrato; uniform sampler2D uFotoTerra;
+         uniform sampler2D uFotoPrato; uniform sampler2D uFotoTerra; uniform sampler2D uFotoFoglie;
          varying vec3 vMondo; varying float vLava;
          ${NUBI_GLSL}
          ${UV_ALTEZZE_GLSL}
@@ -162,6 +163,10 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          // terra battuta nelle chiazze nude.
          vec3 fotoPrato = texture2D(uFotoPrato, vMondo.xz * 0.23).rgb * 2.0 * mix(vec3(1.0), texture2D(uFotoPrato, vMondo.zx * 0.037 + 0.37).rgb * 2.0, 0.55);
          vec3 fotoSuolo = mix(fotoPrato, texture2D(uFotoTerra, vMondo.xz * 0.19).rgb * 2.0, nuda);
+         // Nelle terre d'ombra (boschi fitti, paludi, il Bosco della Strega) il suolo è un tappeto di foglie morte.
+         float ombroso = texture2D(uBiomi, uvAltezze(vMondo.xz)).a;
+         vec3 fotoFoglie = texture2D(uFotoFoglie, vMondo.xz * 0.27).rgb * 2.0 * mix(vec3(1.0), texture2D(uFotoFoglie, vMondo.zx * 0.041 + 0.6).rgb * 2.0, 0.5);
+         fotoSuolo = mix(fotoSuolo, fotoFoglie, smoothstep(0.45, 0.9, ombroso));
          diffuseColor.rgb *= mix(vec3(1.0), fotoSuolo, mix(0.3, 0.95, vicinoSuolo));
          // I verdi veri sono più spenti di quelli di un disegno: si toglie un po' di colore e di luce.
          diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11))), diffuseColor.rgb, 0.62) * 0.8;

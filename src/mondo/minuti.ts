@@ -234,6 +234,6 @@ export const MINUTI: readonly (readonly Semina[])[] = [
   ],
   // Campi di Cristallo
   [s('scheggia', 20, [0.6, 2.4], { tinta: 0xb080ff, carica: 1.6 }), s('scheggia', 9, [0.6, 2.0], { tinta: 0x60e0ff, carica: 1.6 }), s('sassi', 6, [0.6, 1.8], { tinta: 0xb0a8d0 }), s('fioreAlto', 5, [0.6, 1.1], { tinta: 0xe0b0ff, carica: 1.5 }), ...VIANDANTI],
-  // Bosco della Strega
-  [s('felce', 12, [0.7, 1.4], { tinta: 0x8a9a80 }), s('funghetti', 7, [0.8, 1.8], { tinta: 0xff9a5a, carica: 1.3 }), s('tronco', 4, [0.8, 1.4]), s('ceppo', 4, [0.8, 1.4]), s('sassi', 8, [0.6, 1.8]), s('ossa', 1.5, [0.8, 1.4]), s('menhir', 1.2, [0.8, 1.6]), s('sterpo', 6, [0.7, 1.4], { tinta: 0x5a5248 })],
+  // Bosco della Strega: solo felci, legni e sassi veri (ossa, funghi e sterpi li mette la scena fatta con Blender)
+  [s('felce', 16, [0.7, 1.5], { tinta: 0x8a9a80 }), s('tronco', 5, [0.8, 1.4]), s('ceppo', 5, [0.8, 1.4]), s('sassi', 12, [0.6, 1.9])],
 ];

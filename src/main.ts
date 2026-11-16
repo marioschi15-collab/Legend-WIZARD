@@ -201,7 +201,7 @@ async function avvia(): Promise<void> {
   const creature = new Creature(altezza, { cella: (x, z) => campo.cella(x, z), fuoco: campo.fuoco, gelo: campo.gelo, accendi: (x, z, r) => campo.accendi(x, z, r, 10) }, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
   // Il Bosco della Strega: la casa, il sentiero di ciottoli e le torce.
-  const boscoStrega = await creaBoscoStrega(RAPIER, fisica);
+  const boscoStrega = creaBoscoStrega(RAPIER, fisica);
   scena.add(boscoStrega.gruppo);
   // Ciò che scaglia i pezzi delle case scaglia anche le creature.
   /** I tronchi e le schegge degli alberi abbattuti e delle rocce spaccate: pezzi veri, i più vecchi lasciano il posto. */

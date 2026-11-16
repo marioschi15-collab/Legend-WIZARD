@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { altezza } from './terreno.js';
-import { CENTRO_STREGA } from './zone.js';
-
-/** Dove comincia il sentiero (dalla parte del villaggio) e quanto è lungo. */
-const LUNGO = 150;
-const LARGO = 3.2;
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { scalaPunti } from '../effetti/particelle.js';
+import { materialeRametti } from './alberiVeri.js';
+import { atmosfera } from './atmosfera.js';
+import { STREGA_DATI } from './stregaDati.js';
+import { CENTRO_STREGA } from './stregaTerreno.js';
 
 export interface BoscoStrega {
   readonly gruppo: THREE.Group;
@@ -15,139 +15,167 @@ export interface BoscoStrega {
   aggiorna(dt: number, occhi: THREE.Vector3): void;
 }
 
+/** Come brilla ogni tipo di punto luce: colore, grandezza dell'alone in metri, quanto trema, se fa luce davvero. */
+const ALONI: Readonly<Record<string, { colore: [number, number, number]; grande: number; trema: number; vera: boolean }>> = {
+  lanterna: { colore: [1.0, 0.6, 0.22], grande: 1.7, trema: 0.12, vera: true },
+  torcia: { colore: [1.0, 0.5, 0.15], grande: 2.0, trema: 0.3, vera: true },
+  finestra: { colore: [1.0, 0.66, 0.3], grande: 2.6, trema: 0.05, vera: true },
+  candela: { colore: [1.0, 0.72, 0.35], grande: 0.5, trema: 0.3, vera: false },
+  zucca: { colore: [1.0, 0.5, 0.1], grande: 1.0, trema: 0.2, vera: false },
+  runa: { colore: [0.3, 0.9, 1.0], grande: 1.4, trema: 0.15, vera: true },
+  cripta: { colore: [0.55, 1.0, 0.6], grande: 2.2, trema: 0.2, vera: true },
+  pozione: { colore: [0.4, 1.0, 0.45], grande: 1.3, trema: 0.25, vera: false },
+};
+
 /**
- * Il cuore del Bosco della Strega: la casa (modellata con Blender, vedi strumenti/casa_strega.py), il sentiero di
- * ciottoli che ci arriva dalla parte del villaggio, e le torce lungo il sentiero. Le due torce più vicine a chi
- * gioca fanno luce davvero; le altre brillano soltanto, così costano poco.
+ * Il Bosco della Strega costruito a mano con Blender (vedi strumenti/strega/scena.py): la casa, il cimitero, la
+ * cappella, lo stagno, il cerchio di pietre, i sentieri. Le forme stanno in un file a parte, che si scarica solo
+ * quando ci si avvicina; gli ingombri e i punti luce ci sono da subito. Tre luci vere seguono i punti che
+ * brillano più vicini a chi gioca; tutti gli altri hanno solo il loro alone, che costa quasi niente.
  */
-export async function creaBoscoStrega(R: typeof RAPIER, fisica: RAPIER.World): Promise<BoscoStrega> {
+export function creaBoscoStrega(R: typeof RAPIER, fisica: RAPIER.World): BoscoStrega {
   const gruppo = new THREE.Group();
   const c = CENTRO_STREGA;
-  // La casa guarda verso il villaggio di partenza.
-  const verso = new THREE.Vector2(-c.x, 20 - c.z).normalize();
-  const giro = Math.atan2(verso.x, verso.y);
-  let base = Infinity;
-  for (let dx = -5; dx <= 5; dx += 2.5) for (let dz = -5; dz <= 5; dz += 2.5) base = Math.min(base, altezza(c.x + dx, c.z + dz));
 
-  try {
-    const casa = (await new GLTFLoader().loadAsync('modelli/casa_strega.glb')).scene;
-    casa.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (!m.isMesh) return;
-      m.castShadow = m.receiveShadow = true;
-      const vecchi = Array.isArray(m.material) ? m.material : [m.material];
-      const nuovi = vecchi.map((v) => {
-        const s = v as THREE.MeshStandardMaterial;
-        // Le finestre brillano di luce propria anche nella nebbia; il resto prende la luce del posto.
-        return s.name === 'finestra' ? new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.1, 0.35) }) : new THREE.MeshLambertMaterial({ map: s.map, color: s.map ? 0xffffff : s.color });
-      });
-      m.material = Array.isArray(m.material) ? nuovi : nuovi[0]!;
-    });
-    casa.position.set(c.x, base + 1.2, c.z);
-    casa.rotation.y = giro;
-    gruppo.add(casa);
-    // Un corpo fermo grande come la casa: non ci si passa attraverso.
-    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), giro);
-    fisica.createCollider(R.ColliderDesc.cuboid(6.4, 5, 5.2).setTranslation(c.x, base + 4, c.z).setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }));
-  } catch {
-    // Senza il modello resta il bosco, con il sentiero e le torce.
-  }
-
-  // --- il sentiero: una striscia di ciottoli che serpeggia dalla casa verso il villaggio, appoggiata al terreno ---
-  const lato = new THREE.Vector2(-verso.y, verso.x);
-  const punto = (t: number): { x: number; z: number } => {
-    const d = 13 + t * LUNGO;
-    const sbanda = Math.sin(t * 7) * 7 * Math.min(1, t * 4);
-    return { x: c.x + verso.x * d + lato.x * sbanda, z: c.z + verso.y * d + lato.y * sbanda };
-  };
-  const passi = 90;
-  const pos: number[] = [];
-  const uv: number[] = [];
-  const ind: number[] = [];
-  for (let i = 0; i <= passi; i++) {
-    const a = punto(i / passi);
-    const b = punto(Math.min(1, (i + 1) / passi));
-    const tx = b.x - a.x || verso.x;
-    const tz = b.z - a.z || verso.y;
-    const tl = Math.hypot(tx, tz) || 1;
-    for (const s of [-1, 1]) {
-      const x = a.x + ((-tz / tl) * s * LARGO) / 2;
-      const z = a.z + ((tx / tl) * s * LARGO) / 2;
-      pos.push(x, altezza(x, z) + 0.07, z);
-      uv.push(s > 0 ? 1 : 0, (i * LUNGO) / passi / LARGO);
+  // --- gli ingombri: muri, tronchi, lapidi, cancellate ---
+  const giro = new THREE.Quaternion();
+  const asse = new THREE.Vector3(0, 1, 0);
+  for (const u of STREGA_DATI.urti) {
+    if (u.m) {
+      giro.setFromAxisAngle(asse, u.g ?? 0);
+      fisica.createCollider(R.ColliderDesc.cuboid(u.m[0], u.m[1], u.m[2]).setTranslation(u.p[0], u.p[1], u.p[2]).setRotation({ x: giro.x, y: giro.y, z: giro.z, w: giro.w }));
+    } else if (u.r !== undefined && u.h !== undefined) {
+      fisica.createCollider(R.ColliderDesc.cylinder(u.h, u.r).setTranslation(u.p[0], u.p[1], u.p[2]));
     }
-    if (i < passi) ind.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
   }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.setIndex(ind);
-  g.computeVertexNormals();
-  const ciottoli = new THREE.TextureLoader().load('materiali/ciottoli.jpg');
-  ciottoli.colorSpace = THREE.SRGBColorSpace;
-  ciottoli.wrapS = ciottoli.wrapT = THREE.RepeatWrapping;
-  ciottoli.anisotropy = 4;
-  const sentiero = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: ciottoli, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
-  sentiero.receiveShadow = true;
-  gruppo.add(sentiero);
 
-  // --- le torce: un palo e una fiamma, ai due lati del sentiero e davanti alla casa ---
-  const tela = document.createElement('canvas');
-  tela.width = tela.height = 64;
-  const d2 = tela.getContext('2d')!;
-  const sfumo = d2.createRadialGradient(32, 38, 2, 32, 34, 30);
-  sfumo.addColorStop(0, 'rgba(255,245,200,1)');
-  sfumo.addColorStop(0.3, 'rgba(255,170,60,0.9)');
-  sfumo.addColorStop(1, 'rgba(255,90,10,0)');
-  d2.fillStyle = sfumo;
-  d2.fillRect(0, 0, 64, 64);
-  const fiamma = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(tela), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true });
-  const legno = new THREE.MeshLambertMaterial({ color: 0x2a2018 });
-  const palo = new THREE.CylinderGeometry(0.06, 0.08, 1.7, 6).translate(0, 0.85, 0);
-  const torce: { fiamma: THREE.Sprite; dove: THREE.Vector3; fase: number }[] = [];
-  const torcia = (x: number, z: number): void => {
-    const y = altezza(x, z);
-    const p = new THREE.Mesh(palo, legno);
-    p.position.set(x, y, z);
-    const f = new THREE.Sprite(fiamma);
-    f.position.set(x, y + 1.95, z);
-    f.scale.setScalar(0.9);
-    gruppo.add(p, f);
-    torce.push({ fiamma: f, dove: new THREE.Vector3(x, y + 2, z), fase: torce.length * 1.7 });
-  };
-  for (let i = 0; i < 11; i++) {
-    const t = i / 10;
-    const a = punto(t);
-    const b = punto(Math.min(1, t + 0.01));
-    const tl = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-    const s = i % 2 ? 1 : -1;
-    torcia(a.x + ((-(b.z - a.z) / tl) * s * (LARGO / 2 + 0.7)), a.z + (((b.x - a.x) / tl) * s * (LARGO / 2 + 0.7)));
-  }
-  const luci = [0, 1].map(() => {
-    const l = new THREE.PointLight(0xff9a40, 0, 22, 1.6);
+  // --- gli aloni: un puntino morbido per ogni lanterna, candela, finestra, zucca, runa ---
+  const luci = STREGA_DATI.luci.filter((l) => ALONI[l.t]);
+  const pos = new Float32Array(luci.length * 3);
+  const col = new Float32Array(luci.length * 3);
+  const dati = new Float32Array(luci.length * 3);
+  luci.forEach((l, i) => {
+    const a = ALONI[l.t]!;
+    pos.set(l.p, i * 3);
+    col.set(a.colore, i * 3);
+    dati.set([a.grande * (0.7 + 0.3 * l.f), i * 1.7, a.trema], i * 3);
+  });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('colore', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('dati', new THREE.BufferAttribute(dati, 3));
+  const aloni = new THREE.Points(
+    g,
+    new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uScala: scalaPunti, uTempo: atmosfera.tempo, uNebbia: atmosfera.nebbiaDensita },
+      vertexShader: /* glsl */ `
+        attribute vec3 colore; attribute vec3 dati;
+        uniform float uScala; uniform float uTempo; uniform float uNebbia;
+        varying vec4 vColore;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          float lontano = -mv.z;
+          float trema = 1.0 + dati.z * (sin(uTempo * 9.0 + dati.y) * 0.6 + sin(uTempo * 23.0 + dati.y * 2.3) * 0.4);
+          gl_PointSize = min(dati.x * trema * uScala / max(lontano, 0.5), 220.0);
+          // Nella nebbia una luce si vede da più lontano delle cose: l'alone svanisce più piano.
+          float f = uNebbia * lontano * 0.55;
+          vColore = vec4(colore * trema, exp(-f * f) * smoothstep(0.6, 2.5, lontano));
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        varying vec4 vColore;
+        void main() {
+          float d = length(gl_PointCoord - 0.5) * 2.0;
+          float a = smoothstep(1.0, 0.0, d);
+          gl_FragColor = vec4(vColore.rgb * (a * a * 0.55 + pow(a, 8.0) * 1.2), vColore.a);
+          #include <colorspace_fragment>
+        }
+      `,
+    }),
+  );
+  aloni.frustumCulled = false;
+  aloni.renderOrder = 7;
+  gruppo.add(aloni);
+
+  // --- tre luci vere, che stanno sempre sui punti luce più vicini ---
+  const vere = luci.filter((l) => ALONI[l.t]!.vera).map((l) => ({ dove: new THREE.Vector3(...l.p), tipo: ALONI[l.t]!, fase: l.p[0] * 3.1 }));
+  const fari = [0, 1, 2].map(() => {
+    const l = new THREE.PointLight(0xff9a40, 0, 20, 1.5);
     gruppo.add(l);
     return l;
   });
-  const imbocco = punto(1);
-  let tempo = 0;
+
+  // --- le forme: si scaricano la prima volta che ci si avvicina ---
+  let chiesto = false;
+  let scena: THREE.Object3D | null = null;
+  const carica = async (): Promise<void> => {
+    try {
+      const caricatore = new GLTFLoader();
+      caricatore.setMeshoptDecoder(MeshoptDecoder);
+      const radice = (await caricatore.loadAsync('modelli/bosco_strega.glb')).scene;
+      const materie = new Map<string, THREE.Material>();
+      const materia = (v: THREE.MeshStandardMaterial): THREE.Material => {
+        let m = materie.get(v.name);
+        if (m) return m;
+        // Ciò che brilla (lanterne, vetrate, rune) ha luce propria anche nella nebbia; i rametti sono cartoncini
+        // ritagliati; tutto il resto prende la luce del posto, e i colori dei punti (più scuri verso terra).
+        if (v.name === 'luce') m = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 1.5, 0.5) });
+        else if (v.name === 'runa') m = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 1.9, 2.2) });
+        else if (v.name === 'vetrata') m = new THREE.MeshBasicMaterial({ map: v.map, color: new THREE.Color(1.7, 1.6, 1.5) });
+        else if (v.name === 'rametti') m = materialeRametti();
+        else m = new THREE.MeshLambertMaterial({ map: v.map, color: v.map ? 0xffffff : v.color, vertexColors: true });
+        materie.set(v.name, m);
+        return m;
+      };
+      radice.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const vecchia = mesh.material as THREE.MeshStandardMaterial;
+        mesh.material = materia(vecchia);
+        mesh.castShadow = vecchia.name !== 'rametti' && vecchia.name !== 'luce' && vecchia.name !== 'runa';
+        mesh.receiveShadow = vecchia.name !== 'rametti';
+      });
+      radice.position.set(c.x, 0, c.z);
+      gruppo.add(radice);
+      scena = radice;
+    } catch {
+      // Senza la scena restano il terreno, il bosco e le luci: si può giocare lo stesso.
+    }
+  };
+
+  let attesa = 0;
   return {
     gruppo,
-    imbocco,
+    imbocco: { x: STREGA_DATI.imbocco[0], z: STREGA_DATI.imbocco[1] },
     aggiorna(dt, occhi) {
-      tempo += dt;
-      // Lontano dal bosco non c'è niente da fare.
-      if (Math.hypot(occhi.x - c.x, occhi.z - c.z) > 420) {
-        for (const l of luci) l.intensity = 0;
+      const lontano = Math.hypot(occhi.x - c.x, occhi.z - c.z);
+      if (!chiesto && lontano < 700) {
+        chiesto = true;
+        void carica();
+      }
+      const vicino = lontano < 520;
+      aloni.visible = vicino;
+      if (scena) scena.visible = vicino;
+      if (!vicino) {
+        for (const f of fari) f.intensity = 0;
         return;
       }
-      for (const t of torce) t.fiamma.scale.setScalar(0.85 + Math.sin(tempo * 11 + t.fase) * 0.08 + Math.sin(tempo * 23 + t.fase * 2) * 0.05);
-      // Le due torce più vicine fanno luce davvero.
-      const vicine = [...torce].sort((a, b) => a.dove.distanceToSquared(occhi) - b.dove.distanceToSquared(occhi));
-      luci.forEach((l, i) => {
-        const t = vicine[i];
-        if (!t) return;
-        l.position.copy(t.dove);
-        l.intensity = 26 + Math.sin(tempo * 13 + t.fase) * 5;
+      attesa -= dt;
+      if (attesa <= 0) {
+        attesa = 0.2;
+        vere.sort((a, b) => a.dove.distanceToSquared(occhi) - b.dove.distanceToSquared(occhi));
+      }
+      const t = atmosfera.tempo.value;
+      fari.forEach((f, i) => {
+        const l = vere[i];
+        if (!l) return;
+        f.position.copy(l.dove);
+        f.color.setRGB(l.tipo.colore[0], l.tipo.colore[1], l.tipo.colore[2]);
+        f.intensity = 24 * (1 + l.tipo.trema * Math.sin(t * 11 + l.fase));
       });
     },
   };

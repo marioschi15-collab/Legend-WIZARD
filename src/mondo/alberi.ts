@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { occupatoStrega } from './stregaOccupato.js';
 import { geometriaAbeteVero, geometriaModello, geometriaRametti, geometriaSpoglio, materialeCorteccia, materialeRametti, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
@@ -242,6 +243,8 @@ export function creaBosco(ombre: boolean): Bosco {
       const scala = rnd();
       const giro = rnd() * 6.28;
       if (luoghiVicini(x, z, minute ? 2 : 5).length > 0) continue;
+      // Nel Bosco della Strega, dove c'è già qualcosa di costruito a mano non nasce altro.
+      if (occupatoStrega(x, z)) continue;
       pesiZone(x, z, pesi);
       let zona = 0;
       for (let k = 1; k < N_ZONE; k++) if (pesi[k]! > pesi[zona]!) zona = k;
