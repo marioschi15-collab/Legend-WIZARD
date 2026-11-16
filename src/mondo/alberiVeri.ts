@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { QUERCIA_DATI } from './querciaDati.js';
+import { ALBERI_SPOGLI } from './alberiSpogliDati.js';
 import { MODELLI_DATI } from './modelliDati.js';
 import { SASSO_DATI } from './sassoDati.js';
 
@@ -241,8 +242,38 @@ export function materialeModello(file: string, ritagliato: boolean): THREE.MeshL
   return m;
 }
 
-/** Un albero spoglio: lo stesso tronco vero della quercia, con i suoi rami e senza una foglia. */
-export function geometriaAlberoSpoglio(): THREE.BufferGeometry {
-  const d = QUERCIA_DATI;
-  return chiudi({ pos: [...d.pos], nor: [...d.nor], uv: [...d.uv], ind: [...d.ind] });
+function daPezzo(d: { pos: number[]; nor: number[]; uv: number[]; ind: number[] }): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(d.pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(d.nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(d.uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(d.pos.length).fill(1), 3));
+  g.setIndex(d.ind);
+  return g;
+}
+
+/** Quanti alberi spogli diversi ci sono. */
+export const QUANTI_SPOGLI = ALBERI_SPOGLI.length;
+
+/** Il tronco e i rami grossi di un albero spoglio (ce ne sono tre, diversi), con la corteccia vera. */
+export function geometriaSpoglio(quale: number): THREE.BufferGeometry {
+  return daPezzo(ALBERI_SPOGLI[quale % QUANTI_SPOGLI]!.tronco);
+}
+
+/** I suoi rametti fini: cartoncini con il ritratto di un ciuffo di rami, attaccati in cima a ogni ramo. */
+export function geometriaRametti(quale: number): THREE.BufferGeometry {
+  return daPezzo(ALBERI_SPOGLI[quale % QUANTI_SPOGLI]!.rami);
+}
+
+export function materialeCorteccia(): THREE.MeshLambertMaterial {
+  const t = fotoModello('corteccia.jpg');
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return new THREE.MeshLambertMaterial({ map: t, vertexColors: true });
+}
+
+export function materialeRametti(): THREE.MeshLambertMaterial {
+  const m = materialeVero();
+  m.map = fotoModello('rametti.webp');
+  m.alphaTest = 0.35;
+  return m;
 }

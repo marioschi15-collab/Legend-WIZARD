@@ -198,7 +198,8 @@ export const ZONE: readonly Zona[] = [
     luceAlta: 0x9fb0b8, luceBassa: 0x34342c, sole: 0xb8c4cc, erba: [0.35, 0.2, 0, 1], luoghi: ['strega'], aria: 'foglie', rivaScura: true,
     suolo: colline(5, 0.011, 4.6, 91),
     piante: [
-      { tipo: 'alberoMorto', parte: 34, scala: [1.0, 2.2] }, { tipo: 'pino', parte: 12, scala: [0.9, 1.9], tinta: 0x6a7a70 },
+      { tipo: 'alberoMorto', parte: 12, scala: [1.0, 1.9] }, { tipo: 'alberoMorto2', parte: 11, scala: [1.0, 2.1] }, { tipo: 'alberoMorto3', parte: 11, scala: [0.9, 1.8] },
+      { tipo: 'pino', parte: 12, scala: [0.9, 1.9], tinta: 0x6a7a70 },
       { tipo: 'roccia', parte: 7, scala: [0.5, 2.2], tinta: 0x8a8f8a }, { tipo: 'cespuglio', parte: 6, scala: [0.5, 1.1], tinta: 0x5a6650 },
       { tipo: 'fungo', parte: 3, scala: [0.4, 1.0], tinta: 0xff9a5a },
     ],

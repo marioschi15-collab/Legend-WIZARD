@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { geometriaAbeteVero, geometriaAlberoSpoglio, geometriaModello, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
+import { geometriaAbeteVero, geometriaModello, geometriaRametti, geometriaSpoglio, materialeCorteccia, materialeRametti, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { GEOMETRIE_MINUTE, MINUTI, TIPI_MINUTI } from './minuti.js';
@@ -187,7 +187,7 @@ export interface Caduto {
 }
 
 /** Che cosa una magia può buttare giù: gli alberi e le rocce, non le cose minute. */
-const ABBATTIBILI = new Set(['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'acacia', 'palma']);
+const ABBATTIBILI = new Set(['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'alberoMorto2', 'alberoMorto3', 'acacia', 'palma']);
 
 interface Pianta {
   tipo: number;
@@ -202,7 +202,7 @@ interface Pianta {
 const BIANCO = new THREE.Color(1, 1, 1);
 const CARBONE = new THREE.Color(0.09, 0.07, 0.06);
 /** I tipi di pianta, nell'ordine in cui sono disegnati; le terre li chiamano per nome (vedi zone.ts). */
-const GRANDI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo'];
+const GRANDI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo', 'alberoMorto2', 'alberoMorto3'];
 /** Dopo le piante grandi e la quercia lontana vengono le cose minute (felci, sassi, tronchi, barili…). */
 const TIPI = [...GRANDI, 'querciaLontana', ...TIPI_MINUTI];
 const PRIMO_MINUTO = GRANDI.length + 1;
@@ -272,7 +272,7 @@ export function creaBosco(ombre: boolean): Bosco {
   const geometrie = [
     geometriaPino(), geometriaQuercia(), geometriaPinoInnevato(), geometriaCactus(),
     geometriaRoccia(), geometriaAlberoMorto(), geometriaFungo(), geometriaGuglia(),
-    geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaQuercia(0),
+    geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaAlberoMorto(), geometriaAlberoMorto(), geometriaQuercia(0),
     ...GEOMETRIE_MINUTE(),
   ];
   // Piante, rocce e legni veri: geometria presa da modelli fotografati dal vero, ognuno con la sua immagine.
@@ -290,7 +290,14 @@ export function creaBosco(ombre: boolean): Bosco {
   vero('pino', geometriaAbeteVero(), abete, true, ombraAbete());
   // Lo stesso abete, imbiancato dalla neve.
   vero('pinoInnevato', geometriaAbeteVero(2.1), abete, true, ombraAbete());
-  vero('alberoMorto', geometriaAlberoSpoglio(), fronde, false);
+  // Gli alberi spogli: tre diversi, ognuno con tronco e rami grossi veri e, sopra, i rametti fini su cartoncini.
+  const corteccia = materialeCorteccia();
+  const rametti = materialeRametti();
+  const conRametti = new Map<number, THREE.BufferGeometry>();
+  ['alberoMorto', 'alberoMorto2', 'alberoMorto3'].forEach((nome, k) => {
+    vero(nome, geometriaSpoglio(k), corteccia, false);
+    conRametti.set(TIPI.indexOf(nome), geometriaRametti(k));
+  });
   const sasso = materialeSasso();
   vero('roccia', geometriaSassoVero(), sasso, false);
   vero('sassi', geometriaSassoVero().scale(0.32, 0.3, 0.32), sasso, false);
@@ -325,6 +332,20 @@ export function creaBosco(ombre: boolean): Bosco {
     };
   });
   mesh[QUERCIA_LONTANA]!.castShadow = false;
+  // I rametti di ogni albero spoglio stanno negli stessi posti del loro tronco: ne condividono posizioni e colori.
+  const compagni: THREE.InstancedMesh[] = [];
+  for (const [i, g] of conRametti) {
+    const tronco = mesh[i]!;
+    const c = new THREE.InstancedMesh(g, rametti, CAPIENZA);
+    c.instanceMatrix = tronco.instanceMatrix;
+    c.instanceColor = tronco.instanceColor;
+    c.frustumCulled = false;
+    c.count = 0;
+    c.onBeforeRender = () => {
+      c.count = tronco.count;
+    };
+    compagni.push(c);
+  }
   const o = new THREE.Object3D();
   /** Gli alberi abbattuti e le rocce spaccate in questa partita, per posizione. */
   const abbattuti = new Map<string, { x: number; z: number }>();
@@ -334,7 +355,7 @@ export function creaBosco(ombre: boolean): Bosco {
   let ultimoCz = NaN;
 
   return {
-    oggetti: mesh,
+    oggetti: [...mesh, ...compagni],
     abbatti(x, z, raggio) {
       const caduti: Caduto[] = [];
       for (const piante of zolle.values()) {
