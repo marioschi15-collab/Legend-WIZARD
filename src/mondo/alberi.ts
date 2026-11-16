@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { occupatoStrega } from './stregaOccupato.js';
-import { geometriaAbeteVero, geometriaModello, geometriaRametti, geometriaSpoglio, materialeCorteccia, materialeRametti, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
+import { geometriaAbeteVero, geometriaModello, geometriaRametti, geometriaSpoglio, geometriaSpoglioLontano, materialeCorteccia, materialeRametti, materialeSpoglioLontano, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { GEOMETRIE_MINUTE, MINUTI, TIPI_MINUTI } from './minuti.js';
@@ -203,7 +203,7 @@ interface Pianta {
 const BIANCO = new THREE.Color(1, 1, 1);
 const CARBONE = new THREE.Color(0.09, 0.07, 0.06);
 /** I tipi di pianta, nell'ordine in cui sono disegnati; le terre li chiamano per nome (vedi zone.ts). */
-const GRANDI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo', 'alberoMorto2', 'alberoMorto3'];
+const GRANDI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo', 'alberoMorto2', 'alberoMorto3', 'spoglioLontano'];
 /** Dopo le piante grandi e la quercia lontana vengono le cose minute (felci, sassi, tronchi, barili…). */
 const TIPI = [...GRANDI, 'querciaLontana', ...TIPI_MINUTI];
 const PRIMO_MINUTO = GRANDI.length + 1;
@@ -275,7 +275,7 @@ export function creaBosco(ombre: boolean): Bosco {
   const geometrie = [
     geometriaPino(), geometriaQuercia(), geometriaPinoInnevato(), geometriaCactus(),
     geometriaRoccia(), geometriaAlberoMorto(), geometriaFungo(), geometriaGuglia(),
-    geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaAlberoMorto(), geometriaAlberoMorto(), geometriaQuercia(0),
+    geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaAlberoMorto(), geometriaAlberoMorto(), geometriaAlberoMorto(), geometriaQuercia(0),
     ...GEOMETRIE_MINUTE(),
   ];
   // Piante, rocce e legni veri: geometria presa da modelli fotografati dal vero, ognuno con la sua immagine.
@@ -297,10 +297,15 @@ export function creaBosco(ombre: boolean): Bosco {
   const corteccia = materialeCorteccia();
   const rametti = materialeRametti();
   const conRametti = new Map<number, THREE.BufferGeometry>();
+  const SPOGLI = new Set<number>();
   ['alberoMorto', 'alberoMorto2', 'alberoMorto3'].forEach((nome, k) => {
     vero(nome, geometriaSpoglio(k), corteccia, false);
     conRametti.set(TIPI.indexOf(nome), geometriaRametti(k));
+    SPOGLI.add(TIPI.indexOf(nome));
   });
+  // Da lontano (oltre la zolla accanto) un albero spoglio è il suo ritratto: sono tanti, e ognuno ha migliaia di facce.
+  const SPOGLIO_LONTANO = TIPI.indexOf('spoglioLontano');
+  vero('spoglioLontano', geometriaSpoglioLontano(), materialeSpoglioLontano(), true);
   const sasso = materialeSasso();
   vero('roccia', geometriaSassoVero(), sasso, false);
   vero('sassi', geometriaSassoVero().scale(0.32, 0.3, 0.32), sasso, false);
@@ -425,7 +430,7 @@ export function creaBosco(ombre: boolean): Bosco {
           if (vicina !== (giro === 0)) continue;
           for (const p of piante) {
             if (abbattuti.size > 0 && abbattuti.has(chiaveDi(p))) continue;
-            const tipo = p.tipo === QUERCIA && !vicina ? QUERCIA_LONTANA : p.tipo;
+            const tipo = p.tipo === QUERCIA && !vicina ? QUERCIA_LONTANA : SPOGLI.has(p.tipo) && (dx > 1 || dz > 1) ? SPOGLIO_LONTANO : p.tipo;
             const n = quante[tipo]!;
             if (n >= CAPIENZA) continue;
             quante[tipo] = n + 1;

@@ -277,3 +277,25 @@ export function materialeRametti(): THREE.MeshLambertMaterial {
   m.alphaTest = 0.35;
   return m;
 }
+
+/** Un albero spoglio visto da lontano: il suo ritratto intero (fatto con Blender) su due cartoncini incrociati. */
+export function geometriaSpoglioLontano(): THREE.BufferGeometry {
+  const l: Lista = { pos: [], nor: [], uv: [], ind: [] };
+  for (const giro of [0, Math.PI / 2]) {
+    const dx = Math.cos(giro) * 5;
+    const dz = Math.sin(giro) * 5;
+    const n = l.pos.length / 3;
+    l.pos.push(-dx, -0.3, -dz, dx, -0.3, dz, dx, 9.7, dz, -dx, 9.7, -dz);
+    for (let k = 0; k < 4; k++) l.nor.push(0, 1, 0);
+    l.uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+    l.ind.push(n, n + 1, n + 2, n, n + 2, n + 3);
+  }
+  return daPezzo(l);
+}
+
+export function materialeSpoglioLontano(): THREE.MeshLambertMaterial {
+  const m = materialeVero();
+  m.map = fotoModello('spoglio_lontano.webp');
+  m.alphaTest = 0.3;
+  return m;
+}

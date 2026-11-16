@@ -38,7 +38,7 @@ def tubi(parti):
     """Le parti grosse come tubi con la corteccia: posizioni, normali, coordinate dell'immagine, triangoli."""
     pos, nor, uv, ind = [], [], [], []
     for livello, punti in parti:
-        lati = (10, 7, 5)[livello]
+        lati = (8, 6, 4)[livello]
         base = len(pos) // 3; lung = 0.0
         for i, (p, r) in enumerate(punti):
             d = (punti[min(i + 1, len(punti) - 1)][0] - punti[max(i - 1, 0)][0]).normalized()
@@ -115,3 +115,22 @@ for q in range(4):
         ob = bpy.data.objects.new('r', cu); ob.data.materials.append(mat); sc.collection.objects.link(ob)
     sc.render.filepath = f'//ciuffo{q}.png'; bpy.ops.render.render(write_still=True)
 print('ritratti fatti')
+
+# ---- il ritratto dell'albero intero, per quando è lontano: tronco, rami e una nuvola di rametti ----
+for o in [o for o in bpy.data.objects if o.type == 'CURVE']: bpy.data.objects.remove(o)
+parti, cime = albero(3, 6.2)
+rnd = random.Random(5)
+for (p, d, s2) in cime:
+    for k in range(7):
+        dd = (d + Vector((rnd.uniform(-0.8, 0.8), rnd.uniform(-0.8, 0.8), rnd.uniform(-0.2, 0.8)))).normalized()
+        punti = cammino(parti, p, dd, rnd.uniform(0.5, 1.3) * s2, 0.012, 2, rnd, 4)
+        for (q, _) in punti[1:]:
+            if rnd.random() < 0.6: cammino(parti, q, (rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(0, 1)), rnd.uniform(0.2, 0.5), 0.006, 2, rnd, 2)
+for livello, punti in parti:
+    cu = bpy.data.curves.new('r', 'CURVE'); cu.dimensions = '3D'; cu.bevel_depth = 1.0; cu.bevel_resolution = 1
+    sp = cu.splines.new('POLY'); sp.points.add(len(punti) - 1)
+    for i, (p, r) in enumerate(punti): sp.points[i].co = (p.x, p.y, p.z, 1); sp.points[i].radius = r
+    ob = bpy.data.objects.new('r', cu); ob.data.materials.append(mat); sc.collection.objects.link(ob)
+cam.ortho_scale = 10.0; co.location = (0, -20, 4.7)
+sc.render.filepath = '//spoglio_intero.png'; bpy.ops.render.render(write_still=True)
+print('ritratto intero fatto')

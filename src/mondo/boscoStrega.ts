@@ -16,14 +16,15 @@ export interface BoscoStrega {
 }
 
 /** Come brilla ogni tipo di punto luce: colore, grandezza dell'alone in metri, quanto trema, se fa luce davvero. */
-const ALONI: Readonly<Record<string, { colore: [number, number, number]; grande: number; trema: number; vera: boolean }>> = {
+const ALONI: Readonly<Record<string, { colore: [number, number, number]; grande: number; trema: number; vera: boolean; tenue?: number }>> = {
   lanterna: { colore: [1.0, 0.6, 0.22], grande: 1.7, trema: 0.12, vera: true },
   torcia: { colore: [1.0, 0.5, 0.15], grande: 2.0, trema: 0.3, vera: true },
   finestra: { colore: [1.0, 0.66, 0.3], grande: 2.6, trema: 0.05, vera: true },
   candela: { colore: [1.0, 0.72, 0.35], grande: 0.5, trema: 0.3, vera: false },
   zucca: { colore: [1.0, 0.5, 0.1], grande: 1.0, trema: 0.2, vera: false },
-  runa: { colore: [0.3, 0.9, 1.0], grande: 1.4, trema: 0.15, vera: true },
-  cripta: { colore: [0.55, 1.0, 0.6], grande: 2.2, trema: 0.2, vera: true },
+  // Le rune e la cripta fanno una luce più tenue: da piene tingevano di azzurro e di verde tutto il bosco attorno.
+  runa: { colore: [0.3, 0.9, 1.0], grande: 1.4, trema: 0.15, vera: true, tenue: 0.35 },
+  cripta: { colore: [0.55, 1.0, 0.6], grande: 2.2, trema: 0.2, vera: true, tenue: 0.5 },
   pozione: { colore: [0.4, 1.0, 0.45], grande: 1.3, trema: 0.25, vera: false },
 };
 
@@ -175,7 +176,7 @@ export function creaBoscoStrega(R: typeof RAPIER, fisica: RAPIER.World): BoscoSt
         if (!l) return;
         f.position.copy(l.dove);
         f.color.setRGB(l.tipo.colore[0], l.tipo.colore[1], l.tipo.colore[2]);
-        f.intensity = 24 * (1 + l.tipo.trema * Math.sin(t * 11 + l.fase));
+        f.intensity = 24 * (l.tipo.tenue ?? 1) * (1 + l.tipo.trema * Math.sin(t * 11 + l.fase));
       });
     },
   };
