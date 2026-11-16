@@ -368,9 +368,10 @@ def ruota(S, M, insieme, r=0.58):
         S.metti(scatola(0.04, 0.04, r - 0.06, z0=0.05), insieme, 'legno', M @ R(0, 0, k / 8 * math.tau), radica=False, liscia=False)
 
 
-def carro(S, M, rnd):
-    """Il carro delle bare, fermo sul sentiero del cimitero."""
-    I = 'cimitero'
+def carro(S, M, rnd, bare=True, insieme='cimitero'):
+    """Un carro a due ruote con le stanghe a terra: quello delle bare, fermo sul sentiero del cimitero, o (con
+    `bare=False`) un carro di merci."""
+    I = insieme
     S.metti(scatola(1.5, 2.9, 0.1, z0=0.78, smusso=0.01), I, 'legno', M, uv=0.9, radica=False)
     for x in (-0.72, 0.72):
         S.metti(scatola(0.06, 2.9, 0.34, z0=0.88), I, 'legno', M @ T(x, 0, 0), uv=0.9, radica=False)
@@ -378,9 +379,13 @@ def carro(S, M, rnd):
         S.metti(tubo([((x * 0.6, -1.45, 0.82), 0.045), ((x * 0.55, -2.6, 0.6), 0.04), ((x * 0.5, -3.7, 0.12), 0.035)], 6), I, 'legno', M, radica=False)
     S.metti(tubo([((-0.95, 0.5, 0.58), 0.05), ((0.95, 0.5, 0.58), 0.05)], 6), I, 'ferro', M, radica=False)
     S.metti(scatola(0.1, 0.1, 0.75, z0=0.0), I, 'legno', M @ T(0, -1.2, 0), uv=0.9)
-    bara(S, M @ T(-0.36, 0.0, 0.88) @ R(0.04), rnd, I, urto=False)
-    bara(S, M @ T(0.36, 0.05, 0.88) @ R(-0.05), rnd, I, urto=False)
-    bara(S, M @ T(0.0, -0.1, 1.31) @ R(0.2), rnd, I, urto=False)
+    if bare:
+        bara(S, M @ T(-0.36, 0.0, 0.88) @ R(0.04), rnd, I, urto=False)
+        bara(S, M @ T(0.36, 0.05, 0.88) @ R(-0.05), rnd, I, urto=False)
+        bara(S, M @ T(0.0, -0.1, 1.31) @ R(0.2), rnd, I, urto=False)
+    else:
+        for (x, y) in ((-0.35, -0.8), (0.35, -0.75), (-0.3, 0.1), (0.38, 0.2), (0.0, 0.95)):
+            S.metti(sfera(0.33, 2, 0.12, rnd.random() * 99, (1.0, 0.85, rnd.uniform(0.7, 1.0)), z0=1.1), I, 'tela', M @ T(x, y, 0) @ R(rnd.uniform(0, 6)), uv=0.8, tinta=(0.85, 0.75, 0.6), radica=False)
     S.urto(M, 1.7, 3.0, 1.9)
     S.occupa(M.translation.x, -M.translation.y, 3.0)
 

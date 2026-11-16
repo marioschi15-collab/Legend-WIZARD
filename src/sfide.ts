@@ -10,6 +10,8 @@ export interface Regola {
   readonly vita: boolean;
   /** La frase per chi gioca. */
   readonly testo: string;
+  /** Vero nei paesi abitati: lì non ci sono creature da cacciare, quindi niente sfida. */
+  readonly pace?: boolean;
 }
 
 const COMUNE: Regola = { fuocoMuore: 0, geloSiScioglie: 0, mana: 1, vita: false, testo: '' };
@@ -23,7 +25,9 @@ export const REGOLE: readonly Regola[] = [
   { ...COMUNE, vita: true, testo: 'Le spore curano: qui la vita torna da sola, sempre.' },
   { ...COMUNE, mana: 2, testo: 'I cristalli vibrano: qui il mana torna il doppio più in fretta.' },
   { ...COMUNE, fuocoMuore: 5, mana: 1.5, testo: 'La nebbia della strega è carica di magia: il mana torna più in fretta, ma il fuoco dura poco.' },
-  { ...COMUNE, fuocoMuore: 3, vita: true, testo: 'Al Borgo d’Inverno ci si scalda ai camini: la vita torna da sola, ma nel gelo il fuoco della magia dura poco.' },
+  { ...COMUNE, fuocoMuore: 3, vita: true, pace: true, testo: 'Al Borgo d’Inverno ci si scalda ai camini: la vita torna da sola, ma nel gelo il fuoco della magia dura poco.' },
+  { ...COMUNE, fuocoMuore: 4, pace: true, testo: 'La nebbia del porto bagna ogni cosa: qui il fuoco dura poco.' },
+  { ...COMUNE, mana: 1.5, testo: 'All’ombra del castello la magia scorre forte: il mana torna più in fretta.' },
 ];
 
 /** Una sfida in corso: sbriciolare un certo numero di creature in una terra. */
@@ -69,9 +73,10 @@ export class Sfide {
     }
   }
 
-  /** Si entra in una terra: se non è ancora domata e non c'è già una sfida, ne parte una. Restituisce quella nuova. */
+  /** Si entra in una terra: se non è ancora domata e non c'è già una sfida, ne parte una. Restituisce quella nuova.
+   * Nei paesi abitati (dove le creature non nascono) non parte nessuna sfida. */
   entra(zona: number): Sfida | null {
-    if (zona === 0 || this.attiva || this.domate.has(zona)) return null;
+    if (zona === 0 || this.attiva || this.domate.has(zona) || REGOLE[zona]?.pace) return null;
     this.attiva = { zona, servono: QUANTE, fatte: 0 };
     this.salva();
     return this.attiva;

@@ -213,6 +213,26 @@ export const ZONE: readonly Zona[] = [
     suolo: FATTE.borgo.suolo, fatta: FATTE.borgo,
     piante: [{ tipo: 'pinoInnevato', parte: 34, scala: [0.8, 1.7] }, { tipo: 'roccia', parte: 3, scala: [0.6, 1.8], tinta: 0xc4e2f4 }],
   },
+  {
+    // Un porto di mare nella nebbia: i velieri all'ormeggio, le case alte sulla banchina, il faro che si intravede.
+    nome: 'Porto delle Nebbie', caldo: 9, umido: 9, terra: 0x5c5a48, nebbia: 0x8f9aa0, cielo: 0x62707a, densitaNebbia: 0.014, luce: 0.58,
+    luceAlta: 0xaab8c2, luceBassa: 0x4a4a42, sole: 0xc4ccd4, erba: [0.3, 0.35, 0, 0.5], luoghi: [],
+    suolo: FATTE.porto.suolo, fatta: FATTE.porto,
+    piante: [
+      { tipo: 'cespuglio', parte: 6, scala: [0.5, 1.1], tinta: 0x6a7460 }, { tipo: 'roccia', parte: 5, scala: [0.5, 1.8], tinta: 0x8a8f8a },
+      { tipo: 'pino', parte: 5, scala: [0.8, 1.5], tinta: 0x6a7a70 },
+    ],
+  },
+  {
+    // Un castello in cima a un colle, in fondo a una strada di ciottoli: bosco verde, sole, il mulino e il ruscello.
+    nome: 'Castello del Bosco', caldo: 9, umido: 9, terra: 0x3a7230, nebbia: 0xb6d2e4, cielo: 0x2f70d8, densitaNebbia: 0.0028, luce: 1,
+    luceAlta: 0xcfe4ff, luceBassa: 0x5c7a3c, sole: 0xfff0d2, erba: [1, 0, 0, 0.2], luoghi: [],
+    suolo: FATTE.castello.suolo, fatta: FATTE.castello,
+    piante: [
+      { tipo: 'quercia', parte: 30, scala: [0.9, 1.8] }, { tipo: 'pino', parte: 14, scala: [0.9, 1.9] },
+      { tipo: 'cespuglio', parte: 12, scala: [0.7, 1.5], tinta: 0xb9d9b0 }, { tipo: 'roccia', parte: 2, scala: [0.5, 1.6] },
+    ],
+  },
 ];
 
 /** I numeri delle terre fatte a mano. */

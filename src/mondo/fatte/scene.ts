@@ -6,12 +6,13 @@ import { scalaPunti, type Particelle } from '../../effetti/particelle.js';
 import { materialeRametti } from '../alberiVeri.js';
 import { atmosfera } from '../atmosfera.js';
 import { SCENE_FATTE, type ScenaFatta } from './elenco.js';
+import { creaPaesani } from './paesani.js';
 
 export interface SceneFatte {
   readonly gruppo: THREE.Group;
   /** Per ogni scena, il punto dove porta il viaggio rapido. */
   readonly mete: readonly { nome: string; x: number; z: number }[];
-  aggiorna(dt: number, occhi: THREE.Vector3): void;
+  aggiorna(dt: number, occhi: THREE.Vector3, notte?: boolean): void;
 }
 
 /** Come brilla ogni tipo di punto luce: colore, grandezza dell'alone in metri, quanto trema, se fa luce davvero. */
@@ -31,7 +32,7 @@ const ALONI: Readonly<Record<string, { colore: [number, number, number]; grande:
 };
 
 /** Le materie che hanno un'immagine (in public/materiali/scene), uguali per tutte le scene. */
-const CON_IMMAGINE = new Set(['muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'vetrata']);
+const CON_IMMAGINE = new Set(['muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'tavole', 'vetrata']);
 
 const immagini = new Map<string, THREE.Texture>();
 function immagine(nome: string): THREE.Texture {
@@ -65,8 +66,14 @@ function materia(nome: string, colore: THREE.Color): THREE.Material {
   return m;
 }
 
+interface Forme {
+  radice: THREE.Object3D;
+  /** Ogni pezzo con la palla che lo contiene, per non disegnare quelli troppo lontani. */
+  pezzi: { mesh: THREE.Mesh; centro: THREE.Vector3; raggio: number }[];
+}
+
 /** Le forme di una scena: si scaricano la prima volta che ci si avvicina. */
-async function caricaForme(s: ScenaFatta): Promise<THREE.Object3D | null> {
+async function caricaForme(s: ScenaFatta): Promise<Forme | null> {
   try {
     const caricatore = new GLTFLoader();
     caricatore.setMeshoptDecoder(MeshoptDecoder);
@@ -81,7 +88,16 @@ async function caricaForme(s: ScenaFatta): Promise<THREE.Object3D | null> {
       mesh.receiveShadow = nome !== 'rametti';
     });
     radice.position.set(s.terra.centro.x, 0, s.terra.centro.z);
-    return radice;
+    radice.updateMatrixWorld(true);
+    const pezzi: Forme['pezzi'] = [];
+    radice.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.geometry.computeBoundingSphere();
+      const palla = mesh.geometry.boundingSphere!;
+      pezzi.push({ mesh, centro: palla.center.clone().applyMatrix4(mesh.matrixWorld), raggio: palla.radius });
+    });
+    return { radice, pezzi };
   } catch {
     // Senza le forme restano il terreno, il bosco e le luci: si può giocare lo stesso.
     return null;
@@ -174,7 +190,12 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
     gruppo.add(aloni);
     const vere: Vera[] = s.dati.luci.filter((l) => ALONI[l.t]?.vera).map((l) => ({ dove: new THREE.Vector3(...l.p), tipo: ALONI[l.t]!, fase: l.p[0] * 3.1 }));
     const camini = s.dati.luci.filter((l) => l.t === 'fumo').map((l) => new THREE.Vector3(...l.p));
-    return { s, aloni, vere, camini, chiesta: false, forme: null as THREE.Object3D | null, vicina: false };
+    const paesani = s.dati.gente?.length ? creaPaesani(s.dati.gente) : null;
+    if (paesani) {
+      paesani.gruppo.visible = false;
+      gruppo.add(paesani.gruppo);
+    }
+    return { s, aloni, vere, camini, paesani, chiesta: false, forme: null as Forme | null, vicina: false };
   });
 
   const fari = [0, 1, 2].map(() => {
@@ -189,7 +210,7 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
   return {
     gruppo,
     mete: SCENE_FATTE.map((s) => ({ nome: s.viaggio, x: s.dati.imbocco[0], z: s.dati.imbocco[1] })),
-    aggiorna(dt, occhi) {
+    aggiorna(dt, occhi, notte = false) {
       attesa -= dt;
       const riordina = attesa <= 0;
       if (riordina) {
@@ -206,15 +227,23 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
           q.chiesta = true;
           void caricaForme(q.s).then((forme) => {
             if (!forme) return;
-            forme.visible = q.vicina;
-            gruppo.add(forme);
+            forme.radice.visible = q.vicina;
+            gruppo.add(forme.radice);
             q.forme = forme;
           });
         }
         q.vicina = lontano < 350;
         q.aloni.visible = q.vicina;
-        if (q.forme) q.forme.visible = q.vicina;
+        if (q.forme) q.forme.radice.visible = q.vicina;
+        // La gente si muove solo quando ci si è dentro o quasi.
+        const abitata = lontano < 60;
+        if (q.paesani) {
+          q.paesani.gruppo.visible = abitata;
+          if (abitata) q.paesani.aggiorna(dt, occhi, notte);
+        }
         if (!q.vicina) continue;
+        // Dei pezzi della scena si disegnano solo quelli abbastanza vicini da vedersi (nella nebbia sono pochi).
+        if (riordina && q.forme) for (const p of q.forme.pezzi) p.mesh.visible = p.centro.distanceTo(occhi) - p.raggio < q.s.vista;
         if (riordina) for (const v of q.vere) if (v.dove.distanceToSquared(occhi) < 70 * 70) candidate.push(v);
         // Il fumo dei camini: uno sbuffo ogni tanto, solo da quelli abbastanza vicini da vedersi.
         if (fuma) {

@@ -238,4 +238,11 @@ export const MINUTI: readonly (readonly Semina[])[] = [
   [s('felce', 16, [0.7, 1.5], { tinta: 0x8a9a80 }), s('tronco', 5, [0.8, 1.4]), s('ceppo', 5, [0.8, 1.4]), s('sassi', 12, [0.6, 1.9])],
   // Borgo d'Inverno: poco, e tutto sotto la neve
   [s('sassi', 6, [0.6, 1.6], { tinta: 0xdfefff }), s('sterpo', 4, [0.6, 1.2], { tinta: 0x9aa8b8 }), s('ceppo', 2, [0.8, 1.3], { tinta: 0xcfe0f0 }), s('tronco', 1, [0.7, 1.1], { tinta: 0xcfe0f0 })],
+  // Porto delle Nebbie: sassi, ciuffi d'erba dura e sterpi portati dal vento
+  [s('sassi', 10, [0.6, 1.7], { tinta: 0x9aa098 }), s('ciuffo', 9, [0.5, 1.0], { tinta: 0x9aa890 }), s('sterpo', 4, [0.6, 1.2]), s('tronco', 1.5, [0.7, 1.2], { tinta: 0xb0a898 })],
+  // Castello del Bosco: felci, fiori e funghi come in un bosco curato
+  [
+    s('felce', 16, [0.7, 1.4], { bosco: 0.4 }), s('fioreAlto', 10, [0.7, 1.3]), s('fioreAlto', 6, [0.6, 1.1], { tinta: 0xe0c0ff, carica: 1.2 }), s('ciuffo', 12, [0.7, 1.4]),
+    s('funghetti', 4, [0.8, 1.8], { bosco: 0.5 }), s('sassi', 4, [0.5, 1.5]), s('ceppo', 2, [0.8, 1.3]), s('tronco', 1.5, [0.7, 1.2]),
+  ],
 ];

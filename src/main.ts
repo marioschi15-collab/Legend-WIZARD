@@ -22,7 +22,7 @@ import { Sigilli } from './mondo/sigilli.js';
 import { Abitanti } from './abitanti.js';
 import { Creature } from './creature.js';
 import { caricaCreatureVere } from './creatureVere.js';
-import { abitato } from './mondo/fatte/elenco.js';
+import { abitato, CENTRI_FATTE } from './mondo/fatte/elenco.js';
 import { creaSceneFatte } from './mondo/fatte/scene.js';
 import { Missioni, type MondoMissioni } from './missioni.js';
 import { PAROLE, parolaInPremio, salvaConosciute } from './incantesimi/parole.js';
@@ -1150,7 +1150,7 @@ async function avvia(): Promise<void> {
         // Pazienza.
       }
     }
-    ui.disegnaMappa(p.x, p.z, giocatore.imbardata, luoghiInVista, scoperti, rasi);
+    ui.disegnaMappa(p.x, p.z, giocatore.imbardata, luoghiInVista, scoperti, rasi, CENTRI_FATTE);
   };
 
   /** Quel che vola nell'aria di ogni terra: neve, faville, lucciole, sabbia, foglie, spore. */
@@ -1239,7 +1239,7 @@ async function avvia(): Promise<void> {
       attesaRegola = 0;
       campo.sciogli(giocatore.posizione.x, giocatore.posizione.z, 90);
     } else if (attesaRegola > 10) attesaRegola = 0;
-    sceneFatte.aggiorna(dt, giocatore.posizione);
+    sceneFatte.aggiorna(dt, giocatore.posizione, giornata.luce < 0.5);
     giocatore.passoMagico = mago.svelto > 0 ? 1.8 : 1;
     giocatore.saltoMagico = mago.balzo > 0 ? 1.9 : 1;
     for (const gl of globi) {

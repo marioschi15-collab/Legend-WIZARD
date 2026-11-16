@@ -146,10 +146,11 @@ export class Interfaccia {
 
   /**
    * Ridisegna la mappa. Chi gioca sta sempre al centro e il nord è in alto; attorno si vedono le terre vicine
-   * e i luoghi (pieni se già scoperti).
+   * e i luoghi (pieni se già scoperti). Le zone fatte a mano (`speciali`) sono un rombo dorato.
    */
   disegnaMappa(
     x: number, z: number, imbardata: number, luoghi: readonly Luogo[], scoperti: ReadonlySet<string>, rasi: ReadonlySet<string>,
+    speciali: readonly { x: number; z: number }[] = [],
   ): void {
     const c = this.mappa.getContext('2d');
     if (!c) return;
@@ -176,6 +177,22 @@ export class Interfaccia {
         c.lineWidth = 1.5;
         c.stroke();
       }
+    }
+    for (const s of speciali) {
+      const sx = lato / 2 + (s.x - x) * scala;
+      const sz = lato / 2 + (s.z - z) * scala;
+      if (sx < -8 || sz < -8 || sx > lato + 8 || sz > lato + 8) continue;
+      c.beginPath();
+      c.moveTo(sx, sz - 7);
+      c.lineTo(sx + 6, sz);
+      c.lineTo(sx, sz + 7);
+      c.lineTo(sx - 6, sz);
+      c.closePath();
+      c.fillStyle = '#e9c46a';
+      c.strokeStyle = '#1d1a14';
+      c.lineWidth = 1.5;
+      c.fill();
+      c.stroke();
     }
     c.save();
     c.translate(lato / 2, lato / 2);

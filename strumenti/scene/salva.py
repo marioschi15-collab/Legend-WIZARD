@@ -54,13 +54,15 @@ def salva(S, file, imbocco, colore_terreno=(0.09, 0.075, 0.055)):
         campioni.append([round(a + terreno.CX, 3), round(b + terreno.CZ, 3), round(terreno.suolo(a, b), 4)])
     dati = {'luci': S.luci, 'urti': S.urti, 'occupati': chiavi, 'campioni': campioni,
             'imbocco': [round(imbocco[0] + terreno.CX, 1), round(imbocco[1] + terreno.CZ, 1)]}
+    if S.gente:
+        dati['gente'] = S.gente
     with open(os.path.join(RADICE, 'src', 'mondo', 'fatte', f'{nome}Dati.ts'), 'w') as f:
         f.write(f'/** Ciò che il gioco deve sapere della scena «{nome}», oltre alle forme: i punti che brillano, gli ingombri, le caselle\n'
                 ' * già occupate (lì il bosco non fa nascere piante sue), qualche quota di prova del terreno, dove porta il viaggio.\n'
                 f' * Lo scrive strumenti/scene/{nome}.py: non si modifica a mano. */\n'
                 "import type { DatiFatta } from './tipi.js';\n\n"
                 f"export const {nome.upper()}_DATI = JSON.parse('" + json.dumps(dati, separators=(',', ':')) + "') as DatiFatta;\n")
-    print('luci', len(S.luci), 'urti', len(S.urti), 'caselle occupate', len(chiavi))
+    print('luci', len(S.luci), 'urti', len(S.urti), 'caselle occupate', len(chiavi), 'gente', len(S.gente))
 
     cartella = os.environ.get('ANTEPRIMA')
     if cartella:

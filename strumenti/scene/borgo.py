@@ -63,7 +63,7 @@ def main():
         b = via_borgo(a) + lato * (5.6 + fondo / 2)
         giro = (0.0 if lato < 0 else math.pi) + math.atan2(pend, 2.0) * (-1 if lato < 0 else -1)
         M = posa(a, b, giro + rnd.uniform(-0.05, 0.05), 0.0)
-        casa(S, M, rnd, f'case{n_case % 3}', largo, fondo, neve=True, **scelte)
+        casa(S, M, rnd, 'case_e' if a > 60 else ('case_m' if a > 22 else 'case_o'), largo, fondo, neve=True, **scelte)
         n_case += 1
         return M
 
@@ -79,7 +79,7 @@ def main():
     for (an, d, scelte) in ((1.35, 25.5, dict(piani=3, largo=8.5)), (1.95, 26.0, dict(piani=2, timpano=True)), (2.6, 25.0, dict(piani=3, insegna_tinta=INSEGNE[2])),
                             (3.25, 25.5, dict(piani=2, timpano=True)), (4.45, 25.5, dict(piani=3, largo=8.5, abbaino=True)), (5.0, 25.0, dict(piani=2, largo=7.2))):
         a, b = piazza[0] + math.cos(an) * d, piazza[1] + math.sin(an) * d
-        casa(S, posa(a, b, verso(piazza[0] - a, piazza[1] - b) + rnd.uniform(-0.06, 0.06)), rnd, f'case{n_case % 3}', scelte.pop('largo', rnd.uniform(6.8, 8.2)), rnd.uniform(5.8, 6.6), neve=True, **scelte)
+        casa(S, posa(a, b, verso(piazza[0] - a, piazza[1] - b) + rnd.uniform(-0.06, 0.06)), rnd, 'case_p', scelte.pop('largo', rnd.uniform(6.8, 8.2)), rnd.uniform(5.8, 6.6), neve=True, **scelte)
         n_case += 1
 
     # ---------------------------------------------------------------- il mercato in piazza
@@ -94,6 +94,8 @@ def main():
         a, b = piazza[0] + math.cos(an) * 15.2, piazza[1] + math.sin(an) * 15.2
         lanterna(S, posa(a, b, an + math.pi / 2), rnd, I, 3.1, 1.1)
     slitta(S, posa(-27, 13.5, 0.7), rnd, I)
+    for (a, b) in ((-34.5, 3.0), (-41.0, -3.5), (-30.0, -12.0), (-47.0, 9.5)):   # chi fa due passi in piazza
+        S.persona(posa(a, b))
 
     # ---------------------------------------------------------------- lampioni, cataste, barili e cumuli lungo la via
     I = 'vie'
@@ -123,6 +125,9 @@ def main():
             festone(S, I, (piazza[0] + math.cos(an0) * 15.2, -(piazza[1] + math.sin(an0) * 15.2), 9.0), (piazza[0] + math.cos(an1) * 15.2, -(piazza[1] + math.sin(an1) * 15.2), 9.0), 8, 0.9)
     for (a, lato, g) in ((88, -1, 0.0), (47, 1, math.pi), (24, -1, 0.0), (-6, 1, math.pi)):
         panca(S, posa(a, via_borgo(a) + lato * 4.7, g), rnd, I, True)
+    for a in (101, 82, 61, 35, 14):   # la gente lungo la via
+        S.persona(posa(a, via_borgo(a) + rnd.uniform(-1.4, 1.4)))
+    S.persona(posa(113.0, via_borgo(113) + 3.8, math.pi / 2), 'guardia')
     for an in (0.75, 2.45, 5.1):
         panca(S, posa(piazza[0] + math.cos(an) * 14.0, piazza[1] + math.sin(an) * 14.0, verso(-math.cos(an), -math.sin(an))), rnd, I, True)
     pozzo(S, posa(69.5, via_borgo(69.5) + 11.5, 0.4), rnd)
@@ -143,6 +148,7 @@ def main():
     Mt = posa(-80, -36, verso(42, 36))
     torre_tonda(S, Mt, rnd, I, 3.5, 15.0, neve=True, bandiera=(0.6, 0.12, 0.1), finestre=4)
     stendardo(S, Mt @ T(0, -3.72, 9.5), I)
+    S.persona(Mt @ T(1.9, -5.4, -0.6), 'guardia')
     sentiero(S, spline([(-50, -10), (-59, -17), (-67, -25), (-74.5, -31)], 1.0), 2.2, 'ciottoli', 'vie', rnd, bordi=0.3)
     for (a, b) in ((-71, -24), (-88, -30), (-84, -45), (-73, -42)):
         masso(S, posa(a, b), rnd, I, rnd.uniform(0.7, 1.3), muschio=False)
@@ -166,6 +172,8 @@ def main():
     S.occupa(30, 74, 16.5)
     sentiero(S, spline([(31, via_borgo(31) + 3), (33, 22), (30, 40), (28, 57)], 1.0), 1.8, 'terra', 'vie', rnd, bordi=0.0)
     pupazzo(S, posa(19.5, 56.5, 2.6), rnd, I)
+    S.persona(posa(21.5, 58.0))
+    S.persona(posa(33.0, 55.5))
     pupazzo(S, posa(-40.5, 13.5, 0.3), rnd, 'piazza')
     slitta(S, posa(37, 57.5, 0.4, 0, (0.0, 0.05)), rnd, I)
     staccionata(S, [(14, 60), (12, 70), (14, 82), (22, 90)], rnd, I, posa)
@@ -190,6 +198,7 @@ def main():
     catasta(S, Mb @ T(-4.3, 0.8, 0.3) @ R(math.pi / 2), rnd, I, 2.8, 5, True)
     sentiero(S, spline([(37, 1.0), (37, -16), (33, -34), (31, -56), (33.5, -79)], 1.0), 1.7, 'terra', 'vie', rnd, bordi=0.3)
     lanterna(S, posa(29.5, -78.5, 1.0), rnd, I, 2.6, 1.0)
+    S.persona(posa(32.0, -80.5))
     for k in (-1, 1):   # una pelle stesa ad asciugare su un telaio
         S.metti(scatola(0.1, 0.1, 2.0), I, 'legno', Mb @ T(5.0 + k * 0.9, -1.2, 0), uv=0.8)
     S.metti(scatola(2.0, 0.08, 0.08, z0=1.9), I, 'legno', Mb @ T(5.0, -1.2, 0), uv=0.8, radica=False)

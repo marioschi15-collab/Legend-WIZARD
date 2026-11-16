@@ -4,12 +4,12 @@
  * restano sospesi), ogni zona deve pesare tutto dove è fatta a mano e nulla lontano, le zone non devono pestarsi i
  * piedi, e dove c'è qualcosa di costruito il bosco non deve far nascere piante.
  */
-import { SCENE_FATTE } from '../src/mondo/fatte/elenco.js';
+import { abitato, SCENE_FATTE } from '../src/mondo/fatte/elenco.js';
 import { occupatoFatto } from '../src/mondo/fatte/occupato.js';
 import { FATTE } from '../src/mondo/fatte/suoli.js';
 import { MINUTI } from '../src/mondo/minuti.js';
 import { altezzaEsatta, luoghiVicini, pesiZone, N_ZONE, QUOTA_ACQUA, zonaFatta } from '../src/mondo/zone.js';
-import { REGOLE } from '../src/sfide.js';
+import { REGOLE, Sfide } from '../src/sfide.js';
 
 const errori: string[] = [];
 const verifica = (vero: boolean, che: string): void => {
@@ -60,6 +60,10 @@ for (const s of SCENE_FATTE) {
     `${nome}: il viaggio rapido non porta dentro un muro`);
   verifica(luoghiVicini(t.centro.x, t.centro.z, t.raggio + 15).length === 0, `${nome}: nessun luogo nato dal caso si sovrappone alla scena`);
   verifica(REGOLE[zona] !== undefined && MINUTI[zona] !== undefined, `${nome}: la terra ha la sua regola e le sue piccole cose`);
+  // Nei paesi (dove le creature selvatiche non nascono) non ha senso la sfida «sbriciola tre creature di questa terra».
+  verifica(abitato(t.centro.x, t.centro.z) === s.pace > 0, `${nome}: è al sicuro dalle creature solo se è un paese`);
+  if (s.pace >= t.raggio * 0.9) verifica(new Sfide().entra(zona) === null, `${nome}: in un paese senza creature non parte la sfida`);
+  else verifica(new Sfide().entra(zona) !== null, `${nome}: dove le creature ci sono la sfida parte`);
 
   for (const altra of SCENE_FATTE) {
     if (altra === s) continue;

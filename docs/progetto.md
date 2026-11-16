@@ -119,6 +119,17 @@ terra (nebbia, luce, piante, regola) e la sua voce nel viaggio rapido:
   le luci della festa tese da una casa all'altra, la piazza con la fontana gelata e le bancarelle del mercato, la
   fucina, la torre tonda sul poggio, lo stagno ghiacciato su cui si cammina, la baita del cacciatore verso i monti,
   i pupazzi di neve. Dai camini esce il fumo. Nel borgo le creature selvatiche non nascono.
+- **il Porto delle Nebbie**, a est, sul mare: la banchina di pietra con una ventina di case alte e strette (di
+  tavole o d'intonaco, il timpano verso l'acqua), tre moli di legno su pali, due velieri all'ormeggio su cui si sale
+  dalla passerella (ponte, cassero, sartie, vele serrate, fanale di poppa) e un terzo all'ancora nella rada, la gru
+  a ruota, le bancarelle del pesce, reti stese, ancore, il molo di pietra con il faro acceso in fondo, la spiaggia
+  dei pescatori con le barche in secco e il fuoco. Anche qui le creature non nascono;
+- **il Castello del Bosco**, a ovest oltre il borgo, verso il mare: in cima a un colle le mura merlate con cinque
+  torri dal tetto a punta, il portone con la saracinesca alzata (si entra nel cortile), il mastio con le torrette
+  pensili e la torre della scala, la sala grande, le scuderie, il pozzo; fuori, la strada di ciottoli con i lampioni,
+  il ponte di pietra a tre arcate sul ruscello, il posto di guardia, tre case del contado, il mulino a vento, il
+  campo d'allenamento con bersagli e fantocci, l'accampamento dei viandanti attorno al fuoco.
+Sulla mappa ogni zona fatta a mano è un rombo dorato.
 
 Come sono fatte, tutte allo stesso modo:
 - il terreno di ogni zona è disegnato a mano con una formula (`src/mondo/fatte/suoli.ts`, con le gemelle in
@@ -126,19 +137,25 @@ Come sono fatte, tutte allo stesso modo:
   disegno), e sul bordo sfuma nel paesaggio naturale;
 - la scena è costruita da uno script per zona (`strumenti/scene/strega.py`, `borgo.py`...) con i pezzi comuni di
   `attrezzi.py` (forme di base), `oggetti.py` e `edifici.py` (bosco e cimitero), `paese.py` (case a graticcio, torri,
-  mura, oggetti di paese);
+  mura, portone, mastio, ponte, mulino, tende, oggetti di paese), `mare.py` (navi, moli, banchina, gru, faro);
 - ogni script scrive `public/modelli/<zona>.glb` (solo le forme: il gioco lo scarica avvicinandosi) e
   `src/mondo/fatte/<zona>Dati.ts` (punti luce, camini, ingombri, caselle dove il bosco non deve far nascere piante,
-  punto d'arrivo del viaggio). Le immagini delle materie (muro, legno, intonaco, neve...) stanno una volta sola in
+  punto d'arrivo del viaggio, e dove sta la gente: paesani che passeggiano, venditori al banco, marinai sul ponte,
+  guardie al portone, vedi `paesani.ts`). Le immagini delle materie (muro, legno, intonaco, neve...) stanno una volta sola in
   `public/materiali/scene/` e servono a tutte le zone;
+- attenzione ai colori: nel file di scena le tinte sopra 1 vengono tagliate, quindi per schiarire una materia serve
+  un'immagine più chiara (per questo esistono sia `legno`, scuro, per le travi, sia `tavole`, chiaro, per assi e scafi);
 - per rifare una zona: `cd strumenti/scene && python borgo.py` con il Python che ha Blender (`pip install bpy`) e
   `gltf-transform` installato (o indicato con la variabile `GLTF_TRANSFORM`): lo script comprime da sé;
 - per aggiungerne una: la formula nei due `suoli`, lo script, una riga in `src/mondo/fatte/elenco.ts`, la terra in
   `src/mondo/zone.ts` (con la sua regola in `sfide.ts` e le piccole cose in `minuti.ts`);
 - `prove/fatte.ts` controlla, per ogni zona, che il terreno del gioco sia quello su cui Blender ha appoggiato la
   scena, che il bordo non faccia gradini, che le zone non si tocchino e che il viaggio rapido non porti dentro un muro.
-Le scene sono pezzi unici: per ora non si sbriciolano con la magia come le case fatte di blocchi, e nelle case non
-si entra. Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
+Per non pesare: le forme di una zona si scaricano solo avvicinandosi, e di ogni zona si disegnano solo i pezzi
+abbastanza vicini da vedersi nella sua nebbia (`vista` in `elenco.ts`). Nei paesi (Borgo e Porto) non parte la
+sfida «sbriciola tre creature»: lì le creature non nascono.
+Le scene sono pezzi unici: per ora non si sbriciolano con la magia come le case fatte di blocchi, nelle case non
+si entra, e la gente dei paesi nuovi non dà ancora missioni. Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
 
 **Tutto reagisce alla magia (richiesta del fondatore).** In ordine: le creature dentro la fisica (fatto: spinte,
 vortici, cadute che fanno male); alberi che si abbattono e rocce che si spaccano in pezzi veri, e ricrescono dove

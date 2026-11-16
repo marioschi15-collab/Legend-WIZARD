@@ -175,6 +175,7 @@ class Scena:
         self.luci = []
         self.urti = []
         self.occupati = set()
+        self.gente = []
         self.rnd = random.Random(1313)
 
     def metti(self, bm, insieme, materia, M=None, uv=1.5, tinta=(1.0, 1.0, 1.0), radica=True, liscia=True, scurisci=1.0):
@@ -218,6 +219,13 @@ class Scena:
     def luce(self, M, tipo, forza=1.0, locale=(0, 0, 0)):
         """Un punto che brilla: una torcia, una candela, una finestra, una zucca intagliata, una runa."""
         self.luci.append({'p': self._gioco(M @ Vector(locale)), 't': tipo, 'f': round(forza, 2)})
+
+    def persona(self, M, tipo='paesano', guarda=None):
+        """Qualcuno del posto sta qui: un paesano che passeggia lì attorno, o una guardia ferma (che guarda verso -y)."""
+        p = {'p': self._gioco(M.translation), 't': tipo}
+        if tipo == 'guardia' or guarda:
+            p['g'] = round(math.atan2(M[1][0], M[0][0]), 2)
+        self.gente.append(p)
 
     def urto(self, M, sx, sy, sz, z0=0.0, y0=0.0, x0=0.0):
         """Un ingombro a scatola: lì non si passa. Conta solo il giro attorno alla verticale."""
@@ -282,7 +290,7 @@ def crea_materiali():
             b.inputs['Emission Strength'].default_value = luce
         return m
 
-    nomi = ('muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'colore')
+    nomi = ('muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'tavole', 'colore')
     m = {n: materia(n) for n in nomi}
     m.update({
         'vetrata': materia('vetrata', luce=3.0), 'rametti': materia('rametti', (0.3, 0.25, 0.2)), 'ferro': materia('ferro', (0.035, 0.035, 0.04)),
