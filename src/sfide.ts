@@ -23,6 +23,7 @@ export const REGOLE: readonly Regola[] = [
   { ...COMUNE, vita: true, testo: 'Le spore curano: qui la vita torna da sola, sempre.' },
   { ...COMUNE, mana: 2, testo: 'I cristalli vibrano: qui il mana torna il doppio più in fretta.' },
   { ...COMUNE, fuocoMuore: 5, mana: 1.5, testo: 'La nebbia della strega è carica di magia: il mana torna più in fretta, ma il fuoco dura poco.' },
+  { ...COMUNE, fuocoMuore: 3, vita: true, testo: 'Al Borgo d’Inverno ci si scalda ai camini: la vita torna da sola, ma nel gelo il fuoco della magia dura poco.' },
 ];
 
 /** Una sfida in corso: sbriciolare un certo numero di creature in una terra. */

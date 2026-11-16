@@ -7,7 +7,7 @@ from mathutils import Matrix, Vector
 
 from attrezzi import R, T, arco, cilindro, prisma, scatola, sfera, sgualcisci, tubo
 from oggetti import NERO, bara, candele, corvo, lanterna, masso, piatto, teschio
-from strega_terreno import terra
+import terreno
 
 
 def spline(punti, passo=1.0):
@@ -41,7 +41,7 @@ def sentiero(S, punti, largo, materia, insieme, rnd, bordi=0.6, gradini=True):
         riga = []
         for k, s in enumerate((-1.0, -0.55, 0.0, 0.55, 1.0)):
             x, z = a + la * s * mezza, b + lb * s * mezza
-            riga.append((bm.verts.new((x, -z, terra(x, z) + (0.025 if abs(s) == 1 else 0.075))), (s * mezza / 2.4, lung / 2.4)))
+            riga.append((bm.verts.new((x, -z, terreno.terra(x, z) + (0.025 if abs(s) == 1 else 0.075))), (s * mezza / 2.4, lung / 2.4)))
         righe.append(riga)
     for i in range(len(righe) - 1):
         for k in range(4):
@@ -61,16 +61,16 @@ def sentiero(S, punti, largo, materia, insieme, rnd, bordi=0.6, gradini=True):
         d = math.hypot(a - a0, b - b0)
         passo += d
         giro = math.atan2(a - a0, b - b0)
-        if gradini and abs(terra(a, b) - terra(a0, b0)) / max(d, 0.01) > 0.1 and passo >= 0.85:
+        if gradini and abs(terreno.terra(a, b) - terreno.terra(a0, b0)) / max(d, 0.01) > 0.1 and passo >= 0.85:
             passo = 0.0
-            S.metti(scatola(largo + 0.5, 1.0, 0.26, z0=-0.1, tagli=1, rumore=0.03, seme=i), insieme, 'pietra', T(a, -b, terra(a, b)) @ R(giro + rnd.uniform(-0.06, 0.06)), uv=1.3)
+            S.metti(scatola(largo + 0.5, 1.0, 0.26, z0=-0.1, tagli=1, rumore=0.03, seme=i), insieme, 'pietra', T(a, -b, terreno.terra(a, b)) @ R(giro + rnd.uniform(-0.06, 0.06)), uv=1.3)
         if bordi and rnd.random() < bordi:
             for lato in (-1, 1):
                 if rnd.random() < 0.75:
                     tl = d or 1.0
                     la, lb = -(b - b0) / tl, (a - a0) / tl
                     x, z = a + la * lato * (largo / 2 + rnd.uniform(0.0, 0.35)), b + lb * lato * (largo / 2 + rnd.uniform(0.0, 0.35))
-                    masso(S, T(x, -z, terra(x, z) - 0.06), rnd, insieme, rnd.uniform(0.14, 0.32), urto=False)
+                    masso(S, T(x, -z, terreno.terra(x, z) - 0.06), rnd, insieme, rnd.uniform(0.14, 0.32), urto=False)
 
 
 # ------------------------------------------------------------------------------------------------ la casa

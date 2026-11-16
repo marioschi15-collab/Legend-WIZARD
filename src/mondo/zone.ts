@@ -1,5 +1,5 @@
-import { gradino, rumore, rumoreStrati } from '../base/matematica.js';
-import { pesoStrega, suoloStrega } from './stregaTerreno.js';
+import { gradino, mescola, rumore, rumoreStrati } from '../base/matematica.js';
+import { FATTE, pesoFatta, type TerraFatta } from './fatte/suoli.js';
 
 /** Le prime cinque terre, per nome. L'ordine dell'elenco ZONE è lo stesso dei "pesi" restituiti da pesiZone. */
 export const PRATO = 0;
@@ -51,6 +51,8 @@ export interface Zona {
   /** Vero se la riva è fango o cenere invece che sabbia chiara. */
   readonly rivaScura?: boolean;
   readonly piante: readonly Semina[];
+  /** Se c'è, la terra è fatta a mano: esiste solo attorno a un punto preciso, e lì vince su tutte (vedi `pesiZone`). */
+  readonly fatta?: TerraFatta;
 }
 
 /** Colline: `alte` metri di dislivello, larghe più o meno 1/`fitte` metri, spostate di `base`. */
@@ -197,17 +199,26 @@ export const ZONE: readonly Zona[] = [
     // sentiero di pietra. Non nasce dal clima come le altre (caldo e umido sono fuori scala): vedi `pesiZone`.
     nome: 'Bosco della Strega', caldo: 9, umido: 9, terra: 0x4a3c2a, nebbia: 0x76858a, cielo: 0x55666c, densitaNebbia: 0.02, luce: 0.52,
     luceAlta: 0x9fb0b8, luceBassa: 0x34342c, sole: 0xb8c4cc, erba: [0.35, 0.2, 0, 1], luoghi: [], aria: 'foglie', rivaScura: true,
-    suolo: suoloStrega,
+    suolo: FATTE.strega.suolo, fatta: FATTE.strega,
     piante: [
       { tipo: 'alberoMorto', parte: 18, scala: [1.0, 1.9] }, { tipo: 'alberoMorto2', parte: 17, scala: [1.0, 2.1] }, { tipo: 'alberoMorto3', parte: 17, scala: [0.9, 1.8] },
       { tipo: 'pino', parte: 16, scala: [0.9, 1.9], tinta: 0x6a7a70 }, { tipo: 'roccia', parte: 6, scala: [0.5, 2.2], tinta: 0x8a8f8a },
       { tipo: 'cespuglio', parte: 5, scala: [0.5, 1.1], tinta: 0x5a6650 },
     ],
   },
+  {
+    // Un paese sotto la neve ai piedi dei monti, all'imbrunire: le finestre accese, il fumo dei camini, le luci della festa.
+    nome: 'Borgo d’Inverno', caldo: 9, umido: 9, terra: 0xe6eef5, nebbia: 0xa3b7d0, cielo: 0x5a7fb8, densitaNebbia: 0.01, luce: 0.66,
+    luceAlta: 0xbcd0f4, luceBassa: 0xa0b0cc, sole: 0xdfe6f4, erba: [0, 0, 1, 0], luoghi: [], aria: 'neve',
+    suolo: FATTE.borgo.suolo, fatta: FATTE.borgo,
+    piante: [{ tipo: 'pinoInnevato', parte: 34, scala: [0.8, 1.7] }, { tipo: 'roccia', parte: 3, scala: [0.6, 1.8], tinta: 0xc4e2f4 }],
+  },
 ];
 
-/** Il numero del Bosco della Strega. */
-export const STREGA = ZONE.length - 1;
+/** I numeri delle terre fatte a mano. */
+const FATTE_A_MANO: readonly number[] = ZONE.flatMap((z, i) => (z.fatta ? [i] : []));
+/** Il numero della terra fatta a mano con quel nome in codice ('strega', 'borgo'...). */
+export const zonaFatta = (chiave: string): number => ZONE.findIndex((z) => z.fatta?.chiave === chiave);
 
 /** Quante terre ci sono: ogni elenco di "pesi" ha questa lunghezza. */
 export const N_ZONE = ZONE.length;
@@ -237,8 +248,8 @@ export function pesiZone(x: number, z: number, esito: Float32Array | number[]): 
     const du = umido - zona.umido;
     let f = Math.exp(-(dc * dc + du * du) / 0.085) + 1e-9;
     if (i === PRATO) f = f * 1.25 + casa * 40;
-    // Il Bosco della Strega esiste solo attorno al suo centro, e lì vince su tutto.
-    if (i === STREGA) f = pesoStrega(x, z);
+    // Una terra fatta a mano esiste solo attorno al suo centro, e lì vince su tutto.
+    if (zona.fatta) f = pesoFatta(zona.fatta, x, z);
     esito[i] = f;
     somma += f;
   }
@@ -289,6 +300,19 @@ export function terraferma(x: number, z: number): number {
  */
 function grezza(x: number, z: number): number {
   pesiZone(x, z, p);
+  // Dentro una zona fatta a mano il terreno è proprio quello disegnato: niente monti, fiumi né mare che non siano
+  // nel disegno. Sul bordo (`fatto` tra 0 e 1) il disegno sfuma nel paesaggio naturale.
+  let fatto = 0;
+  for (const i of FATTE_A_MANO) fatto += p[i]!;
+  if (fatto > 0.9995) {
+    let disegnato = 0;
+    for (const i of FATTE_A_MANO) if (p[i]! > 0.001) disegnato += p[i]! * ZONE[i]!.suolo(x, z);
+    rilievo.terraferma = 1;
+    rilievo.monti = 0;
+    rilievo.fiume = 0;
+    return disegnato / fatto;
+  }
+  const naturale = 1 - fatto;
   const r = Math.hypot(x, z);
   let h = 0;
   for (let i = 0; i < N_ZONE; i++) if (p[i]! > 0.001) h += p[i]! * ZONE[i]!.suolo(x, z);
@@ -298,12 +322,11 @@ function grezza(x: number, z: number): number {
     h += p[VULCANO]! * (44 * Math.max(0, 1 - d / 78) - 20 * gradino(19, 8, d) - lava(x, z, p[VULCANO]!) * 1.2);
   }
   // Il fondo dei laghi non scende oltre il ginocchio.
-  if (h < -1) h = -1 - (1 - Math.exp(h + 1)) * 0.5;
+  if (h < -1) h = mescola(-1 - (1 - Math.exp(h + 1)) * 0.5, h, fatto);
 
   // Le montagne: catene lunghe, con creste affilate e valli in mezzo. Lontane dal punto di partenza.
   const terra = terraferma(x, z);
-  // Nel Bosco della Strega niente monti né fiumi: è una conca di bosco, tutta all'asciutto.
-  const catena = gradino(0.57, 0.71, rumoreStrati(x * 0.0011 + 200.5, z * 0.0011 + 300.2, 2)) * gradino(260, 520, r) * terra * (1 - p[STREGA]!);
+  const catena = gradino(0.57, 0.71, rumoreStrati(x * 0.0011 + 200.5, z * 0.0011 + 300.2, 2)) * gradino(260, 520, r) * terra * naturale;
   if (catena > 0) {
     const cresta = 1 - Math.abs(rumoreStrati(x * 0.0042 + 40.7, z * 0.0042 + 80.3, 4) * 2 - 1);
     h += catena * (18 + cresta * cresta * 105);
@@ -311,11 +334,10 @@ function grezza(x: number, z: number): number {
 
   // I fiumi: nastri che serpeggiano nella pianura (non sui monti, non nel villaggio di partenza).
   const dalFiume = Math.abs(rumore(x * 0.0031 + 7.3, z * 0.0031 + 3.9) - 0.5);
-  const fiume = gradino(0.03, 0.009, dalFiume) * (1 - gradino(0, 0.25, catena)) * gradino(120, 200, r) * (1 - p[VULCANO]!) * (1 - p[STREGA]!);
+  const fiume = gradino(0.03, 0.009, dalFiume) * (1 - gradino(0, 0.25, catena)) * gradino(120, 200, r) * (1 - p[VULCANO]!) * naturale;
   if (fiume > 0) {
     // La valle si allarga dolcemente attorno al letto, così le rive non sono muri.
-    // (nel Bosco della Strega niente valle: lì il terreno è disegnato a mano e deve restare com'è)
-    const valle = gradino(0.09, 0.03, dalFiume) * gradino(18, 5, h) * (1 - p[STREGA]!);
+    const valle = gradino(0.09, 0.03, dalFiume) * gradino(18, 5, h) * naturale;
     h += (Math.min(h, 1.2) - h) * valle * 0.7;
     h += (-1.25 - h) * fiume * gradino(14, 4, h);
   }
@@ -323,8 +345,9 @@ function grezza(x: number, z: number): number {
   // Il mare: dove il continente finisce il fondale scende piano (spiaggia) e poi si fa profondo.
   if (terra < 1) {
     const fondale = -7 + rumore(x * 0.02 + 5, z * 0.02 + 9) * 2.5;
-    h = fondale + (Math.max(h, 0.5) - fondale) * terra * terra;
-    if (terra > 0.55) h = Math.min(h, 0.2 + (terra - 0.55) * 30) + (h - Math.min(h, 0.2 + (terra - 0.55) * 30)) * gradino(0.75, 1, terra);
+    let m = fondale + (Math.max(h, 0.5) - fondale) * terra * terra;
+    if (terra > 0.55) m = Math.min(m, 0.2 + (terra - 0.55) * 30) + (m - Math.min(m, 0.2 + (terra - 0.55) * 30)) * gradino(0.75, 1, terra);
+    h = mescola(m, h, fatto);
   }
   rilievo.terraferma = terra;
   rilievo.monti = catena;
@@ -379,8 +402,9 @@ export function luogoDiCasella(cx: number, cz: number): Luogo | null {
   } else if (sorte(cx, cz, 1) < 0.62) {
     const x = (cx + 0.5 + (sorte(cx, cz, 2) - 0.5) * 0.44) * LATO_CASELLA;
     const z = (cz + 0.5 + (sorte(cx, cz, 3) - 0.5) * 0.44) * LATO_CASELLA;
-    // Abbastanza lontano dal villaggio di partenza, e ben dentro una terra sola (non a cavallo di un confine).
-    if (Math.hypot(x, z) > 85) {
+    // Abbastanza lontano dal villaggio di partenza e dalle zone fatte a mano, e ben dentro una terra sola (non a
+    // cavallo di un confine).
+    if (Math.hypot(x, z) > 85 && FATTE_A_MANO.every((i) => Math.hypot(x - ZONE[i]!.fatta!.centro.x, z - ZONE[i]!.fatta!.centro.z) > ZONE[i]!.fatta!.raggio + 62)) {
       // Dove il terreno è sott'acqua (nella palude capita spesso) il luogo sorge su un isolotto appena sopra il pelo.
       const quota = Math.max(1.2, grezza(x, z));
       let zona = 0;

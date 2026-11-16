@@ -236,4 +236,6 @@ export const MINUTI: readonly (readonly Semina[])[] = [
   [s('scheggia', 20, [0.6, 2.4], { tinta: 0xb080ff, carica: 1.6 }), s('scheggia', 9, [0.6, 2.0], { tinta: 0x60e0ff, carica: 1.6 }), s('sassi', 6, [0.6, 1.8], { tinta: 0xb0a8d0 }), s('fioreAlto', 5, [0.6, 1.1], { tinta: 0xe0b0ff, carica: 1.5 }), ...VIANDANTI],
   // Bosco della Strega: solo felci, legni e sassi veri (ossa, funghi e sterpi li mette la scena fatta con Blender)
   [s('felce', 16, [0.7, 1.5], { tinta: 0x8a9a80 }), s('tronco', 5, [0.8, 1.4]), s('ceppo', 5, [0.8, 1.4]), s('sassi', 12, [0.6, 1.9])],
+  // Borgo d'Inverno: poco, e tutto sotto la neve
+  [s('sassi', 6, [0.6, 1.6], { tinta: 0xdfefff }), s('sterpo', 4, [0.6, 1.2], { tinta: 0x9aa8b8 }), s('ceppo', 2, [0.8, 1.3], { tinta: 0xcfe0f0 }), s('tronco', 1, [0.7, 1.1], { tinta: 0xcfe0f0 })],
 ];

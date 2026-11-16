@@ -1,4 +1,4 @@
-"""Gli attrezzi con cui si costruisce il Bosco della Strega in Blender.
+"""Gli attrezzi con cui si costruiscono in Blender le zone fatte a mano (il Bosco della Strega, il Borgo d'Inverno...).
 
 Ogni pezzo nasce come una piccola forma (una pietra consumata, un'asse, un tubo) nello spazio suo, con il davanti
 verso -Y e l'alto verso Z, e viene posato nella scena con una matrice. La scena tiene tutto diviso per «insieme»
@@ -15,9 +15,8 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector, noise
 
-from strega_terreno import CX, CZ, gradino, terra
-
-IMMAGINI = None  # cartella delle immagini, messa da scena.py
+import terreno
+from suoli import gradino
 
 
 def T(x=0.0, y=0.0, z=0.0):
@@ -31,7 +30,7 @@ def R(z=0.0, x=0.0, y=0.0):
 def posa(a, b, giro=0.0, dz=0.0, storto=(0.0, 0.0)):
     """La matrice di un pezzo appoggiato sul terreno nel punto (a, b) del gioco, girato di `giro` (come rotation.y
     nel gioco: il davanti guarda verso (sin, cos)) e, volendo, un po' inclinato."""
-    return T(a, -b, terra(a, b) + dz) @ R(giro, storto[0], storto[1])
+    return T(a, -b, terreno.terra(a, b) + dz) @ R(giro, storto[0], storto[1])
 
 
 def verso(da, db):
@@ -188,7 +187,7 @@ class Scena:
         bm.normal_update()
         uvl = bm.loops.layers.uv.get('uv')
         origine = M.translation
-        suolo_qui = terra(origine.x, -origine.y) if radica else 0.0
+        suolo_qui = terreno.terra(origine.x, -origine.y) if radica else 0.0
         mondo = [M @ v.co for v in bm.verts]
         d['v'].extend(mondo)
         variazione = self.rnd.uniform(0.86, 1.08) * scurisci
@@ -214,7 +213,7 @@ class Scena:
 
     def _gioco(self, v):
         """Da un punto della scena (Blender) alle coordinate del mondo del gioco."""
-        return [round(v.x + CX, 2), round(v.z, 2), round(-v.y + CZ, 2)]
+        return [round(v.x + terreno.CX, 2), round(v.z, 2), round(-v.y + terreno.CZ, 2)]
 
     def luce(self, M, tipo, forza=1.0, locale=(0, 0, 0)):
         """Un punto che brilla: una torcia, una candela, una finestra, una zucca intagliata, una runa."""
@@ -232,6 +231,7 @@ class Scena:
 
     def occupa(self, a, b, r):
         """Dentro questo cerchio il bosco non fa nascere piante sue: c'è già qualcosa di costruito."""
+        CX, CZ = terreno.CX, terreno.CZ
         for i in range(math.floor((a - r + CX) / 2), math.floor((a + r + CX) / 2) + 1):
             for j in range(math.floor((b - r + CZ) / 2), math.floor((b + r + CZ) / 2) + 1):
                 if math.hypot(i * 2 + 1 - CX - a, j * 2 + 1 - CZ - b) <= r + 1:
@@ -268,30 +268,24 @@ class Scena:
         return fatti
 
 
-def crea_materiali(cartella):
-    """Le materie della scena. Quelle con un'immagine la portano con sé; le altre prendono il colore dai punti."""
-    def materia(nome, file=None, colore=(1, 1, 1), luce=0.0, alfa=False):
+def crea_materiali():
+    """Le materie delle scene. Nel file che va al gioco c'è solo il loro nome: le immagini (public/materiali/scene)
+    le mette il gioco, una volta sola per tutte le zone. Chi non ha immagine prende il colore dai punti."""
+    def materia(nome, colore=(1, 1, 1), luce=0.0):
         m = bpy.data.materials.new(nome)
         m.use_nodes = True
         b = m.node_tree.nodes['Principled BSDF']
         b.inputs['Roughness'].default_value = 0.95
         b.inputs['Base Color'].default_value = (*colore, 1)
-        if file:
-            t = m.node_tree.nodes.new('ShaderNodeTexImage')
-            t.image = bpy.data.images.load(f'{cartella}/{file}')
-            m.node_tree.links.new(t.outputs['Color'], b.inputs['Base Color'])
-            if alfa:
-                m.node_tree.links.new(t.outputs['Alpha'], b.inputs['Alpha'])
         if luce > 0:
             b.inputs['Emission Color'].default_value = (*colore, 1)
             b.inputs['Emission Strength'].default_value = luce
         return m
 
-    return {
-        'muro': materia('muro', 'muro.jpg'), 'pietra': materia('pietra', 'pietra.jpg'), 'muschio': materia('muschio', 'muschio.jpg'),
-        'tetto': materia('tetto', 'tetto.jpg'), 'legno': materia('legno', 'legno.jpg'), 'corteccia': materia('corteccia', 'corteccia.jpg'),
-        'terra': materia('terra', 'terra.jpg'), 'ciottoli': materia('ciottoli', 'ciottoli.jpg'),
-        'vetrata': materia('vetrata', 'vetrata.jpg', luce=3.0), 'rametti': materia('rametti', colore=(0.3, 0.25, 0.2)),
-        'ferro': materia('ferro', colore=(0.035, 0.035, 0.04)), 'colore': materia('colore'),
-        'luce': materia('luce', colore=(1.0, 0.62, 0.22), luce=6.0), 'runa': materia('runa', colore=(0.35, 0.95, 1.0), luce=6.0),
-    }
+    nomi = ('muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'colore')
+    m = {n: materia(n) for n in nomi}
+    m.update({
+        'vetrata': materia('vetrata', luce=3.0), 'rametti': materia('rametti', (0.3, 0.25, 0.2)), 'ferro': materia('ferro', (0.035, 0.035, 0.04)),
+        'luce': materia('luce', (1.0, 0.62, 0.22), 6.0), 'runa': materia('runa', (0.35, 0.95, 1.0), 6.0), 'ghiaccio': materia('ghiaccio', (0.7, 0.85, 0.95)),
+    })
+    return m

@@ -22,7 +22,8 @@ import { Sigilli } from './mondo/sigilli.js';
 import { Abitanti } from './abitanti.js';
 import { Creature } from './creature.js';
 import { caricaCreatureVere } from './creatureVere.js';
-import { creaBoscoStrega } from './mondo/boscoStrega.js';
+import { abitato } from './mondo/fatte/elenco.js';
+import { creaSceneFatte } from './mondo/fatte/scene.js';
 import { Missioni, type MondoMissioni } from './missioni.js';
 import { PAROLE, parolaInPremio, salvaConosciute } from './incantesimi/parole.js';
 import { costoDi, Mago } from './mago.js';
@@ -200,9 +201,10 @@ async function avvia(): Promise<void> {
   };
   const creature = new Creature(altezza, { cella: (x, z) => campo.cella(x, z), fuoco: campo.fuoco, gelo: campo.gelo, accendi: (x, z, r) => campo.accendi(x, z, r, 10) }, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
-  // Il Bosco della Strega: la casa, il sentiero di ciottoli e le torce.
-  const boscoStrega = creaBoscoStrega(RAPIER, fisica);
-  scena.add(boscoStrega.gruppo);
+  // Le zone fatte a mano: il Bosco della Strega, il Borgo d'Inverno, il Porto delle Nebbie, il Castello del Bosco.
+  const sceneFatte = creaSceneFatte(RAPIER, fisica, fumo);
+  creature.abitato = abitato;
+  scena.add(sceneFatte.gruppo);
   // Ciò che scaglia i pezzi delle case scaglia anche le creature.
   /** I tronchi e le schegge degli alberi abbattuti e delle rocce spaccate: pezzi veri, i più vecchi lasciano il posto. */
   const caduti: Gruppo[] = [];
@@ -572,7 +574,7 @@ async function avvia(): Promise<void> {
     }
   };
   const viaggioUi = new ViaggioUi();
-  const apriViaggio = (): void => apriFoglio(() => viaggioUi.apri([VILLAGGIO, { nome: 'Il Bosco della Strega (imbocco del sentiero)', x: boscoStrega.imbocco.x, z: boscoStrega.imbocco.z }, ...liberati], giocatore.posizione.x, giocatore.posizione.z));
+  const apriViaggio = (): void => apriFoglio(() => viaggioUi.apri([VILLAGGIO, ...sceneFatte.mete, ...liberati], giocatore.posizione.x, giocatore.posizione.z));
   viaggioUi.pulsante.addEventListener('click', apriViaggio);
   viaggioUi.onChiudi = officina.onChiudi;
   viaggioUi.onViaggio = (meta) => {
@@ -1237,7 +1239,7 @@ async function avvia(): Promise<void> {
       attesaRegola = 0;
       campo.sciogli(giocatore.posizione.x, giocatore.posizione.z, 90);
     } else if (attesaRegola > 10) attesaRegola = 0;
-    boscoStrega.aggiorna(dt, giocatore.posizione);
+    sceneFatte.aggiorna(dt, giocatore.posizione);
     giocatore.passoMagico = mago.svelto > 0 ? 1.8 : 1;
     giocatore.saltoMagico = mago.balzo > 0 ? 1.9 : 1;
     for (const gl of globi) {

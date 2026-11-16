@@ -1,36 +1,32 @@
-"""Costruisce con Blender tutto il Bosco della Strega e lo salva per il gioco.
+"""Costruisce con Blender tutto il Bosco della Strega e lo salva per il gioco (vedi salva.py).
 
 Si lancia con il Python che ha Blender dentro (pip install bpy):
-    cd strumenti/strega && python scena.py
-Scrive:
-  - public/modelli/bosco_strega.glb     la scena (un oggetto per insieme e per materia)
-  - src/mondo/stregaDati.ts             luci, ingombri, caselle occupate, punti di prova del terreno
-  - /tmp/strega_terreno_prova.glb       solo per guardare la scena fuori dal gioco
+    cd strumenti/scene && python strega.py
 
 Il posto di ogni cosa è dato in metri lungo due direzioni: `d` verso il villaggio di partenza (da lì si arriva)
 e `o` di traverso. La casa sta a (0, 0); il sentiero principale entra a d = 166.
 """
-import json
 import math
 import os
 import random
 import sys
 
-QUI = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, QUI)
-sys.path.insert(0, os.path.dirname(QUI))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
 from mathutils import Matrix, Vector  # noqa: E402
 
-import attrezzi  # noqa: E402
-from attrezzi import R, T, Scena, crea_materiali, posa, scatola, tubo, verso  # noqa: E402
+import terreno  # noqa: E402
+
+terreno.scegli('strega')
+
+from attrezzi import R, T, Scena, posa, scatola, tubo, verso  # noqa: E402
 from edifici import cappella, carro, casa, cripta, portale, pozzo, sentiero, spline, stagno  # noqa: E402
 from oggetti import (albero, bara, candele, cancellata, ceppo, corvo, funghi, lanterna, lapide, masso, menhir, ossa, pilastro, sarcofago,  # noqa: E402
                      spaventapasseri, staccionata, sterpo, teschio, tronco_caduto, tumulo, zucca)
-from strega_terreno import CX, CZ, PASSO, suolo, terra  # noqa: E402
+from salva import salva  # noqa: E402
+from terreno import terra  # noqa: E402
 
-RADICE = os.path.dirname(os.path.dirname(QUI))
 V = Vector((250.0, -360.0)).normalized()      # verso il villaggio
 W = Vector((-V.y, V.x))                         # di traverso
 
@@ -234,7 +230,7 @@ def main():
     def libero(a, b, margine=0.0):
         if math.hypot(a, b) > 160 or terra(a, b) < 0.2:
             return False
-        return (math.floor((a + CX) / 2), math.floor((b + CZ) / 2)) not in S.occupati
+        return (math.floor((a + terreno.CX) / 2), math.floor((b + terreno.CZ) / 2)) not in S.occupati
 
     def sparge(quanti, fai, vicino_ai_sentieri=0.0):
         fatti, prove = 0, 0
@@ -257,54 +253,7 @@ def main():
     sparge(14, lambda a, b: ossa(S, posa(a, b), rnd, I), 0.5)
     sparge(80, lambda a, b: sterpo(S, posa(a, b, rnd.uniform(0, 6)), rnd, I, rnd.uniform(0.9, 1.9)), 0.4)
 
-    # ---------------------------------------------------------------- si salva
-    materiali = crea_materiali(os.path.join(QUI, 'immagini'))
-    fatti = S.costruisci(materiali)
-    print('oggetti', len(fatti), 'facce', sum(n for (_, n) in fatti))
-    for nome, n in sorted(fatti, key=lambda x: -x[1])[:12]:
-        print('  ', nome, n)
-    uscita = os.path.join(RADICE, 'public', 'modelli', 'bosco_strega_grezzo.glb')
-    scelte = dict(filepath=uscita, export_format='GLB', export_yup=True, export_apply=False, export_image_format='AUTO')
-    try:
-        bpy.ops.export_scene.gltf(**scelte, export_vertex_color='ACTIVE', export_all_vertex_colors=False, export_active_vertex_color_when_no_material=True)
-    except TypeError as errore:
-        print('scelte dei colori non accettate, riprovo senza:', errore)
-        bpy.ops.export_scene.gltf(**scelte)
-    print('scena', os.path.getsize(uscita) // 1024, 'kb')
-
-    # i dati per il gioco
-    chiavi = sorted((i + 32768) * 65536 + (j + 32768) for (i, j) in S.occupati)
-    campioni = []
-    for k in range(60):
-        a, b = math.cos(k * 2.4) * (k * 2.7 + 3), math.sin(k * 2.4) * (k * 2.7 + 3)
-        campioni.append([round(a + CX, 3), round(b + CZ, 3), round(suolo(a, b), 4)])
-    imbocco = P(166, 0)
-    dati = {'luci': S.luci, 'urti': S.urti, 'occupati': chiavi, 'campioni': campioni, 'imbocco': [round(imbocco[0] + CX, 1), round(imbocco[1] + CZ, 1)]}
-    testo = json.dumps(dati, separators=(',', ':'))
-    with open(os.path.join(RADICE, 'src', 'mondo', 'stregaDati.ts'), 'w') as f:
-        f.write('/** Ciò che il gioco deve sapere della scena del Bosco della Strega, oltre alle forme: i punti che brillano, gli ingombri,\n'
-                ' * le caselle già occupate (lì il bosco non fa nascere piante sue), qualche quota di prova del terreno.\n'
-                ' * Lo scrive strumenti/strega/scena.py: non si modifica a mano. */\n'
-                'export interface LuceStrega { p: [number, number, number]; t: string; f: number }\n'
-                'export interface UrtoStrega { p: [number, number, number]; m?: [number, number, number]; g?: number; r?: number; h?: number }\n'
-                "export const STREGA_DATI = JSON.parse('" + testo + "') as { luci: LuceStrega[]; urti: UrtoStrega[]; occupati: number[]; campioni: [number, number, number][]; imbocco: [number, number] };\n")
-    print('luci', len(S.luci), 'urti', len(S.urti), 'caselle occupate', len(chiavi))
-
-    # il terreno, solo per guardare la scena fuori dal gioco
-    for o in list(bpy.data.objects):
-        bpy.data.objects.remove(o)
-    n = 110
-    vs = [(i * PASSO - n * PASSO / 2, -(j * PASSO - n * PASSO / 2), 0.0) for j in range(n + 1) for i in range(n + 1)]
-    vs = [(x, y, terra(x, -y)) for (x, y, _) in vs]
-    fs = [(j * (n + 1) + i, j * (n + 1) + i + 1, (j + 1) * (n + 1) + i + 1, (j + 1) * (n + 1) + i) for j in range(n) for i in range(n)]
-    me = bpy.data.meshes.new('terreno')
-    me.from_pydata(vs, [], fs)
-    m = bpy.data.materials.new('terreno')
-    m.use_nodes = True
-    m.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.09, 0.075, 0.055, 1)
-    me.materials.append(m)
-    bpy.context.collection.objects.link(bpy.data.objects.new('terreno', me))
-    bpy.ops.export_scene.gltf(filepath='/tmp/strega_terreno_prova.glb', export_format='GLB', export_yup=True)
+    salva(S, 'bosco_strega', P(166, 0))
 
 
 if __name__ == '__main__':

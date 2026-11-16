@@ -107,23 +107,38 @@ Primo passo fatto, dopo una revisione a più mani del codice:
 Prossimi: oggetti da trovare e indossare; poi il mondo vivo (animali, abitanti con una giornata); poi l'aspetto.
 
 **Zone fatte a mano (richiesta del fondatore, sulle sue immagini di riferimento).** Oltre alle terre che nascono
-dal clima, ci sono zone costruite per intero con Blender, in un punto preciso. La prima è il Bosco della Strega, a
-sud-ovest del villaggio (ci si arriva anche con il viaggio rapido):
-- il terreno è disegnato a mano (`src/mondo/stregaTerreno.ts`, con la gemella `strumenti/strega_terreno.py`): un
-  colle con la casa in cima, la spianata del cimitero, la conca dello stagno, il tumulo del cerchio di pietre;
-- la scena è costruita da `strumenti/strega/scena.py`: la casa della strega, il cimitero (cancellata di ferro,
-  una quarantina di lapidi di sette forme, sarcofagi, fosse aperte con le bare, la cripta), la cappella in rovina
-  con il campanile, il carro delle bare, lo stagno con pontile, barca e capanno, il cerchio di pietre con le rune,
-  l'orto delle zucche con lo spaventapasseri, il pozzo, il portale d'ingresso, quattro sentieri con lampioni e
-  gradoni, una dozzina di grandi alberi contorti, e il sottobosco;
-- lo strumento scrive `public/modelli/bosco_strega.glb` (che il gioco scarica solo avvicinandosi) e
-  `src/mondo/stregaDati.ts` (punti luce, ingombri, caselle dove il bosco non deve far nascere piante);
-- per rifarla: `cd strumenti/strega && python scena.py` con il Python che ha Blender (`pip install bpy`), poi
-  `gltf-transform weld` e `gltf-transform meshopt` sul file grezzo per alleggerirlo (da 11 a 3,5 megabyte);
-- `prove/strega.ts` controlla che il terreno del gioco sia quello su cui Blender ha appoggiato la scena.
-La scena è un pezzo unico: per ora non si sbriciola con la magia come le case fatte di blocchi.
-Le prossime zone, sugli altri riferimenti: il castello in fondo al sentiero nel bosco, il borgo sotto la neve, il
-porto nella nebbia. Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
+dal clima, ci sono zone costruite per intero con Blender, ognuna in un punto preciso della mappa, ognuna con la sua
+terra (nebbia, luce, piante, regola) e la sua voce nel viaggio rapido:
+- **il Bosco della Strega**, a sud-ovest del villaggio: la casa della strega sul colle, il cimitero (cancellata di
+  ferro, una quarantina di lapidi di sette forme, sarcofagi, fosse aperte con le bare, la cripta), la cappella in
+  rovina con il campanile, il carro delle bare, lo stagno con pontile, barca e capanno, il cerchio di pietre con le
+  rune, l'orto delle zucche con lo spaventapasseri, il pozzo, il portale, quattro sentieri con lampioni e gradoni,
+  una dozzina di grandi alberi contorti, il sottobosco;
+- **il Borgo d'Inverno**, a ovest, ai piedi dei monti: la via maestra con una ventina di case a graticcio sotto la
+  neve (pietra al pianterreno, travi e intonaco sopra, i piani che sporgono, finestre accese, insegne, ghiaccioli),
+  le luci della festa tese da una casa all'altra, la piazza con la fontana gelata e le bancarelle del mercato, la
+  fucina, la torre tonda sul poggio, lo stagno ghiacciato su cui si cammina, la baita del cacciatore verso i monti,
+  i pupazzi di neve. Dai camini esce il fumo. Nel borgo le creature selvatiche non nascono.
+
+Come sono fatte, tutte allo stesso modo:
+- il terreno di ogni zona è disegnato a mano con una formula (`src/mondo/fatte/suoli.ts`, con le gemelle in
+  `strumenti/scene/suoli.py`); dentro la zona vale solo il disegno (niente monti, fiumi o mare che non siano nel
+  disegno), e sul bordo sfuma nel paesaggio naturale;
+- la scena è costruita da uno script per zona (`strumenti/scene/strega.py`, `borgo.py`...) con i pezzi comuni di
+  `attrezzi.py` (forme di base), `oggetti.py` e `edifici.py` (bosco e cimitero), `paese.py` (case a graticcio, torri,
+  mura, oggetti di paese);
+- ogni script scrive `public/modelli/<zona>.glb` (solo le forme: il gioco lo scarica avvicinandosi) e
+  `src/mondo/fatte/<zona>Dati.ts` (punti luce, camini, ingombri, caselle dove il bosco non deve far nascere piante,
+  punto d'arrivo del viaggio). Le immagini delle materie (muro, legno, intonaco, neve...) stanno una volta sola in
+  `public/materiali/scene/` e servono a tutte le zone;
+- per rifare una zona: `cd strumenti/scene && python borgo.py` con il Python che ha Blender (`pip install bpy`) e
+  `gltf-transform` installato (o indicato con la variabile `GLTF_TRANSFORM`): lo script comprime da sé;
+- per aggiungerne una: la formula nei due `suoli`, lo script, una riga in `src/mondo/fatte/elenco.ts`, la terra in
+  `src/mondo/zone.ts` (con la sua regola in `sfide.ts` e le piccole cose in `minuti.ts`);
+- `prove/fatte.ts` controlla, per ogni zona, che il terreno del gioco sia quello su cui Blender ha appoggiato la
+  scena, che il bordo non faccia gradini, che le zone non si tocchino e che il viaggio rapido non porti dentro un muro.
+Le scene sono pezzi unici: per ora non si sbriciolano con la magia come le case fatte di blocchi, e nelle case non
+si entra. Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
 
 **Tutto reagisce alla magia (richiesta del fondatore).** In ordine: le creature dentro la fisica (fatto: spinte,
 vortici, cadute che fanno male); alberi che si abbattono e rocce che si spaccano in pezzi veri, e ricrescono dove

@@ -52,7 +52,7 @@ export const SPECIE: Readonly<Record<string, Specie>> = {
 };
 
 /** Quale razza vive in ogni terra, nello stesso ordine delle terre. */
-const DI_CASA = ['golem', 'scorpione', 'sentinella', 'lume', 'diavoletto', 'golem', 'golem', 'lume', 'scorpione', 'golem', 'sentinella', 'scorpione', 'scorpione', 'lume', 'sentinella', 'lume'];
+const DI_CASA = ['golem', 'scorpione', 'sentinella', 'lume', 'diavoletto', 'golem', 'golem', 'lume', 'scorpione', 'golem', 'sentinella', 'scorpione', 'scorpione', 'lume', 'sentinella', 'lume', 'sentinella', 'lume', 'golem'];
 
 interface Golem {
   readonly specie: Specie;
@@ -253,6 +253,9 @@ export class Creature {
     }
     return meglio ? meglio.specie : null;
   }
+
+  /** Dove c'è un paese abitato le creature selvatiche non nascono (lo dice chi conosce la mappa). */
+  abitato: (x: number, z: number) => boolean = () => false;
 
   /** Fa nascere un golem in un punto. Il livello ne decide vita, forza e taglia. */
   nasci(x: number, z: number, livello: number, fisso = false, razza?: string, guardiano = false): number {
@@ -568,7 +571,7 @@ export class Creature {
         const r = 38 + this.caso() * 24;
         const x = giocatore.x + Math.cos(a) * r;
         const z = giocatore.z + Math.sin(a) * r;
-        if (Math.hypot(x, z) > RAGGIO_SICURO + 10 && this.quota(x, z) > this.quotaAcqua + 0.4) this.nasci(x, z, 1 + Math.floor(Math.hypot(x, z) / 350));
+        if (Math.hypot(x, z) > RAGGIO_SICURO + 10 && this.quota(x, z) > this.quotaAcqua + 0.4 && !this.abitato(x, z)) this.nasci(x, z, 1 + Math.floor(Math.hypot(x, z) / 350));
       }
     }
 

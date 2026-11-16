@@ -1,3 +1,5 @@
 node_modules/
 dist/
 dist-prove/
+__pycache__/
+*_grezzo.glb

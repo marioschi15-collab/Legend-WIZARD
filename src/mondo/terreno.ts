@@ -6,6 +6,7 @@ import type { Campo } from './campo.js';
 import { atmosfera, NEBBIA_GLSL, NUBI_GLSL } from './atmosfera.js';
 import { DIREZIONE_SOLE } from './cielo.js';
 import { rumore } from '../base/matematica.js';
+import { occupatoFatto } from './fatte/occupato.js';
 import { altezzaEsatta, campiona, lava, N_ZONE, QUOTA_ACQUA, VULCANO, ZONE, type Campione } from './zone.js';
 
 const TERRE = ZONE.map((z) => new THREE.Color(z.terra));
@@ -179,6 +180,10 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
          erbaMedia = mix(erbaMedia, vec3(0.88, 0.94, 1.0), bio.b * 0.6);
          float lontano = smoothstep(uRaggioErba * 0.6, uRaggioErba * 0.95, distance(vMondo.xz, cameraPosition.xz));
          diffuseColor.rgb = mix(diffuseColor.rgb, erbaMedia / 1.1 * mix(0.84, 1.1, chiazza) * ombraNubi(vMondo.xz, uTempo), bio.r * lontano);
+         // Dove nevica il suolo è neve vera: un bianco freddo con ondulazioni morbide, non erba schiarita.
+         float nevoso = smoothstep(0.55, 0.95, bio.b);
+         vec3 neve = vec3(0.8, 0.85, 0.93) * mix(0.9, 1.06, chiazza) * (0.93 + 0.14 * rumoreSuolo(vMondo.xz * 0.6 + 7.0)) * ombraNubi(vMondo.xz, uTempo);
+         diffuseColor.rgb = mix(diffuseColor.rgb, neve, nevoso * 0.85);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.36, 0.07), stato.b * 0.6);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035, 0.03, 0.025), stato.r * 0.92);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.72, 0.86, 0.95), stato.g * 0.8);
@@ -262,6 +267,8 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
           const w = c.pesi[n]!;
           for (let e = 0; e < 4; e++) erba[e] = erba[e]! + ZONE[n]!.erba[e]! * w;
         }
+        // Sulle vie, le piazze e i moli delle zone fatte a mano l'erba non cresce.
+        if (occupatoFatto(x, z)) erba[0] = 0;
         const l = lava(x, z, c.pesi[VULCANO]!);
         lav[k] = l;
         // Il colore vero arriva nel secondo giro, quando si conosce la pendenza: qui si tengono da parte i pesi.
