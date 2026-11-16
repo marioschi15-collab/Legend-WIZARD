@@ -116,6 +116,14 @@ def main():
     ponte_pietra(S, T(ar, 0.0, quota_ponte), rnd, 'ponte', 23.0, 4.8, quota_ponte + 1.15)
     for a in range(int(ar) - 13, int(ar) + 14, 2):
         S.occupa(a, 0.0, 3.6)
+    # Il bosco resta indietro: una fascia sgombra lungo la strada (così il castello si vede in fondo) e tutto il colle
+    # attorno alle mura, come si faceva davvero perché nessuno potesse avvicinarsi di nascosto.
+    for pt in (est, ovest):
+        S.occupa_linea(pt[::2], 6.5)
+    for i in range(-48, 49, 2):
+        for j in range(-48, 49, 2):
+            if math.hypot(i, j) < 48:
+                S.occupa(C[0] + i, C[1] + j, 1.6)
     lungo, lato = 6.0, 1
     for pt in (est, ovest):
         for i in range(1, len(pt) - 2):

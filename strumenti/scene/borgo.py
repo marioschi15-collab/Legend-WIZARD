@@ -148,7 +148,7 @@ def main():
     Mt = posa(-80, -36, verso(42, 36))
     torre_tonda(S, Mt, rnd, I, 3.5, 15.0, neve=True, bandiera=(0.6, 0.12, 0.1), finestre=4)
     stendardo(S, Mt @ T(0, -3.72, 9.5), I)
-    S.persona(Mt @ T(1.9, -5.4, -0.6), 'guardia')
+    S.persona(posa(-74.7, -33.9, verso(42, 36)), 'guardia')
     sentiero(S, spline([(-50, -10), (-59, -17), (-67, -25), (-74.5, -31)], 1.0), 2.2, 'ciottoli', 'vie', rnd, bordi=0.3)
     for (a, b) in ((-71, -24), (-88, -30), (-84, -45), (-73, -42)):
         masso(S, posa(a, b), rnd, I, rnd.uniform(0.7, 1.3), muschio=False)

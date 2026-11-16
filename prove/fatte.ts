@@ -54,6 +54,13 @@ for (const s of SCENE_FATTE) {
 
   verifica(s.dati.luci.length > 30 && s.dati.urti.length > 60, `${nome}: la scena porta con sé luci e ingombri (${s.dati.luci.length}, ${s.dati.urti.length})`);
   verifica(s.dati.urti.every((u) => u.p.every(Number.isFinite)), `${nome}: ogni ingombro ha un posto valido`);
+  verifica(s.dati.urti.every((u) => (u.m ? u.m.every((v) => v > 0) : (u.r ?? 0) > 0 && (u.h ?? 0) > 0)), `${nome}: ogni ingombro ha misure vere`);
+  // La gente sta con i piedi per terra (o su un ponte, una banchina, un cortile): mai sott'acqua né per aria.
+  for (const g of s.dati.gente ?? []) {
+    const suolo = altezzaEsatta(g.p[0], g.p[2]);
+    verifica(g.p[1] > QUOTA_ACQUA + 0.3 && g.p[1] > suolo - 0.3 && g.p[1] < suolo + 9, `${nome}: una persona sta a quota ${g.p[1].toFixed(1)} dove il suolo è a ${suolo.toFixed(1)} (${g.p[0].toFixed(0)}, ${g.p[2].toFixed(0)})`);
+  }
+  verifica((s.dati.gente?.length ?? 0) > 0 === s.pace > 0, `${nome}: c'è gente solo dove è un paese`);
   const [ix, iz] = s.dati.imbocco;
   verifica(altezzaEsatta(ix, iz) > QUOTA_ACQUA + 0.3, `${nome}: il viaggio rapido porta all'asciutto`);
   verifica(!s.dati.urti.some((u) => Math.hypot(u.p[0] - ix, u.p[2] - iz) < (u.r ?? Math.hypot(u.m![0], u.m![2])) + 0.6 && Math.abs(u.p[1] - altezzaEsatta(ix, iz) - 1) < (u.h ?? u.m![1]) + 1),
