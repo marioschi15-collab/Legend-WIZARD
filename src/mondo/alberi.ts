@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { geometriaAbeteVero, geometriaModello, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
+import { geometriaAbeteVero, geometriaAlberoSpoglio, geometriaModello, geometriaQuerciaVera, geometriaQuerciaVeraLontana, geometriaSassoVero, materialeAbete, materialeModello, materialeSasso, materialeVero, ombraAbete, ombraVera } from './alberiVeri.js';
 import { generatore, rumore } from '../base/matematica.js';
 import type { Campo } from './campo.js';
 import { GEOMETRIE_MINUTE, MINUTI, TIPI_MINUTI } from './minuti.js';
@@ -290,6 +290,7 @@ export function creaBosco(ombre: boolean): Bosco {
   vero('pino', geometriaAbeteVero(), abete, true, ombraAbete());
   // Lo stesso abete, imbiancato dalla neve.
   vero('pinoInnevato', geometriaAbeteVero(2.1), abete, true, ombraAbete());
+  vero('alberoMorto', geometriaAlberoSpoglio(), fronde, false);
   const sasso = materialeSasso();
   vero('roccia', geometriaSassoVero(), sasso, false);
   vero('sassi', geometriaSassoVero().scale(0.32, 0.3, 0.32), sasso, false);

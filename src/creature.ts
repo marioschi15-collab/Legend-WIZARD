@@ -52,7 +52,7 @@ export const SPECIE: Readonly<Record<string, Specie>> = {
 };
 
 /** Quale razza vive in ogni terra, nello stesso ordine delle terre. */
-const DI_CASA = ['golem', 'scorpione', 'sentinella', 'lume', 'diavoletto', 'golem', 'golem', 'lume', 'scorpione', 'golem', 'sentinella', 'scorpione', 'scorpione', 'lume', 'sentinella'];
+const DI_CASA = ['golem', 'scorpione', 'sentinella', 'lume', 'diavoletto', 'golem', 'golem', 'lume', 'scorpione', 'golem', 'sentinella', 'scorpione', 'scorpione', 'lume', 'sentinella', 'lume'];
 
 interface Golem {
   readonly specie: Specie;

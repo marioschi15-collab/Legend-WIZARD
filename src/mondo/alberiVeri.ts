@@ -240,3 +240,9 @@ export function materialeModello(file: string, ritagliato: boolean): THREE.MeshL
   m.map = fotoModello(file);
   return m;
 }
+
+/** Un albero spoglio: lo stesso tronco vero della quercia, con i suoi rami e senza una foglia. */
+export function geometriaAlberoSpoglio(): THREE.BufferGeometry {
+  const d = QUERCIA_DATI;
+  return chiudi({ pos: [...d.pos], nor: [...d.nor], uv: [...d.uv], ind: [...d.ind] });
+}

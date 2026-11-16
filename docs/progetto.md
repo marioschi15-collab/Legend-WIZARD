@@ -106,6 +106,13 @@ Primo passo fatto, dopo una revisione a più mani del codice:
 - al computer ogni foglio ha un tasto (T, P, N, V), perché il mouse catturato non può cliccare i pulsanti.
 Prossimi: oggetti da trovare e indossare; poi il mondo vivo (animali, abitanti con una giornata); poi l'aspetto.
 
+**Zone fatte a mano (richiesta del fondatore, sulle sue immagini di riferimento).** Oltre alle terre che nascono
+dal clima, ci sono zone curate in un punto preciso. La prima è il Bosco della Strega (a sud-ovest del villaggio,
+ci si arriva anche con il viaggio rapido): nebbia fitta, alberi spogli veri, un sentiero di ciottoli con le torce
+e la casa della strega modellata con Blender (`strumenti/casa_strega.py`). Le prossime, sugli altri riferimenti:
+il castello in fondo al sentiero nel bosco, il borgo sotto la neve, il porto nella nebbia. Con Blender (installato
+nell'ambiente di lavoro, senza finestra) si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
+
 **Tutto reagisce alla magia (richiesta del fondatore).** In ordine: le creature dentro la fisica (fatto: spinte,
 vortici, cadute che fanno male); alberi che si abbattono e rocce che si spaccano in pezzi veri, e ricrescono dove
 il prato rifiorisce (fatto); poi gli abitanti che reagiscono a ciò che succede, e l'acqua che gela. Resta un limite

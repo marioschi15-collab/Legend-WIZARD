@@ -191,7 +191,23 @@ export const ZONE: readonly Zona[] = [
       { tipo: 'roccia', parte: 6, scala: [0.6, 2], tinta: 0x4a7a88 },
     ],
   },
+  {
+    // Una terra fatta a mano, in un punto preciso: nebbia fitta, alberi spogli, la casa della strega in fondo a un
+    // sentiero di pietra. Non nasce dal clima come le altre (caldo e umido sono fuori scala): vedi `pesiZone`.
+    nome: 'Bosco della Strega', caldo: 9, umido: 9, terra: 0x2e2b22, nebbia: 0x76858a, cielo: 0x55666c, densitaNebbia: 0.02, luce: 0.52,
+    luceAlta: 0x9fb0b8, luceBassa: 0x34342c, sole: 0xb8c4cc, erba: [0.35, 0.2, 0, 1], luoghi: ['strega'], aria: 'foglie', rivaScura: true,
+    suolo: colline(5, 0.011, 4.6, 91),
+    piante: [
+      { tipo: 'alberoMorto', parte: 34, scala: [1.0, 2.2] }, { tipo: 'pino', parte: 12, scala: [0.9, 1.9], tinta: 0x6a7a70 },
+      { tipo: 'roccia', parte: 7, scala: [0.5, 2.2], tinta: 0x8a8f8a }, { tipo: 'cespuglio', parte: 6, scala: [0.5, 1.1], tinta: 0x5a6650 },
+      { tipo: 'fungo', parte: 3, scala: [0.4, 1.0], tinta: 0xff9a5a },
+    ],
+  },
 ];
+
+/** Il numero del Bosco della Strega, e dove sta il suo centro (lì c'è la casa). */
+export const STREGA = ZONE.length - 1;
+export const CENTRO_STREGA = { x: -250, z: 380 };
 
 /** Quante terre ci sono: ogni elenco di "pesi" ha questa lunghezza. */
 export const N_ZONE = ZONE.length;
@@ -221,6 +237,8 @@ export function pesiZone(x: number, z: number, esito: Float32Array | number[]): 
     const du = umido - zona.umido;
     let f = Math.exp(-(dc * dc + du * du) / 0.085) + 1e-9;
     if (i === PRATO) f = f * 1.25 + casa * 40;
+    // Il Bosco della Strega esiste solo attorno al suo centro, e lì vince su tutto.
+    if (i === STREGA) f = gradino(250, 150, Math.hypot(x - CENTRO_STREGA.x, z - CENTRO_STREGA.z)) * 60 + 1e-9;
     esito[i] = f;
     somma += f;
   }
@@ -284,7 +302,8 @@ function grezza(x: number, z: number): number {
 
   // Le montagne: catene lunghe, con creste affilate e valli in mezzo. Lontane dal punto di partenza.
   const terra = terraferma(x, z);
-  const catena = gradino(0.57, 0.71, rumoreStrati(x * 0.0011 + 200.5, z * 0.0011 + 300.2, 2)) * gradino(260, 520, r) * terra;
+  // Nel Bosco della Strega niente monti né fiumi: è una conca di bosco, tutta all'asciutto.
+  const catena = gradino(0.57, 0.71, rumoreStrati(x * 0.0011 + 200.5, z * 0.0011 + 300.2, 2)) * gradino(260, 520, r) * terra * (1 - p[STREGA]!);
   if (catena > 0) {
     const cresta = 1 - Math.abs(rumoreStrati(x * 0.0042 + 40.7, z * 0.0042 + 80.3, 4) * 2 - 1);
     h += catena * (18 + cresta * cresta * 105);
@@ -292,7 +311,7 @@ function grezza(x: number, z: number): number {
 
   // I fiumi: nastri che serpeggiano nella pianura (non sui monti, non nel villaggio di partenza).
   const dalFiume = Math.abs(rumore(x * 0.0031 + 7.3, z * 0.0031 + 3.9) - 0.5);
-  const fiume = gradino(0.03, 0.009, dalFiume) * (1 - gradino(0, 0.25, catena)) * gradino(120, 200, r) * (1 - p[VULCANO]!);
+  const fiume = gradino(0.03, 0.009, dalFiume) * (1 - gradino(0, 0.25, catena)) * gradino(120, 200, r) * (1 - p[VULCANO]!) * (1 - p[STREGA]!);
   if (fiume > 0) {
     // La valle si allarga dolcemente attorno al letto, così le rive non sono muri.
     const valle = gradino(0.09, 0.03, dalFiume) * gradino(18, 5, h);

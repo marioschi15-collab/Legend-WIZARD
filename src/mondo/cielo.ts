@@ -32,6 +32,7 @@ export function creaCielo(): THREE.Mesh {
       uTempo: atmosfera.tempo,
       uNotte: atmosfera.notte,
       uSera: atmosfera.sera,
+      uNebbia: atmosfera.nebbiaDensita,
       uFotoGiorno: { value: fotoCielo('giorno') },
       uFotoSera: { value: fotoCielo('tramonto') },
     },
@@ -45,7 +46,7 @@ export function creaCielo(): THREE.Mesh {
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uSole; uniform vec3 uOrizzonte; uniform vec3 uTinta;
-      uniform float uLuce; uniform float uTempo; uniform float uNotte; uniform float uSera;
+      uniform float uLuce; uniform float uTempo; uniform float uNotte; uniform float uSera; uniform float uNebbia;
       uniform sampler2D uFotoGiorno; uniform sampler2D uFotoSera;
       varying vec3 vDir;
       // Le fotografie hanno le luci già schiacciate: qui si ridà loro forza, così il sole abbaglia davvero.
@@ -68,6 +69,8 @@ export function creaCielo(): THREE.Mesh {
         colore += vec3(0.9, 0.9, 1.0) * step(0.992, stella) * smoothstep(0.04, 0.5, d.y) * brilla * uNotte * uNotte * 2.5;
         // Verso l'orizzonte il cielo si perde nella foschia, dello stesso colore della nebbia sul terreno lontano.
         colore = mix(uOrizzonte, colore, smoothstep(-0.01, 0.09, d.y));
+        // Dentro una nebbia fitta il cielo non si vede: resta un chiarore grigio, appena più chiaro in alto.
+        colore = mix(colore, uOrizzonte * (1.0 + 0.25 * max(d.y, 0.0)), smoothstep(0.005, 0.016, uNebbia));
         gl_FragColor = vec4(colore, 1.0);
         #include <colorspace_fragment>
       }
