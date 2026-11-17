@@ -203,7 +203,7 @@ interface Pianta {
 const BIANCO = new THREE.Color(1, 1, 1);
 const CARBONE = new THREE.Color(0.09, 0.07, 0.06);
 /** I tipi di pianta, nell'ordine in cui sono disegnati; le terre li chiamano per nome (vedi zone.ts). */
-const GRANDI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo', 'alberoMorto2', 'alberoMorto3', 'spoglioLontano'];
+const GRANDI = ['pino', 'quercia', 'pinoInnevato', 'cactus', 'roccia', 'alberoMorto', 'fungo', 'guglia', 'acacia', 'palma', 'cespuglio', 'cristallo', 'alberoMorto2', 'alberoMorto3', 'spoglioLontano', 'cespuglioLontano'];
 /** Dopo le piante grandi e la quercia lontana vengono le cose minute (felci, sassi, tronchi, barili…). */
 const TIPI = [...GRANDI, 'querciaLontana', ...TIPI_MINUTI];
 const PRIMO_MINUTO = GRANDI.length + 1;
@@ -275,9 +275,11 @@ export function creaBosco(ombre: boolean): Bosco {
   const geometrie = [
     geometriaPino(), geometriaQuercia(), geometriaPinoInnevato(), geometriaCactus(),
     geometriaRoccia(), geometriaAlberoMorto(), geometriaFungo(), geometriaGuglia(),
-    geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaAlberoMorto(), geometriaAlberoMorto(), geometriaAlberoMorto(), geometriaQuercia(0),
+    geometriaAcacia(), geometriaPalma(), geometriaCespuglio(), geometriaCristallo(), geometriaAlberoMorto(), geometriaAlberoMorto(), geometriaAlberoMorto(),
+    geometriaCespuglio(), geometriaQuercia(0),
     ...GEOMETRIE_MINUTE(),
   ];
+  if (geometrie.length !== TIPI.length) throw new Error(`le forme delle piante (${geometrie.length}) non combaciano con i tipi (${TIPI.length})`);
   // Piante, rocce e legni veri: geometria presa da modelli fotografati dal vero, ognuno con la sua immagine.
   // `carte` vale per ciò che è fatto di foglie ritagliate: non riceve ombra (se la farebbe da solo e resterebbe nero).
   const veri = new Map<number, { materiale: THREE.Material; ombra?: THREE.Material; carte: boolean }>();
@@ -309,9 +311,19 @@ export function creaBosco(ombre: boolean): Bosco {
   const sasso = materialeSasso();
   vero('roccia', geometriaSassoVero(), sasso, false);
   vero('sassi', geometriaSassoVero().scale(0.32, 0.3, 0.32), sasso, false);
-  vero('cespuglio', geometriaModello('cespuglio', { alto: 1.25 }, 6, 0.5), materialeModello('cespuglio.webp', true), true);
+  // Cespugli, felci e fiori sono piccoli ma fatti di migliaia di triangoli: la misura della fluidità ha mostrato che
+  // da soli erano sei dei sette milioni di triangoli di una radura. Quindi: i cespugli oltre la zolla accanto
+  // diventano una pianta sola un po' più grande (un sesto dei triangoli); felci e fiori si disegnano solo nelle zolle
+  // accanto a chi gioca (vedi FITTE); e un ciuffo di fiori ha tre piante invece di cinque.
+  const cespuglio = materialeModello('cespuglio.webp', true);
+  vero('cespuglio', geometriaModello('cespuglio', { alto: 1.25 }, 6, 0.5), cespuglio, true);
+  vero('cespuglioLontano', geometriaModello('cespuglio', { alto: 1.7 }, 1, 0), cespuglio, true);
   vero('felce', geometriaModello('felce', { alto: 0.55 }, 3, 0.3), materialeModello('felce.webp', true), true);
-  vero('fioreAlto', geometriaModello('fiore', { alto: 0.5 }, 5, 0.32), materialeModello('fiore.webp', true), true);
+  vero('fioreAlto', geometriaModello('fiore', { alto: 0.5 }, 3, 0.3), materialeModello('fiore.webp', true), true);
+  const CESPUGLIO = TIPI.indexOf('cespuglio');
+  const CESPUGLIO_LONTANO = TIPI.indexOf('cespuglioLontano');
+  /** Le cose minute fatte di tante foglie: oltre la zolla accanto non si disegnano (sarebbero pochi puntini, e pesano). */
+  const FITTE = new Set(['felce', 'fioreAlto', 'funghetti', 'ciuffo'].map((n) => TIPI.indexOf(n)));
   vero('ceppo', geometriaModello('ceppo', { alto: 0.55 }), materialeModello('ceppo.jpg', false), false);
   vero('tronco', geometriaModello('tronco', { lungo: 3.2 }), materialeModello('tronco.jpg', false), false);
   const mesh = geometrie.map((g, i) => {
@@ -430,7 +442,8 @@ export function creaBosco(ombre: boolean): Bosco {
           if (vicina !== (giro === 0)) continue;
           for (const p of piante) {
             if (abbattuti.size > 0 && abbattuti.has(chiaveDi(p))) continue;
-            const tipo = p.tipo === QUERCIA && !vicina ? QUERCIA_LONTANA : SPOGLI.has(p.tipo) && (dx > 1 || dz > 1) ? SPOGLIO_LONTANO : p.tipo;
+            const oltre = dx > 1 || dz > 1;
+            const tipo = p.tipo === QUERCIA && !vicina ? QUERCIA_LONTANA : SPOGLI.has(p.tipo) && oltre ? SPOGLIO_LONTANO : p.tipo === CESPUGLIO && oltre ? CESPUGLIO_LONTANO : p.tipo;
             const n = quante[tipo]!;
             if (n >= CAPIENZA) continue;
             quante[tipo] = n + 1;
@@ -448,8 +461,11 @@ export function creaBosco(ombre: boolean): Bosco {
         }
         if (giro === 0) for (let i = 0; i < quante.length; i++) vicine[i] = quante[i]!;
       }
-      for (const piante of zolleMinute.values()) {
+      for (const [chiave, piante] of zolleMinute) {
+        const virgola = chiave.indexOf(',');
+        const oltre = Math.abs(Number(chiave.slice(0, virgola)) - ccx) > 1 || Math.abs(Number(chiave.slice(virgola + 1)) - ccz) > 1;
         for (const p of piante) {
+          if (oltre && FITTE.has(p.tipo)) continue;
           const n = quante[p.tipo]!;
           if (n >= CAPIENZA) continue;
           quante[p.tipo] = n + 1;

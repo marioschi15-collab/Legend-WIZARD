@@ -164,6 +164,10 @@ restavano «non verificati». Ora il gioco si misura da solo sul dispositivo di 
 dettaglio, con due scoppi; per ogni posto conta le immagini al secondo (in media e nei momenti peggiori), quanto si
 sta disegnando e quanto pesano i conti del gioco, dà un giudizio (fluido, giocabile, a scatti) e un testo da copiare
 e mandare. Con quei numeri si decide dove alleggerire. Durante la misura il gioco non salva nulla.
+La prima scoperta è arrivata subito, contando i triangoli: in una radura se ne disegnavano sette milioni a ogni
+immagine, e sei erano di fiori, cespugli e felci (un ciuffo di fiori ne aveva 4665). Ora i cespugli oltre la zolla
+accanto sono una pianta sola, felci e fiori si disegnano solo nelle zolle accanto a chi gioca, e un ciuffo di fiori
+ha tre piante invece di cinque: da sette milioni a poco più di due, senza che il prato sembri più povero.
 
 **Fisica dappertutto: modificare, rompere e usare tutto ciò che c'è nella mappa (richiesta del fondatore).**
 Le zone fatte a mano sono le più belle e le più ferme: sono scolpite in un pezzo solo. Romperle fino all'ultimo
