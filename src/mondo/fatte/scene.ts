@@ -5,6 +5,8 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { scalaPunti, type Particelle } from '../../effetti/particelle.js';
 import { materialeRametti } from '../alberiVeri.js';
 import { atmosfera } from '../atmosfera.js';
+import type { Pezzi } from '../../fisica/pezzi.js';
+import { Cose } from './cose.js';
 import { SCENE_FATTE, type ScenaFatta } from './elenco.js';
 import { creaPaesani } from './paesani.js';
 
@@ -12,6 +14,8 @@ export interface SceneFatte {
   readonly gruppo: THREE.Group;
   /** Per ogni scena, il punto dove porta il viaggio rapido. */
   readonly mete: readonly { nome: string; x: number; z: number }[];
+  /** Gli oggetti sciolti di tutte le scene: barili, casse, lapidi... */
+  readonly cose: Cose;
   aggiorna(dt: number, occhi: THREE.Vector3, notte?: boolean): void;
 }
 
@@ -62,6 +66,8 @@ function materia(nome: string, colore: THREE.Color): THREE.Material {
   else if (nome === 'ghiaccio') m = new THREE.MeshLambertMaterial({ color: 0xcfe6f4, vertexColors: true, emissive: 0x24384a });
   else if (CON_IMMAGINE.has(nome)) m = new THREE.MeshLambertMaterial({ map: immagine(nome), vertexColors: true });
   else m = new THREE.MeshLambertMaterial({ color: colore, vertexColors: true });
+  // Il nome resta sulla materia: chi stacca un pezzo dalla scena (gli oggetti sciolti) la ritrova da lì.
+  m.name = nome;
   materie.set(nome, m);
   return m;
 }
@@ -73,7 +79,7 @@ interface Forme {
 }
 
 /** Le forme di una scena: si scaricano la prima volta che ci si avvicina. */
-async function caricaForme(s: ScenaFatta): Promise<Forme | null> {
+async function caricaForme(s: ScenaFatta, sciolte: (radice: THREE.Object3D) => void): Promise<Forme | null> {
   try {
     const caricatore = new GLTFLoader();
     caricatore.setMeshoptDecoder(MeshoptDecoder);
@@ -87,6 +93,8 @@ async function caricaForme(s: ScenaFatta): Promise<Forme | null> {
       mesh.castShadow = nome !== 'rametti' && nome !== 'luce' && nome !== 'runa';
       mesh.receiveShadow = nome !== 'rametti';
     });
+    // Le forme degli oggetti sciolti escono dalla scena: le disegna chi li muove.
+    sciolte(radice);
     radice.position.set(s.terra.centro.x, 0, s.terra.centro.z);
     radice.updateMatrixWorld(true);
     const pezzi: Forme['pezzi'] = [];
@@ -170,8 +178,10 @@ interface Vera {
  * avvicina; gli ingombri e i punti luce ci sono da subito. Tre luci vere seguono i punti che brillano più vicini a
  * chi gioca; tutti gli altri hanno solo il loro alone, che costa quasi niente. Dai camini esce il fumo.
  */
-export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Particelle): SceneFatte {
+export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Particelle, pezzi: Pezzi): SceneFatte {
   const gruppo = new THREE.Group();
+  const cose = new Cose(pezzi, SCENE_FATTE, materia);
+  gruppo.add(cose.gruppo);
   const giro = new THREE.Quaternion();
   const asse = new THREE.Vector3(0, 1, 0);
 
@@ -209,8 +219,10 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
 
   return {
     gruppo,
+    cose,
     mete: SCENE_FATTE.map((s) => ({ nome: s.viaggio, x: s.dati.imbocco[0], z: s.dati.imbocco[1] })),
     aggiorna(dt, occhi, notte = false) {
+      cose.avvicina(occhi.x, occhi.z);
       attesa -= dt;
       const riordina = attesa <= 0;
       if (riordina) {
@@ -225,7 +237,7 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
         const lontano = Math.hypot(occhi.x - c.x, occhi.z - c.z) - q.s.terra.raggio;
         if (!q.chiesta && lontano < 530) {
           q.chiesta = true;
-          void caricaForme(q.s).then((forme) => {
+          void caricaForme(q.s, (radice) => cose.forme(scene.indexOf(q), radice)).then((forme) => {
             if (!forme) return;
             forme.radice.visible = q.vicina;
             gruppo.add(forme.radice);

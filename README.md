@@ -22,6 +22,8 @@ direzione, e sono sempre gli stessi ogni volta che ci si torna.
   **Borgo d'Inverno** (case a graticcio sotto la neve, piazza con il mercato, torre, stagno ghiacciato), il **Porto
   delle Nebbie** (banchina, moli, tre velieri: su due si sale a bordo, il faro) e il **Castello del Bosco** (mura e
   torri, il cortile in cui si entra, il ponte di pietra, il mulino a vento). Nei paesi le creature non nascono.
+  Gli oggetti di queste zone (barili, casse, panche, lapidi, zucche, bersagli...) sono cose vere: si spingono, si
+  sollevano con la magia, bruciano, gelano, si sfasciano con un colpo forte e tornano interi con il Rammendo.
 
 Il gioco ricorda le scoperte e il punto in cui si è arrivati; il pulsante «Al villaggio» riporta alla partenza.
 Le terre e le loro regole sono tutte in `src/mondo/zone.ts`: per aggiungerne una basta una voce in più nell'elenco.
@@ -157,6 +159,7 @@ pnpm build        # crea dist/index.html: un solo file, si apre con un doppio cl
   `campo.ts` tiene lo stato del prato (bruciato, gelato, rigoglioso, in fiamme) a quadretti.
 - `src/mondo/fatte/`: le zone fatte a mano. `suoli.ts` (la forma del terreno di ognuna), `elenco.ts` (quali sono),
   `scene.ts` (carica forme, ingombri, luci e fumo dei camini), `*Dati.ts` (scritti dagli strumenti: non si toccano).
+  `cose.ts` (gli oggetti sciolti: ognuno è un pezzo vero con la sua forma sopra), `paesani.ts` (la gente).
   Le scene si costruiscono con Blender dagli script in `strumenti/scene/`; come, sta in `docs/progetto.md`.
 - `src/fisica/pezzi.ts`: i pezzi delle costruzioni, con peso e attrito (motore fisico Rapier). I luoghi compaiono
   quando entrano in vista, "prendono vita" quando ci si avvicina e vengono tolti quando restano lontani.

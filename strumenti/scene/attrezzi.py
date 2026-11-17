@@ -170,7 +170,11 @@ def arco(larga, alta, quanti=6, acuto=True):
 
 
 class Scena:
-    def __init__(self):
+    def __init__(self, piatta=False):
+        # `piatta`: una scena di servizio, senza terreno, in cui si costruisce una volta sola la forma di un oggetto
+        # sciolto (vedi cose.py).
+        self.piatta = piatta
+        self.cose = []
         self.parti = {}
         self.luci = []
         self.urti = []
@@ -188,7 +192,7 @@ class Scena:
         bm.normal_update()
         uvl = bm.loops.layers.uv.get('uv')
         origine = M.translation
-        suolo_qui = terreno.terra(origine.x, -origine.y) if radica else 0.0
+        suolo_qui = terreno.terra(origine.x, -origine.y) if radica and not self.piatta else 0.0
         mondo = [M @ v.co for v in bm.verts]
         d['v'].extend(mondo)
         variazione = self.rnd.uniform(0.86, 1.08) * scurisci
@@ -219,6 +223,14 @@ class Scena:
     def luce(self, M, tipo, forza=1.0, locale=(0, 0, 0)):
         """Un punto che brilla: una torcia, una candela, una finestra, una zucca intagliata, una runa."""
         self.luci.append({'p': self._gioco(M @ Vector(locale)), 't': tipo, 'f': round(forza, 2)})
+
+    def cosa(self, tipo, M):
+        """Posa un oggetto sciolto (un barile, una cassa, una lapide...): non entra nella scena scolpita, nel gioco è
+        una cosa vera che si spinge, brucia e si sfascia. `M` sta ai suoi piedi. I tipi stanno in cose.py."""
+        import cose
+        assert tipo in cose.PROTOTIPI, tipo
+        self.cose.append((tipo, M @ T(0, 0, 0.03)))
+        self.occupa(M.translation.x, -M.translation.y, 1.0)
 
     def persona(self, M, tipo='paesano', guarda=None):
         """Qualcuno del posto sta qui: un paesano che passeggia lì attorno, o una guardia ferma (che guarda verso -y)."""
@@ -254,7 +266,8 @@ class Scena:
     def costruisci(self, materiali):
         fatti = []
         for (insieme, materia), d in sorted(self.parti.items()):
-            me = bpy.data.meshes.new(f'{insieme}.{materia}')
+            # le forme degli oggetti sciolti si riconoscono dal nome (senza punti: il gioco li toglierebbe)
+            me = bpy.data.meshes.new(f'{insieme}__{materia}' if insieme.startswith('cosa__') else f'{insieme}.{materia}')
             me.from_pydata([tuple(v) for v in d['v']], [], d['f'])
             uvl = me.uv_layers.new(name='UVMap')
             uvl.data.foreach_set('uv', [c for uv in d['uv'] for c in uv])

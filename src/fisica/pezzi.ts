@@ -311,7 +311,13 @@ export class Pezzi {
     this.pos[i * 3] = x;
     this.pos[i * 3 + 1] = y;
     this.pos[i * 3 + 2] = z;
-    this.m.compose(this.p.set(x, y, z), this.q.set(q.x, q.y, q.z, q.w), this.s.set(b.sx * k, b.sy * k, b.sz * k));
+    if (b.nascosto) {
+      // Il blocco non si vede (misura zero): al suo posto c'è la forma vera, disegnata da chi ascolta.
+      this.m.compose(this.p.set(x, y, z), this.q.set(q.x, q.y, q.z, q.w), this.s.set(0, 0, 0));
+      this.onPosa?.(b, x, y, z, q, k);
+    } else {
+      this.m.compose(this.p.set(x, y, z), this.q.set(q.x, q.y, q.z, q.w), this.s.set(b.sx * k, b.sy * k, b.sz * k));
+    }
     this.mesh.setMatrixAt(i, this.m);
   }
 
@@ -350,6 +356,13 @@ export class Pezzi {
     this.fermo = svegli === 0;
     this.svegli = svegli;
   }
+
+  /** Chi disegna una forma sua sopra un pezzo nascosto viene avvisato quando il pezzo si muove (o rimpicciolisce,
+   * consumato dal fuoco) e quando cambia colore (carbone, ghiaccio). */
+  onPosa: ((b: Mattone, x: number, y: number, z: number, q: { x: number; y: number; z: number; w: number }, scala: number) => void) | null = null;
+  onTinta: ((b: Mattone, colore: THREE.Color) => void) | null = null;
+  /** Chi vuole sapere di ogni rammendo (gli oggetti sfasciati tornano interi). */
+  onRammenda: (x: number, z: number, raggio: number) => void = () => undefined;
 
   /** Chi vuole sapere di ogni spinta (le creature: ciò che scaglia i pezzi scaglia anche loro). */
   onSpinta: (x: number, y: number, z: number, raggio: number, forza: number, alzata: number) => void = () => undefined;
@@ -467,6 +480,7 @@ export class Pezzi {
     const c = this.c.copy(b.colore).lerp(CARBONE, this.carbone[i]!);
     c.lerp(GHIACCIO, this.ghiaccio[i]! * 0.75);
     this.mesh.setColorAt(i, c);
+    if (b.nascosto) this.onTinta?.(b, c);
     this.ardore.setX(i, b.materiale === BRACE ? 0.7 : brace * 0.6);
     this.ardore.needsUpdate = true;
   }
@@ -584,6 +598,7 @@ export class Pezzi {
    * ne altererebbe il peso, e le case rammendate crollavano di nuovo); arrivati, tornano a urtare come prima.
    */
   rammenda(x: number, z: number, raggio: number): number {
+    this.onRammenda(x, z, raggio);
     const r2 = raggio * raggio;
     const inVolo = new Set(this.rammendi.flatMap((r) => r.pezzi.map((p) => p.i)));
     const pezzi: { i: number; ritardo: number; da: THREE.Vector3; qDa: THREE.Quaternion }[] = [];
@@ -681,6 +696,7 @@ export class Pezzi {
       corpo.setAngularDamping(0);
       this.disegna(i, b.x, b.y, b.z, b.q);
       this.mesh.setColorAt(i, b.colore);
+      if (b.nascosto) this.onTinta?.(b, b.colore);
       this.ardore.setX(i, b.materiale === BRACE ? 0.7 : 0);
       this.materia.setX(i, b.materiale);
     });

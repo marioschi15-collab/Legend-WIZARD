@@ -362,7 +362,10 @@ def muro_merlato(S, pa, pb, rnd, I, posa, alto=6.0, spesso=1.6, quota=None, zocc
 # ------------------------------------------------------------------------------------------------ oggetti di paese
 
 
-def barile(S, M, rnd, I, alto=0.95, r=0.33, urto=True):
+def barile(S, M, rnd, I, alto=0.95, r=0.33, urto=True, sciolto=True):
+    if sciolto and not S.piatta and alto == 0.95 and r == 0.33:   # un barile qualunque è un oggetto sciolto
+        S.cosa('barile', M)
+        return
     b = cilindro(r, r, alto, 12)
     bmesh.ops.subdivide_edges(b, edges=[e for e in b.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > alto * 0.5], cuts=2)
     for v in b.verts:
@@ -379,7 +382,7 @@ def barile(S, M, rnd, I, alto=0.95, r=0.33, urto=True):
 
 def cassa(S, M, rnd, I, lato=0.8, urto=True):
     h = lato * rnd.uniform(0.7, 1.0)
-    S.metti(scatola(lato, lato, h, smusso=0.012), I, 'legno', M, uv=0.8, tinta=(rnd.uniform(0.85, 1.2), rnd.uniform(0.8, 1.05), rnd.uniform(0.7, 0.95)), liscia=False)
+    S.metti(scatola(lato, lato, h, smusso=0.012), I, 'tavole', M, uv=1.2, tinta=(rnd.uniform(0.72, 1.0),) * 3, liscia=False)
     for (x, y) in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
         S.metti(scatola(0.07, 0.07, h + 0.02), I, 'legno', M @ T(x * (lato / 2 - 0.02), y * (lato / 2 - 0.02), 0), uv=0.8, tinta=SCURO, radica=False, liscia=False)
     for z in (0.04, h - 0.04):
@@ -396,24 +399,31 @@ def sacco(S, M, rnd, I):
 
 
 def mucchio(S, M, rnd, I, quanti=5, raggio=1.2, neve=False):
-    """Un mucchio di merci: barili, casse impilate, sacchi."""
+    """Un mucchio di merci: barili, casse (qualcuna impilata), sacchi. Sono oggetti sciolti, uno accanto all'altro
+    senza toccarsi: nel gioco si spingono, si impilano, bruciano e si sfasciano."""
+    import cose
+    n = '_n' if neve else ''
+    posti = []
     for _ in range(quanti):
-        an, d = rnd.uniform(0, math.tau), raggio * math.sqrt(rnd.random())
-        Mq = M @ T(math.cos(an) * d, math.sin(an) * d, 0) @ R(rnd.uniform(0, 6.28))
+        for _ in range(40):
+            an, d = rnd.uniform(0, math.tau), raggio * math.sqrt(rnd.random())
+            x, y = math.cos(an) * d, math.sin(an) * d
+            if all(math.hypot(x - px, y - py) > 1.02 for (px, py) in posti):
+                break
+        else:
+            continue
+        posti.append((x, y))
+        Mq = M @ T(x, y, 0) @ R(rnd.uniform(0, 6.28))
         dado = rnd.random()
         if dado < 0.4:
-            barile(S, Mq, rnd, I, urto=False)
-            if neve:
-                S.metti(cilindro(0.3, 0.26, 0.07, 10, z0=0.95), I, 'neve', Mq, uv=1.0, radica=False)
+            S.cosa('barile' + n, Mq)
         elif dado < 0.8:
-            h = cassa(S, Mq, rnd, I, rnd.uniform(0.6, 0.95), urto=False)
-            if rnd.random() < 0.4:
-                h += cassa(S, Mq @ T(0, 0, h) @ R(rnd.uniform(-0.4, 0.4)), rnd, I, rnd.uniform(0.45, 0.6), urto=False)
-            if neve:
-                S.metti(scatola(0.6, 0.6, 0.07, z0=h, tagli=1, rumore=0.02), I, 'neve', Mq, uv=1.0, radica=False)
+            k = rnd.randrange(2)
+            S.cosa(f'cassa{k}{n}', Mq)
+            if rnd.random() < 0.4:   # una cassa piccola sopra
+                S.cosa(f'cassa2{n}', Mq @ T(0, 0, cose.PROTOTIPI[f'cassa{k}']['misure'][2] + 0.01) @ R(rnd.uniform(-0.4, 0.4)))
         else:
-            sacco(S, Mq, rnd, I)
-    S.urto_tondo(M, raggio * 0.9, 1.0)
+            S.cosa('sacco', Mq)
     S.occupa(M.translation.x, -M.translation.y, raggio + 0.8)
 
 
@@ -481,6 +491,9 @@ def fontana(S, M, rnd, I, gelata=False, r=2.3):
 
 def pupazzo(S, M, rnd, I):
     """Un pupazzo di neve con il secchio in testa, il naso di carota e le braccia di rametti."""
+    if not S.piatta:
+        S.cosa('pupazzo', M)
+        return
     for (r, z) in ((0.48, 0.38), (0.36, 1.02), (0.25, 1.5)):
         S.metti(sfera(r, 2, 0.05, rnd.random() * 9, z0=z), I, 'neve', M, uv=1.2, radica=z < 0.5)
     S.metti(cilindro(0.2, 0.16, 0.26, 9, z0=1.68), I, 'ferro', M @ R(0, 0.12), radica=False)
@@ -527,7 +540,7 @@ def fucina(S, M, rnd, I, neve=False):
     S.metti(cilindro(0.0, 0.08, 0.3, 6), I, 'ferro', M @ T(-0.95, 0.2, 0.63) @ R(0, 0, -math.pi / 2), radica=False)
     S.urto_tondo(M @ T(-0.6, 0.2, 0), 0.35, 0.9)
     S.persona(M @ T(-0.5, -0.9, 0), 'venditore', True)   # il fabbro, davanti all'incudine
-    barile(S, M @ T(-1.7, 1.1, 0), rnd, I)
+    barile(S, M @ T(-1.7, 1.1, 0), rnd, I, sciolto=False)
     for i in range(4):   # ferri appesi alla trave
         S.metti(scatola(0.03, 0.03, rnd.uniform(0.5, 0.9), z0=-0.9), I, 'ferro', M @ T(-1.2 + i * 0.4, -1.55, 2.6), radica=False, liscia=False)
     S.metti(scatola(4.4, 0.14, 0.16, z0=2.5), I, 'legno', M @ T(0, -1.6, 0), uv=0.9, tinta=SCURO, radica=False, liscia=False)
@@ -562,6 +575,9 @@ def festone(S, I, p0, p1, quante=6, cala=0.7, forza=0.5):
 
 
 def panca(S, M, rnd, I, neve=False):
+    if not S.piatta:
+        S.cosa('panca_n' if neve else 'panca', M)
+        return
     S.metti(scatola(1.7, 0.42, 0.07, z0=0.42, smusso=0.01), I, 'legno', M, uv=0.8, radica=False, liscia=False)
     S.metti(scatola(1.7, 0.06, 0.4, z0=0.62), I, 'legno', M @ T(0, 0.2, 0) @ R(0, -0.12), uv=0.8, radica=False, liscia=False)
     for x in (-0.7, 0.7):
@@ -779,6 +795,9 @@ def fuoco_campo(S, M, rnd, I, masso):
 
 def bersaglio(S, M, rnd, I):
     """Un bersaglio di paglia per gli arcieri, su un cavalletto (guarda verso -y)."""
+    if not S.piatta:
+        S.cosa('bersaglio', M)
+        return
     for k in (-1, 1):
         S.metti(tubo([((k * 0.55, 0.5, 0), 0.04), ((k * 0.1, 0.1, 1.7), 0.035)], 5), I, 'legno', M)
     S.metti(tubo([((0, 0.9, 0), 0.04), ((0, 0.12, 1.6), 0.035)], 5), I, 'legno', M)
@@ -791,6 +810,9 @@ def bersaglio(S, M, rnd, I):
 
 def fantoccio(S, M, rnd, I):
     """Un fantoccio di paglia per allenarsi con la spada: un palo, il corpo di sacco, lo scudo e l'elmo vecchio."""
+    if not S.piatta:
+        S.cosa('fantoccio', M)
+        return
     S.metti(scatola(0.14, 0.14, 2.0), I, 'legno', M, uv=0.8)
     S.metti(scatola(1.5, 0.1, 0.1, z0=1.35), I, 'legno', M, radica=False, liscia=False)
     S.metti(sfera(0.36, 2, 0.1, rnd.random() * 9, (1, 0.8, 1.35), z0=1.1), I, 'tela', M, uv=0.8, tinta=(0.85, 0.75, 0.55), radica=False)

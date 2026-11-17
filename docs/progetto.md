@@ -154,8 +154,32 @@ Come sono fatte, tutte allo stesso modo:
 Per non pesare: le forme di una zona si scaricano solo avvicinandosi, e di ogni zona si disegnano solo i pezzi
 abbastanza vicini da vedersi nella sua nebbia (`vista` in `elenco.ts`). Nei paesi (Borgo e Porto) non parte la
 sfida «sbriciola tre creature»: lì le creature non nascono.
-Le scene sono pezzi unici: per ora non si sbriciolano con la magia come le case fatte di blocchi, nelle case non
-si entra, e la gente dei paesi nuovi non dà ancora missioni. Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
+Le scene scolpite (muri, tetti, moli, navi) sono ancora pezzi unici che non si sbriciolano, nelle case non si
+entra, e la gente dei paesi nuovi non dà ancora missioni: vedi qui sotto «Fisica dappertutto». Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
+
+**Fisica dappertutto: modificare, rompere e usare tutto ciò che c'è nella mappa (richiesta del fondatore).**
+Le zone fatte a mano sono le più belle e le più ferme: sono scolpite in un pezzo solo. Romperle fino all'ultimo
+mattone in un browser non si può senza perdere l'aspetto o la fluidità; si può invece che le cose si rompano in
+pezzi grandi come sono nella realtà. In quest'ordine:
+1. **Gli oggetti diventano cose vere (fatto).** Barili, casse, sacchi, panche, pupazzi di neve, zucche, lapidi,
+   bersagli e fantocci (176 in tutto, nelle quattro zone) non fanno più parte della scena scolpita: ognuno è un pezzo
+   vero come i blocchi delle case, con la sua forma disegnata sopra. Quindi vale per loro tutto ciò che già vale per
+   i blocchi: si spingono e si scagliano con gli scoppi, si sollevano con Levitazione, Presa e Tornado, si impilano,
+   bruciano (il legno e la paglia) e gelano, tornano a posto con il Rammendo e con «Ricostruisci». In più un colpo
+   abbastanza forte e vicino li sfascia in assi, schegge o pezzi di neve, che sono pezzi veri anche loro: la neve
+   cede con una palla di fuoco, il legno con un fulmine, la pietra solo con uno scoppio vicino.
+   Come è fatto: i tipi stanno in `strumenti/scene/cose.py` (la forma di ognuno si costruisce una volta sola), le
+   scene dicono dove va ogni copia con `S.cosa('barile', M)`, e nel gioco se ne occupa `src/mondo/fatte/cose.ts`
+   (un pezzo «nascosto» di `pezzi.ts` per oggetto, più la forma che lo segue). `prove/cose.ts` controlla tutto.
+   Limiti di adesso: la scatola che li muove è squadrata (un barile non rotola), i rottami sono generici, e
+   bancarelle, carri, staccionate, barche e lampioni fanno ancora parte della scena.
+2. **Usare le cose**: porte che si aprono, alcune case in cui si entra, la saracinesca e la gru con la leva, lanterne
+   che si accendono e si spengono con fuoco e gelo, la barca a remi, il mulino che gira con il vento.
+3. **Case e mura che crollano a pezzi grandi** (lastre di muro, falde di tetto, travi), e il Rammendo che le rimette
+   su. È il passo più pesante per il computer: prima solo al castello, da provare sul PC del fondatore.
+4. **Il terreno**: i crateri delle esplosioni, scavare, alzare muri di terra.
+Da decidere con il fondatore prima del passo 3: se i paesi pacifici (Borgo e Porto) si possono distruggere, e che
+cosa succede allora (la gente scappa, le guardie reagiscono, si ripara da solo).
 
 **Tutto reagisce alla magia (richiesta del fondatore).** In ordine: le creature dentro la fisica (fatto: spinte,
 vortici, cadute che fanno male); alberi che si abbattono e rocce che si spaccano in pezzi veri, e ricrescono dove

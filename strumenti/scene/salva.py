@@ -13,7 +13,9 @@ import shutil
 import subprocess
 
 import bpy
+from mathutils import Matrix, Vector
 
+import cose
 import terreno
 from attrezzi import crea_materiali
 
@@ -22,6 +24,11 @@ RADICE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 
 def salva(S, file, imbocco, colore_terreno=(0.09, 0.075, 0.055)):
     nome = terreno.NOME
+    # le forme degli oggetti sciolti usati in questa scena: una per tipo, all'origine (il gioco ne fa tante copie)
+    usati = sorted({t for (t, _) in S.cose})
+    for t in usati:
+        for (_, materia), d in cose.PROTOTIPI[t]['parti'].items():
+            S.parti[(f'cosa__{t}', materia)] = d
     fatti = S.costruisci(crea_materiali())
     print('oggetti', len(fatti), 'facce', sum(n for (_, n) in fatti))
     for chi, n in sorted(fatti, key=lambda x: -x[1])[:14]:
@@ -56,13 +63,26 @@ def salva(S, file, imbocco, colore_terreno=(0.09, 0.075, 0.055)):
             'imbocco': [round(imbocco[0] + terreno.CX, 1), round(imbocco[1] + terreno.CZ, 1)]}
     if S.gente:
         dati['gente'] = S.gente
+    if S.cose:
+        # dal mondo di Blender (z in alto) a quello del gioco (y in alto): gli assi girano di un quarto attorno a x
+        A = Matrix(((1, 0, 0), (0, 0, 1), (0, -1, 0)))
+        dati['tipi'] = {}
+        for t in usati:
+            p = cose.PROTOTIPI[t]
+            (bx, by, bz), (cx, cy, cz) = p['misure'], p['centro']
+            dati['tipi'][t] = {'m': [round(bx, 3), round(bz, 3), round(by, 3)], 'c': [round(cx, 3), round(cz, 3), round(-cy, 3)], 'mat': p['mat']}
+        dati['cose'] = []
+        for (t, M) in S.cose:
+            c = M @ Vector(cose.PROTOTIPI[t]['centro'])
+            q = (A @ M.to_3x3().normalized() @ A.transposed()).to_quaternion()
+            dati['cose'].append({'t': t, 'p': [round(c.x + terreno.CX, 3), round(c.z, 3), round(-c.y + terreno.CZ, 3)], 'q': [round(q.x, 4), round(q.y, 4), round(q.z, 4), round(q.w, 4)]})
     with open(os.path.join(RADICE, 'src', 'mondo', 'fatte', f'{nome}Dati.ts'), 'w') as f:
         f.write(f'/** Ciò che il gioco deve sapere della scena «{nome}», oltre alle forme: i punti che brillano, gli ingombri, le caselle\n'
                 ' * già occupate (lì il bosco non fa nascere piante sue), qualche quota di prova del terreno, dove porta il viaggio.\n'
                 f' * Lo scrive strumenti/scene/{nome}.py: non si modifica a mano. */\n'
                 "import type { DatiFatta } from './tipi.js';\n\n"
                 f"export const {nome.upper()}_DATI = JSON.parse('" + json.dumps(dati, separators=(',', ':')) + "') as DatiFatta;\n")
-    print('luci', len(S.luci), 'urti', len(S.urti), 'caselle occupate', len(chiavi), 'gente', len(S.gente))
+    print('luci', len(S.luci), 'urti', len(S.urti), 'caselle occupate', len(chiavi), 'gente', len(S.gente), 'oggetti sciolti', len(S.cose), 'di', len(usati), 'tipi')
 
     cartella = os.environ.get('ANTEPRIMA')
     if cartella:

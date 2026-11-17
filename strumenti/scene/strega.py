@@ -24,6 +24,7 @@ from attrezzi import R, T, Scena, posa, scatola, tubo, verso  # noqa: E402
 from edifici import cappella, carro, casa, cripta, portale, pozzo, sentiero, spline, stagno  # noqa: E402
 from oggetti import (albero, bara, candele, cancellata, ceppo, corvo, funghi, lanterna, lapide, masso, menhir, ossa, pilastro, sarcofago,  # noqa: E402
                      spaventapasseri, staccionata, sterpo, teschio, tronco_caduto, tumulo, zucca)
+from cose import LAPIDI  # noqa: E402
 from salva import salva  # noqa: E402
 from terreno import terra  # noqa: E402
 
@@ -117,6 +118,14 @@ def main():
     cripta(S, posa(*P(43.6, -40), verso_v), rnd)
     lanterna(S, posa(*P(63.6, -38.3), verso_w), rnd, I, 3.0, 1.2)
     albero(S, *P(67.5, -45.5), rnd, posa, 11.5, 0.85)
+    def tomba(M, tipo=None):
+        """Una lapide: quelle che stanno in piedi sono oggetti sciolti (uno scoppio le abbatte), le altre fanno parte della scena."""
+        tipo = rnd.randrange(7) if tipo is None else tipo
+        if tipo in LAPIDI:
+            S.cosa(f'lapide{tipo}{rnd.randrange(2)}', M)
+        else:
+            lapide(S, M, rnd, I, tipo)
+
     # le tombe, in file; qualche sarcofago lungo i vialetti, due fosse aperte
     fosse = 0
     for fila, o in enumerate((-25.2, -29.2, -33.4, -46.4, -50.6, -54.8)):
@@ -132,7 +141,7 @@ def main():
                 sarcofago(S, posa(*P(d, oo - 0.6), verso_w + rnd.uniform(-0.08, 0.08), -0.03), rnd, I)
             elif dado < 0.16 and fosse < 2:
                 fosse += 1
-                lapide(S, M, rnd, I, 0)
+                tomba(M, 0)
                 Mf = M @ T(0, -1.5, 0)
                 S.metti(scatola(1.1, 2.3, 0.05, z0=-0.02), I, 'colore', Mf, tinta=(0.015, 0.012, 0.01), radica=False)
                 for (x, y, sx, sy) in ((-0.85, 0, 0.5, 2.6), (0.85, 0, 0.5, 2.6), (0, 1.3, 2.0, 0.5)):
@@ -141,7 +150,7 @@ def main():
                 S.metti(tubo([((1.2, 0.5, 0.0), 0.022), ((1.35, 0.6, 1.25), 0.022)], 5), I, 'legno', Mf, radica=False)   # la vanga piantata
                 S.metti(scatola(0.2, 0.02, 0.28, z0=-0.22), I, 'ferro', Mf @ T(1.2, 0.5, 0), radica=False)
             else:
-                lapide(S, M, rnd, I)
+                tomba(M)
                 if rnd.random() < 0.55:
                     tumulo(S, M, rnd, I)
                 if rnd.random() < 0.32:
@@ -214,7 +223,10 @@ def main():
     for k in range(17):
         d, o = rnd.uniform(-2, 9), rnd.uniform(17.5, 26.5)
         if math.hypot(d - 3.5, o - 22) > 1.0:
-            zucca(S, posa(*P(d, o), verso_v + rnd.uniform(-0.8, 0.8)), rnd, I, k < 6)
+            if k < 6:   # quelle intagliate hanno il lume dentro e restano al loro posto; le altre sono oggetti sciolti
+                zucca(S, posa(*P(d, o), verso_v + rnd.uniform(-0.8, 0.8)), rnd, I, True)
+            else:
+                S.cosa(f'zucca{rnd.randrange(3)}', posa(*P(d, o), verso_v + rnd.uniform(-0.8, 0.8)))
     for _ in range(10):
         sterpo(S, posa(*P(rnd.uniform(-2, 9), rnd.uniform(17.5, 26.5)), rnd.uniform(0, 6)), rnd, I, rnd.uniform(0.6, 1.0))
 

@@ -33,6 +33,9 @@ export interface Mattone {
   colore: THREE.Color;
   /** L'altezza del terreno su cui poggia la costruzione di cui fa parte. */
   quota: number;
+  /** Vero se il pezzo non si disegna come un blocco: qualcun altro gli disegna sopra la sua forma vera (un barile,
+   * una lapide...). Per la fisica, il fuoco e il gelo resta un pezzo come gli altri. */
+  nascosto?: boolean;
 }
 
 const TINTE: Record<number, number[]> = {

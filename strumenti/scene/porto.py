@@ -168,7 +168,7 @@ def main():
         festone(S, I, (da, -b, QUOTA + 5.6), (BORDO - 1.2, -(b + rnd.uniform(-3, 3)), QUOTA + 3.0), 7, 0.9)
     for b in (-34.0, 22.0):   # due barili accesi (bracieri) all'imbocco dei moli grandi
         Mb = T(BORDO - 1.6, -(b + 2.6), QUOTA)
-        barile(S, Mb, rnd, I)
+        barile(S, Mb, rnd, I, sciolto=False)
         S.metti(cilindro(0.26, 0.26, 0.06, 10, z0=0.93), I, 'luce', Mb, radica=False)
         S.luce(Mb, 'brace', 0.8, (0, 0, 1.25))
     for _ in range(9):

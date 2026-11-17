@@ -202,7 +202,7 @@ async function avvia(): Promise<void> {
   const creature = new Creature(altezza, { cella: (x, z) => campo.cella(x, z), fuoco: campo.fuoco, gelo: campo.gelo, accendi: (x, z, r) => campo.accendi(x, z, r, 10) }, QUOTA_ACQUA, Math.random, terraIn);
   scena.add(creature.gruppo);
   // Le zone fatte a mano: il Bosco della Strega, il Borgo d'Inverno, il Porto delle Nebbie, il Castello del Bosco.
-  const sceneFatte = creaSceneFatte(RAPIER, fisica, fumo);
+  const sceneFatte = creaSceneFatte(RAPIER, fisica, fumo, pezzi);
   creature.abitato = abitato;
   scena.add(sceneFatte.gruppo);
   // Ciò che scaglia i pezzi delle case scaglia anche le creature.
@@ -212,10 +212,11 @@ async function avvia(): Promise<void> {
   pezzi.onSpinta = (x, y, z, raggio, forza, alzata) => {
     if (cadendo) return;
     creature.spingi(x, y, z, raggio, forza, alzata);
+    // Gli oggetti sciolti delle zone fatte a mano (barili, casse, lapidi...) che non reggono il colpo si sfasciano.
+    const sfasciati = sceneFatte.cose.spinta(x, y, z, raggio, forza);
     // Un colpo forte abbatte gli alberi e spacca le rocce lì attorno: al loro posto cadono tronchi e schegge veri.
-    if (forza < 10) return;
-    const giu = bosco.abbatti(x, z, Math.min(raggio * 0.55, 9));
-    if (giu.length === 0) return;
+    const giu = forza < 10 ? [] : bosco.abbatti(x, z, Math.min(raggio * 0.55, 9));
+    if (giu.length === 0 && sfasciati === 0) return;
     for (const a of giu.slice(0, 6)) {
       const sasso = a.tipo === 'roccia';
       const mattoni: Mattone[] = [];
@@ -241,7 +242,7 @@ async function avvia(): Promise<void> {
     }
     while (caduti.length > 14) pezzi.togli(caduti.shift()!);
     pezzi.avvicina(giocatore.posizione.x, giocatore.posizione.z, Infinity);
-    suoni.tonfo(1);
+    suoni.tonfo(giu.length > 0 ? 1 : 0.6);
     // La stessa spinta, un istante dopo, prende anche i pezzi appena nati (senza abbattere altro).
     effetti.push({
       aggiorna: () => {
@@ -251,6 +252,20 @@ async function avvia(): Promise<void> {
         return false;
       },
     });
+  };
+  // Il Rammendo rimette interi anche gli oggetti sfasciati; quando uno si sfascia, uno sbuffo di polvere del suo colore.
+  pezzi.onRammenda = (x, z, raggio) => {
+    if (sceneFatte.cose.rammenda(x, z, raggio) > 0) pezzi.avvicina(giocatore.posizione.x, giocatore.posizione.z, Infinity);
+  };
+  sceneFatte.cose.onSfascio = (x, y, z, materia) => {
+    const chiaro = materia === 'neve' ? 0.9 : materia === 'pietra' ? 0.5 : 0.36;
+    for (let i = 0; i < 10; i++) {
+      fumo.emetti({
+        x: x + (Math.random() - 0.5) * 0.8, y: y + (Math.random() - 0.3) * 0.8, z: z + (Math.random() - 0.5) * 0.8,
+        vx: (Math.random() - 0.5) * 3, vy: 0.5 + Math.random() * 2, vz: (Math.random() - 0.5) * 3,
+        vita: 0.9 + Math.random() * 0.8, dim: 0.5, dimFine: 1.6, r: chiaro, g: chiaro * 0.9, b: chiaro * (materia === 'neve' ? 1.05 : 0.75), alfa: 0.5, gravita: 1.5, attrito: 1.5,
+      });
+    }
   };
   // Le creature girano attorno ai muri: un raggio all'altezza del petto dice se davanti c'è qualcosa di solido.
   const raggioCreatura = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
@@ -913,6 +928,7 @@ async function avvia(): Promise<void> {
   };
 
   const ricostruisci = (): void => {
+    sceneFatte.cose.ricostruisci();
     pezzi.ricostruisci();
     // Il pulsante non deve valere come una riparazione fatta a mano: si riparte da capo con i conti.
     demolizione.clear();

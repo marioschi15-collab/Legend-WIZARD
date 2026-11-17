@@ -172,7 +172,7 @@ def nave(S, M, rnd, I, lunga=24.0, larga=6.4, alberi=2, ponte=2.55, tinta=CATRAM
     for (x, y) in ((-B * 0.27, L * 0.16), (B * 0.25, L * 0.19), (B * 0.24, -L * 0.1), (-B * 0.26, -L * 0.14)):
         Mq = M @ T(x, y, ponte + 0.05) @ R(rnd.uniform(0, 6))
         if rnd.random() < 0.5:
-            barile(S, Mq, rnd, I, urto=False)
+            barile(S, Mq, rnd, I, urto=False, sciolto=False)
         else:
             cassa(S, Mq, rnd, I, rnd.uniform(0.6, 0.85), urto=False)
     for (x, y) in ((B * 0.2, L * 0.02), (-B * 0.22, -L * 0.03)):
