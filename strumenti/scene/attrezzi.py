@@ -182,9 +182,10 @@ class Scena:
         self.gente = []
         self.rnd = random.Random(1313)
 
-    def metti(self, bm, insieme, materia, M=None, uv=1.5, tinta=(1.0, 1.0, 1.0), radica=True, liscia=True, scurisci=1.0):
+    def metti(self, bm, insieme, materia, M=None, uv=1.5, tinta=(1.0, 1.0, 1.0), radica=True, liscia=True, scurisci=1.0, cima=None):
         """Posa una forma nella scena. `uv` è quanti metri copre un giro dell'immagine. `radica` scurisce il pezzo
-        verso terra (dove si raccolgono umido e ombra): è quello che lo fa sembrare appoggiato davvero."""
+        verso terra (dove si raccolgono umido e ombra): è quello che lo fa sembrare appoggiato davvero. `cima`, se
+        c'è, è il colore che prendono le facce rivolte in alto (il muschio e l'erba sopra le rovine e le rocce)."""
         M = M or Matrix.Identity(4)
         d = self.parti.setdefault((insieme, materia), {'v': [], 'f': [], 'uv': [], 'col': [], 'liscio': []})
         base = len(d['v'])
@@ -196,7 +197,10 @@ class Scena:
         mondo = [M @ v.co for v in bm.verts]
         d['v'].extend(mondo)
         variazione = self.rnd.uniform(0.86, 1.08) * scurisci
+        giro = M.to_3x3()
         for f in bm.faces:
+            # quanto la faccia guarda in alto, nel mondo: lì sopra cresce il muschio
+            in_alto = max(0.0, min(1.0, ((giro @ f.normal).normalized().z - 0.5) / 0.35)) if cima else 0.0
             n = f.normal
             asse = 0 if abs(n.x) >= abs(n.y) and abs(n.x) >= abs(n.z) else (1 if abs(n.y) >= abs(n.z) else 2)
             d['f'].append([lo.vert.index + base for lo in f.loops])
@@ -211,7 +215,10 @@ class Scena:
                 g = variazione
                 if radica:
                     g *= 0.5 + 0.5 * gradino(-0.1, 1.3, mondo[lo.vert.index].z - suolo_qui)
-                d['col'].append((tinta[0] * g, tinta[1] * g, tinta[2] * g, 1.0))
+                if in_alto > 0:
+                    d['col'].append(tuple((tinta[k] + (cima[k] - tinta[k]) * in_alto) * g for k in range(3)) + (1.0,))
+                else:
+                    d['col'].append((tinta[0] * g, tinta[1] * g, tinta[2] * g, 1.0))
         bm.free()
 
     # --- ciò che il gioco deve sapere oltre alle forme ---
@@ -303,10 +310,12 @@ def crea_materiali():
             b.inputs['Emission Strength'].default_value = luce
         return m
 
-    nomi = ('muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'tavole', 'colore')
+    nomi = ('muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'tavole', 'colore',
+            'blocchi', 'lastre', 'rupe', 'cascata')
     m = {n: materia(n) for n in nomi}
     m.update({
         'vetrata': materia('vetrata', luce=3.0), 'rametti': materia('rametti', (0.3, 0.25, 0.2)), 'ferro': materia('ferro', (0.035, 0.035, 0.04)),
         'luce': materia('luce', (1.0, 0.62, 0.22), 6.0), 'runa': materia('runa', (0.35, 0.95, 1.0), 6.0), 'ghiaccio': materia('ghiaccio', (0.7, 0.85, 0.95)),
+        'cristallo': materia('cristallo', (0.7, 0.4, 1.0), 6.0),
     })
     return m

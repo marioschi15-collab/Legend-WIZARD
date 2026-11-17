@@ -53,6 +53,10 @@ export interface Zona {
   readonly piante: readonly Semina[];
   /** Se c'è, la terra è fatta a mano: esiste solo attorno a un punto preciso, e lì vince su tutte (vedi `pesiZone`). */
   readonly fatta?: TerraFatta;
+  /** Le terre incantate (stile disegnato) hanno qui il colore del velo che stendono sul cielo: lì è sempre
+   * crepuscolo, la luce è tutta quella della terra (non si stempera nell'ora dorata delle altre), di notte fa meno
+   * buio, l'acqua è turchese e ciò che brilla brilla di più. */
+  readonly incanto?: number;
 }
 
 /** Colline: `alte` metri di dislivello, larghe più o meno 1/`fitte` metri, spostate di `base`. */
@@ -231,6 +235,17 @@ export const ZONE: readonly Zona[] = [
     piante: [
       { tipo: 'quercia', parte: 30, scala: [0.9, 1.8] }, { tipo: 'pino', parte: 14, scala: [0.9, 1.9] },
       { tipo: 'cespuglio', parte: 12, scala: [0.7, 1.5], tinta: 0xb9d9b0 }, { tipo: 'roccia', parte: 2, scala: [0.5, 1.6] },
+    ],
+  },
+  {
+    // Il posto di prova dello stile disegnato: rovine di pietra chiara al crepuscolo, cristalli viola che brillano,
+    // lanterne, il fiume turchese, abeti scuri nella foschia. Tutto fatto dal codice, niente fotografie.
+    nome: 'Rovine del Cristallo', caldo: 9, umido: 9, terra: 0x3f7a58, nebbia: 0x8f7fc0, cielo: 0x6a55c8, densitaNebbia: 0.0048, luce: 0.86,
+    luceAlta: 0xc2b4ff, luceBassa: 0x5a5488, sole: 0xffb890, erba: [1, 0, 0, 0.3], luoghi: [], aria: 'lucciole', incanto: 0xd8a0ff,
+    suolo: FATTE.rovine.suolo, fatta: FATTE.rovine,
+    piante: [
+      { tipo: 'pino', parte: 30, scala: [1.0, 2.2], tinta: 0x8fa0b8 }, { tipo: 'cespuglio', parte: 5, scala: [0.6, 1.3], tinta: 0xa8c8b8 },
+      { tipo: 'roccia', parte: 2, scala: [0.5, 1.5], tinta: 0xb0a8d0 },
     ],
   },
 ];

@@ -323,7 +323,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
       depthWrite: false,
       uniforms: {
         uTempo: atmosfera.tempo, uOrizzonte: atmosfera.nebbiaColore, uAlto: atmosfera.cieloAlto, uLuce: atmosfera.luce,
-        uTinta: atmosfera.tinta, uNebbiaDensita: atmosfera.nebbiaDensita, uSole: { value: DIREZIONE_SOLE },
+        uTinta: atmosfera.tinta, uNebbiaDensita: atmosfera.nebbiaDensita, uSole: { value: DIREZIONE_SOLE }, uIncanto: atmosfera.incanto,
         uAltezze: { value: altezze }, uStato: { value: campo.immagine }, uLatoCampo: { value: campo.lato },
       },
       vertexShader: /* glsl */ `
@@ -337,7 +337,7 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
       `,
       fragmentShader: /* glsl */ `
         uniform float uTempo; uniform vec3 uOrizzonte; uniform vec3 uAlto; uniform float uLuce; uniform vec3 uTinta;
-        uniform float uNebbiaDensita; uniform vec3 uSole; uniform sampler2D uAltezze;
+        uniform float uNebbiaDensita; uniform vec3 uSole; uniform sampler2D uAltezze; uniform float uIncanto;
         uniform sampler2D uStato; uniform float uLatoCampo;
         varying vec3 vMondo; varying float vDistanza;
         ${NEBBIA_GLSL}
@@ -354,6 +354,8 @@ export function creaTerreno(R: typeof RAPIER, fisica: RAPIER.World, campo: Campo
           // L'immagine delle altezze copre solo i dintorni: più lontano l'acqua è semplicemente profonda.
           prof = mix(3.0, prof, 1.0 - smoothstep(300.0, 370.0, distance(vMondo.xz, cameraPosition.xz)));
           vec3 corpo = mix(vec3(0.10, 0.34, 0.32), vec3(0.03, 0.15, 0.22), smoothstep(0.0, 0.8, prof)) * lume;
+          // Nelle terre incantate l'acqua è turchese e ha un po' di luce sua, come nei disegni.
+          corpo = mix(corpo, mix(vec3(0.16, 0.78, 0.76), vec3(0.05, 0.42, 0.56), smoothstep(0.0, 0.9, prof)) * (0.55 + 0.45 * lume), uIncanto);
           vec3 c = mix(corpo, mix(uOrizzonte, uAlto * lume, 0.45), clamp(striscio * 1.3 + 0.12, 0.0, 1.0));
           c += vec3(1.0, 0.94, 0.8) * pow(max(dot(reflect(-uSole, n), vista), 0.0), 140.0) * 1.6 * uLuce;
           // Una fascia di schiuma che va e viene lungo la riva.

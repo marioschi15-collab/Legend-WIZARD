@@ -35,10 +35,13 @@ const ALONI: Readonly<Record<string, { colore: [number, number, number]; grande:
   // Il fuoco di una fucina o di un braciere, e il faro in fondo al molo, che si vede da lontano.
   brace: { colore: [1.0, 0.42, 0.1], grande: 2.4, trema: 0.35, vera: true },
   faro: { colore: [1.0, 0.85, 0.55], grande: 7.0, trema: 0.08, vera: true },
+  // I cristalli viola delle terre incantate, e il grande cristallo in cima alla torre, che si vede da lontano.
+  cristallo: { colore: [0.72, 0.4, 1.0], grande: 2.6, trema: 0.1, vera: true, tenue: 0.7 },
+  cristallone: { colore: [0.75, 0.42, 1.0], grande: 18.0, trema: 0.06, vera: false },
 };
 
 /** Le materie che hanno un'immagine (in public/materiali/scene), uguali per tutte le scene. */
-const CON_IMMAGINE = new Set(['muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'tavole', 'vetrata']);
+const CON_IMMAGINE = new Set(['muro', 'pietra', 'muschio', 'tetto', 'legno', 'corteccia', 'terra', 'ciottoli', 'intonaco', 'tegole', 'neve', 'tela', 'tavole', 'vetrata', 'blocchi', 'lastre', 'rupe']);
 
 const immagini = new Map<string, THREE.Texture>();
 function immagine(nome: string): THREE.Texture {
@@ -54,6 +57,39 @@ function immagine(nome: string): THREE.Texture {
   return t;
 }
 
+/** L'acqua che cade (una cascata, il canale di un acquedotto): strisce di schiuma che scorrono lungo la caduta. */
+function materialeCascata(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    uniforms: { uTempo: atmosfera.tempo, uNebbia: atmosfera.nebbiaColore, uDensita: atmosfera.nebbiaDensita, uLuce: atmosfera.luce },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv; varying float vLontano;
+      void main() {
+        vUv = uv;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vLontano = -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTempo; uniform vec3 uNebbia; uniform float uDensita; uniform float uLuce;
+      varying vec2 vUv; varying float vLontano;
+      void main() {
+        float scorre = vUv.y - uTempo * 0.9;
+        float a = sin(vUv.x * 40.0 + sin(scorre * 6.0) * 1.5) * 0.5 + 0.5;
+        float b = sin(vUv.x * 17.0 - 2.0 + sin(scorre * 9.0 + 1.0) * 2.0) * 0.5 + 0.5;
+        float schiuma = smoothstep(0.55, 0.95, a * 0.6 + b * 0.5 + 0.25 * sin(scorre * 14.0 + vUv.x * 9.0));
+        vec3 c = mix(vec3(0.32, 0.8, 0.9), vec3(1.0), schiuma) * (0.6 + 0.4 * min(uLuce, 1.0));
+        float f = 1.0 - exp(-uDensita * uDensita * vLontano * vLontano);
+        gl_FragColor = vec4(mix(c, uNebbia, clamp(f, 0.0, 1.0)), 0.8 + 0.2 * schiuma);
+        #include <colorspace_fragment>
+      }
+    `,
+  });
+}
+
 const materie = new Map<string, THREE.Material>();
 /** La materia di un pezzo, dal nome che ha nel file. Ciò che brilla (lanterne, vetrate, rune) ha luce propria anche
  * nella nebbia; i rametti sono cartoncini ritagliati; tutto il resto prende la luce del posto, e i colori dei punti
@@ -66,6 +102,9 @@ function materia(nome: string, colore: THREE.Color): THREE.Material {
   else if (nome === 'vetrata') m = new THREE.MeshBasicMaterial({ map: immagine('vetrata'), color: new THREE.Color(1.7, 1.6, 1.5) });
   else if (nome === 'rametti') m = materialeRametti();
   else if (nome === 'ghiaccio') m = new THREE.MeshLambertMaterial({ color: 0xcfe6f4, vertexColors: true, emissive: 0x24384a });
+  // I cristalli hanno luce propria, tanto forte da far scattare il bagliore; l'acqua che cade scorre da sola.
+  else if (nome === 'cristallo') m = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.0, 0.7, 3.6), vertexColors: true });
+  else if (nome === 'cascata') m = materialeCascata();
   else if (CON_IMMAGINE.has(nome)) m = new THREE.MeshLambertMaterial({ map: immagine(nome), vertexColors: true });
   else m = new THREE.MeshLambertMaterial({ color: colore, vertexColors: true });
   // Il nome resta sulla materia: chi stacca un pezzo dalla scena (gli oggetti sciolti) la ritrova da lì.
@@ -148,7 +187,8 @@ function creaAloni(s: ScenaFatta): THREE.Points {
           gl_PointSize = min(dati.x * trema * uScala / max(lontano, 0.5), 220.0);
           // Nella nebbia una luce si vede da più lontano delle cose: l'alone svanisce più piano.
           float f = uNebbia * lontano * 0.55;
-          vColore = vec4(colore * trema, exp(-f * f) * smoothstep(0.6, 2.5, lontano));
+          // Da vicino l'alone si spegne: lì si vede già la lanterna vera, e due aloni a un passo abbagliavano tutto lo schermo.
+          vColore = vec4(colore * trema, exp(-f * f) * smoothstep(1.5, 9.0, lontano));
           gl_Position = projectionMatrix * mv;
         }
       `,
@@ -202,12 +242,13 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
     gruppo.add(aloni);
     const vere: Vera[] = s.dati.luci.filter((l) => ALONI[l.t]?.vera).map((l) => ({ dove: new THREE.Vector3(...l.p), tipo: ALONI[l.t]!, fase: l.p[0] * 3.1 }));
     const camini = s.dati.luci.filter((l) => l.t === 'fumo').map((l) => new THREE.Vector3(...l.p));
+    const spruzzi = s.dati.luci.filter((l) => l.t === 'spruzzo').map((l) => new THREE.Vector3(...l.p));
     const paesani = s.dati.gente?.length ? creaPaesani(s.dati.gente) : null;
     if (paesani) {
       paesani.gruppo.visible = false;
       gruppo.add(paesani.gruppo);
     }
-    return { s, aloni, vere, camini, paesani, chiesta: false, arrivata: false, forme: null as Forme | null, vicina: false };
+    return { s, aloni, vere, camini, spruzzi, paesani, chiesta: false, arrivata: false, forme: null as Forme | null, vicina: false };
   });
 
   const fari = [0, 1, 2].map(() => {
@@ -261,6 +302,19 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
         // Dei pezzi della scena si disegnano solo quelli abbastanza vicini da vedersi (nella nebbia sono pochi).
         if (riordina && q.forme) for (const p of q.forme.pezzi) p.mesh.visible = p.centro.distanceTo(occhi) - p.raggio < q.s.vista;
         if (riordina) for (const v of q.vere) if (v.dove.distanceToSquared(occhi) < 70 * 70) candidate.push(v);
+        // Ai piedi di una cascata l'acqua si polverizza: sbuffi chiari che si allargano e ricadono.
+        if (fuma) {
+          for (const k of q.spruzzi) {
+            if (k.distanceToSquared(occhi) > 170 * 170) continue;
+            for (let n = 0; n < 2; n++) {
+              fumo.emetti({
+                x: k.x + (Math.random() - 0.5) * 4, y: k.y, z: k.z + (Math.random() - 0.5) * 3,
+                vx: (Math.random() - 0.5) * 2.4, vy: 0.8 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 2.4,
+                vita: 1.6 + Math.random(), dim: 1.0, dimFine: 3.2, r: 0.85, g: 0.95, b: 1.0, alfa: 0.26, gravita: 1.0, attrito: 0.8,
+              });
+            }
+          }
+        }
         // Il fumo dei camini: uno sbuffo ogni tanto, solo da quelli abbastanza vicini da vedersi.
         if (fuma) {
           for (const k of q.camini) {
@@ -283,7 +337,8 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
         }
         f.position.copy(l.dove);
         f.color.setRGB(l.tipo.colore[0], l.tipo.colore[1], l.tipo.colore[2]);
-        f.intensity = 24 * (l.tipo.tenue ?? 1) * (1 + l.tipo.trema * Math.sin(t * 11 + l.fase));
+        // Nelle terre incantate le pietre sono chiare: la stessa luce le brucerebbe, quindi lì è più tenue.
+        f.intensity = 24 * (l.tipo.tenue ?? 1) * (1 + l.tipo.trema * Math.sin(t * 11 + l.fase)) * (1 - 0.6 * atmosfera.incanto.value);
       });
     },
   };

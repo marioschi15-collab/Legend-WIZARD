@@ -245,4 +245,9 @@ export const MINUTI: readonly (readonly Semina[])[] = [
     s('felce', 16, [0.7, 1.4], { bosco: 0.4 }), s('fioreAlto', 10, [0.7, 1.3]), s('fioreAlto', 6, [0.6, 1.1], { tinta: 0xe0c0ff, carica: 1.2 }), s('ciuffo', 12, [0.7, 1.4]),
     s('funghetti', 4, [0.8, 1.8], { bosco: 0.5 }), s('sassi', 4, [0.5, 1.5]), s('ceppo', 2, [0.8, 1.3]), s('tronco', 1.5, [0.7, 1.2]),
   ],
+  // Rovine del Cristallo: fiori viola e lilla, felci, schegge di cristallo
+  [
+    s('fioreAlto', 12, [0.7, 1.3], { tinta: 0xd0a0ff, carica: 1.5 }), s('fioreAlto', 6, [0.6, 1.1], { tinta: 0xff9ad8, carica: 1.3 }), s('felce', 9, [0.7, 1.3], { tinta: 0xa8d0c0 }),
+    s('scheggia', 3, [0.5, 1.3], { tinta: 0xb080ff, carica: 1.6 }), s('sassi', 4, [0.5, 1.4], { tinta: 0xb8b0d8 }),
+  ],
 ];

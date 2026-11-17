@@ -67,9 +67,37 @@ def castello(a, b):
     return h
 
 
+FIUME_ROVINE = ((64.0, 10.0), (58.0, 34.0), (40.0, 50.0), (10.0, 54.0), (-25.0, 52.0), (-55.0, 57.0), (-88.0, 62.0))
+
+
+def dalla_spezzata(a, b, punti):
+    """Quanto dista un punto da una linea spezzata (il corso di un fiume)."""
+    meglio = 1e9
+    for i in range(len(punti) - 1):
+        (x0, y0), (x1, y1) = punti[i], punti[i + 1]
+        dx, dy = x1 - x0, y1 - y0
+        t = min(1.0, max(0.0, ((a - x0) * dx + (b - y0) * dy) / (dx * dx + dy * dy)))
+        meglio = min(meglio, hypot(a - x0 - dx * t, b - y0 - dy * t))
+    return meglio
+
+
+def rovine(a, b):
+    h = 6.0 + 0.5 * sin(a * 0.05 + 0.3) * cos(b * 0.045) + 0.35 * sin(a * 0.1 - b * 0.07)
+    h = mescola(h, 6.0, gradino(46, 30, hypot(a, b - 8)))
+    rt = hypot(a + 14, b + 64)
+    h += 22 * exp(-(rt * rt) / 420)
+    h = mescola(h, 27.0, gradino(9, 5, rt))
+    h = mescola(h, 21.0, gradino(44, 56, a) * gradino(2, -9, b))
+    h = mescola(h, -1.3, gradino(10, 4, dalla_spezzata(a, b, FIUME_ROVINE)))
+    h = mescola(h, -1.3, gradino(11, 6, hypot(a - 64, b - 10)))
+    h = mescola(h, -1.3, gradino(24, 14, hypot(a + 88, b - 62)))
+    return h
+
+
 SCENE = {
     'strega': dict(cx=-250, cz=380, raggio=170, sfuma=250, suolo=strega),
     'borgo': dict(cx=-500, cz=40, raggio=120, sfuma=185, suolo=borgo),
     'porto': dict(cx=385, cz=85, raggio=120, sfuma=185, suolo=porto),
     'castello': dict(cx=-720, cz=330, raggio=120, sfuma=185, suolo=castello),
+    'rovine': dict(cx=170, cz=-330, raggio=120, sfuma=185, suolo=rovine),
 }

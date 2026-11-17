@@ -28,6 +28,7 @@ export const REGOLE: readonly Regola[] = [
   { ...COMUNE, fuocoMuore: 3, vita: true, pace: true, testo: 'Al Borgo d’Inverno ci si scalda ai camini: la vita torna da sola, ma nel gelo il fuoco della magia dura poco.' },
   { ...COMUNE, fuocoMuore: 4, pace: true, testo: 'La nebbia del porto bagna ogni cosa: qui il fuoco dura poco.' },
   { ...COMUNE, mana: 1.5, testo: 'All’ombra del castello la magia scorre forte: il mana torna più in fretta.' },
+  { ...COMUNE, mana: 2, testo: 'Il grande cristallo carica l’aria: qui il mana torna il doppio più in fretta.' },
 ];
 
 /** Una sfida in corso: sbriciolare un certo numero di creature in una terra. */

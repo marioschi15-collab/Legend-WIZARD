@@ -2,7 +2,8 @@
 
 Gioco per browser, telefono e computer: un mago avventuriero in un mondo senza confini, che supera le missioni
 inventando incantesimi a parole. Motore three.js + Rapier. L'aspetto punta al realistico: superfici, cieli e modelli presi dal vero (liberi da diritti,
-in `public/`), mentre case, creature e suoni nascono dal codice.
+in `public/`), mentre case, creature e suoni nascono dal codice. È in prova uno stile disegnato fatto tutto dal
+codice (le Rovine del Cristallo, vedi `docs/progetto.md`): se il fondatore lo sceglie, diventa quello del gioco.
 
 Il fondatore **non programma**: spiegagli le cose in italiano semplice, senza gergo, e chiedigli conferma solo per
 decisioni di prodotto. Le decisioni tecniche le prendi tu.

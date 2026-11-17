@@ -1,6 +1,7 @@
 import { BORGO_DATI } from './borgoDati.js';
 import { CASTELLO_DATI } from './castelloDati.js';
 import { PORTO_DATI } from './portoDati.js';
+import { ROVINE_DATI } from './rovineDati.js';
 import { STREGA_DATI } from './stregaDati.js';
 import { FATTE, type TerraFatta } from './suoli.js';
 import type { DatiFatta } from './tipi.js';
@@ -24,6 +25,7 @@ export const SCENE_FATTE: readonly ScenaFatta[] = [
   { terra: FATTE.borgo, file: 'borgo_inverno', viaggio: 'Il Borgo d’Inverno (porta del paese)', pace: 112, vista: 330, dati: BORGO_DATI },
   { terra: FATTE.porto, file: 'porto_nebbie', viaggio: 'Il Porto delle Nebbie (strada del porto)', pace: 112, vista: 230, dati: PORTO_DATI },
   { terra: FATTE.castello, file: 'castello_bosco', viaggio: 'Il Castello del Bosco (inizio della strada)', pace: 75, vista: 600, dati: CASTELLO_DATI },
+  { terra: FATTE.rovine, file: 'rovine_cristallo', viaggio: 'Le Rovine del Cristallo (inizio del viale)', pace: 0, vista: 600, dati: ROVINE_DATI },
 ];
 
 /** Dove stanno le scene, per segnarle sulla mappa. */

@@ -17,6 +17,8 @@ direzione, e sono sempre gli stessi ogni volta che ci si torna.
   sua luce, la sua nebbia e ciò che vola nell'aria (neve, foglie, spore, lucciole, sabbia, faville).
 - **I luoghi costruiti** (borghi, fattorie, torri, piramidi, templi, castelli di ghiaccio, igloo, palafitte,
   fortezze, altari…) li mette la sorte, e ogni terra ha i suoi. La mappa in alto a sinistra segue chi gioca.
+- **Le Rovine del Cristallo** (a nord-est, nel viaggio rapido): il posto di prova di uno **stile disegnato fatto tutto
+  dal codice**: crepuscolo viola, pietre dipinte, cristalli e lanterne che brillano, fiume turchese, cascata.
 - **Quattro zone fatte a mano**, ognuna in un punto preciso e segnata sulla mappa con un rombo dorato (ci si arriva
   anche con il viaggio rapido): il **Bosco della Strega** (casa sul colle, cimitero, cappella in rovina, stagno), il
   **Borgo d'Inverno** (case a graticcio sotto la neve, piazza con il mercato, torre, stagno ghiacciato), il **Porto

@@ -32,6 +32,7 @@ export function creaCielo(): THREE.Mesh {
       uTempo: atmosfera.tempo,
       uNotte: atmosfera.notte,
       uSera: atmosfera.sera,
+      uVelo: atmosfera.velo,
       uNebbia: atmosfera.nebbiaDensita,
       uFotoGiorno: { value: fotoCielo('giorno') },
       uFotoSera: { value: fotoCielo('tramonto') },
@@ -47,7 +48,7 @@ export function creaCielo(): THREE.Mesh {
     fragmentShader: /* glsl */ `
       uniform vec3 uSole; uniform vec3 uOrizzonte; uniform vec3 uTinta;
       uniform float uLuce; uniform float uTempo; uniform float uNotte; uniform float uSera; uniform float uNebbia;
-      uniform sampler2D uFotoGiorno; uniform sampler2D uFotoSera;
+      uniform sampler2D uFotoGiorno; uniform sampler2D uFotoSera; uniform vec3 uVelo;
       varying vec3 vDir;
       // Le fotografie hanno le luci già schiacciate: qui si ridà loro forza, così il sole abbaglia davvero.
       vec3 viva(vec3 c) { return c * (1.0 + 1.9 * c * c); }
@@ -61,7 +62,8 @@ export function creaCielo(): THREE.Mesh {
         vec3 giorno = viva(textureLod(uFotoGiorno, vec2(giro * 0.15915494 + 0.5442, su), 0.0).rgb);
         vec3 sera = viva(textureLod(uFotoSera, vec2(giro * 0.15915494 + 0.6322, su), 0.0).rgb);
         vec3 lume = uTinta * mix(0.03, 1.0, smoothstep(0.25, 1.0, uLuce));
-        vec3 colore = mix(giorno, sera, uSera) * lume;
+        // Nelle terre incantate il cielo prende un velo di colore (il viola del crepuscolo).
+        vec3 colore = mix(giorno, sera, uSera) * lume * uVelo;
         // Le stelle, solo di notte.
         vec3 cella = floor(d * 170.0);
         float stella = fract(sin(dot(cella, vec3(12.9898, 78.233, 37.719))) * 43758.5453);

@@ -710,28 +710,28 @@ def mastio(S, M, rnd, I, finestra):
     S.occupa(M.translation.x, -M.translation.y, 10.5)
 
 
-def ponte_pietra(S, M, rnd, I, lungo=23.0, largo=4.6, alto=3.6, archi=3):
+def ponte_pietra(S, M, rnd, I, lungo=23.0, largo=4.6, alto=3.6, archi=3, materia='muro', lastrico='ciottoli', tinta=(1.0, 1.0, 1.0), cima=None, uv_muro=2.2):
     """Un ponte di pietra a più arcate. `M` sta in mezzo, sul piano dove si cammina, con la strada lungo x."""
     luce_arco = lungo / archi
     for s in (-1, 1):   # le due fiancate con le arcate, e il parapetto
         for k in range(archi):
             x = -lungo / 2 + (k + 0.5) * luce_arco
-            S.metti(muro_con_arco(luce_arco, alto + 0.3, luce_arco - 1.5, alto - 0.5, 0.5, seme=rnd.random() * 99), I, 'muro', M @ T(x, s * (largo / 2 - 0.25), -alto - 0.3), uv=2.2, radica=False)
-        S.metti(scatola(lungo + 1.0, 0.45, 0.95, tagli=2, rumore=0.025, seme=rnd.random() * 99), I, 'muro', M @ T(0, s * (largo / 2 - 0.2), 0), uv=2.0, radica=False)
-        S.metti(scatola(lungo + 1.1, 0.6, 0.14, z0=0.95, tagli=1, rumore=0.012), I, 'pietra', M @ T(0, s * (largo / 2 - 0.2), 0), uv=1.4, radica=False)
+            S.metti(muro_con_arco(luce_arco, alto + 0.3, luce_arco - 1.5, alto - 0.5, 0.5, seme=rnd.random() * 99), I, materia, M @ T(x, s * (largo / 2 - 0.25), -alto - 0.3), uv=uv_muro, radica=False, tinta=tinta)
+        S.metti(scatola(lungo + 1.0, 0.45, 0.95, tagli=2, rumore=0.025, seme=rnd.random() * 99), I, materia, M @ T(0, s * (largo / 2 - 0.2), 0), uv=uv_muro, radica=False, tinta=tinta, cima=cima)
+        S.metti(scatola(lungo + 1.1, 0.6, 0.14, z0=0.95, tagli=1, rumore=0.012), I, materia if materia != 'muro' else 'pietra', M @ T(0, s * (largo / 2 - 0.2), 0), uv=1.4, radica=False)
         S.urto(M @ T(0, s * (largo / 2 - 0.2), 0), lungo + 1.0, 0.5, 1.1)
         for x in (-lungo / 2 - 0.2, lungo / 2 + 0.2):
-            S.metti(scatola(0.7, 0.7, 1.5, tagli=1, rumore=0.02, seme=x), I, 'pietra', M @ T(x, s * (largo / 2 - 0.2), -0.2), uv=1.2, radica=False)
+            S.metti(scatola(0.7, 0.7, 1.5, tagli=1, rumore=0.02, seme=x), I, materia if materia != 'muro' else 'pietra', M @ T(x, s * (largo / 2 - 0.2), -0.2), uv=1.2 if materia == 'muro' else uv_muro, radica=False, tinta=tinta, cima=cima)
             Ml = M @ T(x, s * (largo / 2 - 0.2), 1.3)
             S.metti(scatola(0.24, 0.24, 0.3, z0=0.05), I, 'luce', Ml, radica=False, liscia=False)
             S.metti(cilindro(0.24, 0.03, 0.16, 4, z0=0.35), I, 'ferro', Ml @ R(math.pi / 4), radica=False, liscia=False)
             S.luce(Ml, 'lanterna', 1.0, (0, 0, 0.2))
     for k in range(archi + 1):   # le pile, con il rostro che taglia la corrente
         x = -lungo / 2 + k * luce_arco
-        S.metti(scatola(1.5, largo + 0.9, alto + 2.5, z0=-alto - 2.5, tagli=2, rumore=0.04, seme=k), I, 'muro', M @ T(x, 0, 0.0), uv=2.2, radica=False)
+        S.metti(scatola(1.5, largo + 0.9, alto + 2.5, z0=-alto - 2.5, tagli=2, rumore=0.04, seme=k), I, materia, M @ T(x, 0, 0.0), uv=uv_muro, radica=False, tinta=tinta)
     # l'impalcato: la volta sotto e il lastricato sopra
-    S.metti(scatola(lungo + 0.6, largo - 0.6, 0.5, z0=-0.52), I, 'muro', M, uv=2.2, radica=False)
-    S.metti(scatola(lungo + 0.8, largo - 0.9, 0.06, z0=-0.03), I, 'ciottoli', M, uv=2.4, radica=False, liscia=False)
+    S.metti(scatola(lungo + 0.6, largo - 0.6, 0.5, z0=-0.52), I, materia, M, uv=2.2, radica=False, tinta=tinta)
+    S.metti(scatola(lungo + 0.8, largo - 0.9, 0.06, z0=-0.03), I, lastrico, M, uv=2.4, radica=False, liscia=False)
     S.urto(M, lungo + 0.8, largo, 0.8, -0.8)
 
 

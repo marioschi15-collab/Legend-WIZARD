@@ -17,6 +17,10 @@ export const atmosfera = {
   notte: { value: 0 },
   /** Quanto è sera o alba (0 pieno giorno, 1 sole all'orizzonte): sceglie la fotografia del cielo. */
   sera: { value: 0 },
+  /** Quanto si è dentro una terra incantata (0 no, 1 del tutto): lì l'acqua è turchese e il cielo prende il suo velo. */
+  incanto: { value: 0 },
+  /** Il velo di colore che una terra incantata stende sul cielo (bianco = nessuno). */
+  velo: { value: new THREE.Color(1, 1, 1) },
 };
 
 /** Le ombre delle nuvole che scorrono sul terreno: pozze di luce dorata in una valle in penombra (da 0,4 a poco più di 1). */

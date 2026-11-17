@@ -69,7 +69,38 @@ const castello = terra('castello', -720, 330, 120, 185, (a, b) => {
   return h;
 });
 
-export const FATTE = { strega, borgo, porto, castello } as const;
+const FIUME_ROVINE: readonly (readonly [number, number])[] = [[64, 10], [58, 34], [40, 50], [10, 54], [-25, 52], [-55, 57], [-88, 62]];
+
+/** Quanto dista un punto da una linea spezzata (il corso di un fiume). */
+function dallaSpezzata(a: number, b: number, punti: readonly (readonly [number, number])[]): number {
+  let meglio = 1e9;
+  for (let i = 0; i < punti.length - 1; i++) {
+    const [x0, y0] = punti[i]!;
+    const [x1, y1] = punti[i + 1]!;
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const t = Math.min(1, Math.max(0, ((a - x0) * dx + (b - y0) * dy) / (dx * dx + dy * dy)));
+    meglio = Math.min(meglio, hypot(a - x0 - dx * t, b - y0 - dy * t));
+  }
+  return meglio;
+}
+
+/** Le Rovine del Cristallo (il posto di prova dello stile disegnato): il fiume in fondo alla gola con il ponte sopra,
+ * la corte in piano, la rupe della torre, l'altopiano da cui cade la cascata, il laghetto dove il fiume finisce. */
+const rovine = terra('rovine', 170, -330, 120, 185, (a, b) => {
+  let h = 6.0 + 0.5 * sin(a * 0.05 + 0.3) * cos(b * 0.045) + 0.35 * sin(a * 0.1 - b * 0.07);
+  h = mescola(h, 6.0, gradino(46, 30, hypot(a, b - 8)));
+  const rt = hypot(a + 14, b + 64);
+  h += 22 * exp(-(rt * rt) / 420);
+  h = mescola(h, 27.0, gradino(9, 5, rt));
+  h = mescola(h, 21.0, gradino(44, 56, a) * gradino(2, -9, b));
+  h = mescola(h, -1.3, gradino(10, 4, dallaSpezzata(a, b, FIUME_ROVINE)));
+  h = mescola(h, -1.3, gradino(11, 6, hypot(a - 64, b - 10)));
+  h = mescola(h, -1.3, gradino(24, 14, hypot(a + 88, b - 62)));
+  return h;
+});
+
+export const FATTE = { strega, borgo, porto, castello, rovine } as const;
 
 /** Quanto pesa una zona fatta a mano in un punto: tantissimo fin dove è fatta a mano, poi cala in fretta e con dolcezza. */
 export function pesoFatta(f: TerraFatta, x: number, z: number): number {

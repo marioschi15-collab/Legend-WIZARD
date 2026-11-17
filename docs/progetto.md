@@ -157,6 +157,24 @@ sfida «sbriciola tre creature»: lì le creature non nascono.
 Le scene scolpite (muri, tetti, moli, navi) sono ancora pezzi unici che non si sbriciolano, nelle case non si
 entra, e la gente dei paesi nuovi non dà ancora missioni: vedi qui sotto «Fisica dappertutto». Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
 
+**Lo stile disegnato, tutto fatto dal codice (richiesta del fondatore, su una sua immagine: è in prova).** Il
+fondatore ha mostrato un'illustrazione (rovine di pietra chiara al crepuscolo, cristalli viola, lanterne, fiume
+turchese, mani e bastone in primo piano) e vuole quella grafica, tutta in programmazione. Identica non può venire (è
+un disegno, non un gioco che gira), ma lo stile sì, e al codice riesce meglio del realistico. Prima di convertire
+tutto il gioco c'è un posto di prova, da giudicare sul computer del fondatore:
+- **le Rovine del Cristallo**, a nord-est del villaggio (quinta zona fatta a mano, nel viaggio rapido): il viale
+  lastricato, il ponte con le lanterne sul fiume, gli archi in rovina con gli stendardi viola, la corte con la sfera
+  armillare, la sala dell'accademia, la torre sulla rupe con il grande cristallo, l'acquedotto, la cascata;
+- le materie sono **dipinte dal codice** (`strumenti/scene/dipingi.py`: pietre squadrate, lastricato, roccia a
+  pennellate), niente fotografie; il muschio sopra pietre e rocce è un colore dato alle facce rivolte in alto; i
+  pezzi nuovi stanno in `strumenti/scene/incanto.py`;
+- nel gioco una terra può essere **incantata** (`incanto` in `zone.ts`): lì è sempre crepuscolo, il cielo prende un
+  velo di colore, la luce è tutta quella della terra (non si stempera nell'ora dorata comune), la notte è meno buia,
+  l'acqua è turchese, i cristalli hanno luce propria e ciò che brilla brilla di più; l'acqua che cade scorre da sola.
+Se la prova piace, in quest'ordine: le mani e il bastone con il cristallo in primo piano, le barre e i riquadri degli
+incantesimi come nell'immagine, poi le altre zone una alla volta (le forme restano, cambia la «pelle»: materie,
+colori, luce). Se non piace, resta una zona in più e non si tocca altro.
+
 **La misura della fluidità (richiesta del fondatore: «come risolviamo la cosa della scheda grafica?»).** Chi
 sviluppa lavora senza scheda grafica e dal suo posto il computer del fondatore non si raggiunge: fluidità e aspetto
 restavano «non verificati». Ora il gioco si misura da solo sul dispositivo di chi gioca: dalla schermata d'ingresso

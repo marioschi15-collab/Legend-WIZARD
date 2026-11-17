@@ -65,6 +65,10 @@ const CIELI = ZONE.map((z) => new THREE.Color(z.cielo));
 const ALTE = ZONE.map((z) => new THREE.Color(z.luceAlta));
 const BASSE = ZONE.map((z) => new THREE.Color(z.luceBassa));
 const SOLI = ZONE.map((z) => new THREE.Color(z.sole));
+/** Il velo che ogni terra incantata stende sul cielo (un po' più forte del suo colore, perché deve tingere una fotografia). */
+const VELI = ZONE.map((z) => (z.incanto === undefined ? null : new THREE.Color(z.incanto).multiplyScalar(1.25)));
+const veloZona = new THREE.Color();
+const BIANCO_VELO = new THREE.Color(1, 1, 1);
 
 // Le ombre sfumano verso il bordo della zona che coprono, invece di finire con una linea netta che cammina con chi gioca.
 THREE.ShaderChunk.shadowmap_pars_fragment = THREE.ShaderChunk.shadowmap_pars_fragment.replace(
@@ -93,6 +97,7 @@ const SOSTE_MISURA: readonly Sosta[] = [
   { nome: 'Porto delle Nebbie', x: 393.5, z: 92.5, guarda: -2.43, scoppio: { x: 399.2, z: 99.2 } },
   { nome: 'Castello del Bosco, la strada', x: -676, z: 331, guarda: 1.571 },
   { nome: 'Castello del Bosco, il campo', x: -701, z: 301, guarda: 0 },
+  { nome: 'Rovine del Cristallo', x: 170.5, z: -262, guarda: 0 },
 ];
 
 async function avvia(): Promise<void> {
@@ -1509,8 +1514,15 @@ async function avvia(): Promise<void> {
     soleZona.setScalar(0);
     let densita = 0;
     let luceZona = 0;
+    let incanto = 0;
+    veloZona.setScalar(0);
     for (let i = 0; i < ZONE.length; i++) {
       const w = pesi[i]!;
+      const velo = VELI[i];
+      if (velo) {
+        incanto += w;
+        veloZona.r += velo.r * w; veloZona.g += velo.g * w; veloZona.b += velo.b * w;
+      }
       nebbiaZona.r += NEBBIE[i]!.r * w; nebbiaZona.g += NEBBIE[i]!.g * w; nebbiaZona.b += NEBBIE[i]!.b * w;
       cieloZona.r += CIELI[i]!.r * w; cieloZona.g += CIELI[i]!.g * w; cieloZona.b += CIELI[i]!.b * w;
       altaZona.r += ALTE[i]!.r * w; altaZona.g += ALTE[i]!.g * w; altaZona.b += ALTE[i]!.b * w;
@@ -1520,15 +1532,22 @@ async function avvia(): Promise<void> {
       luceZona += ZONE[i]!.luce * w;
     }
     // L'ora dorata: ovunque il sole è basso e d'oro, le ombre e il cielo viola. Ogni terra tiene un po' del suo colore.
-    soleZona.lerp(ORA_SOLE, 0.7);
-    altaZona.lerp(ORA_ALTA, 0.62);
-    bassaZona.lerp(ORA_BASSA, 0.45);
-    nebbiaZona.lerp(ORA_NEBBIA, 0.68);
-    cieloZona.lerp(ORA_CIELO, 0.8);
+    // (In una terra incantata no: lì la luce è tutta la sua, è questo che le dà l'aria di un disegno.)
+    const comune = 1 - incanto;
+    soleZona.lerp(ORA_SOLE, 0.7 * comune);
+    altaZona.lerp(ORA_ALTA, 0.62 * comune);
+    bassaZona.lerp(ORA_BASSA, 0.45 * comune);
+    nebbiaZona.lerp(ORA_NEBBIA, 0.68 * comune);
+    cieloZona.lerp(ORA_CIELO, 0.8 * comune);
     // Il giorno e la notte: di notte c'è poco più di un terzo della luce, e tutto vira al blu.
-    const buioNotte = 1 - giornata.luce;
+    // In una terra incantata è sempre crepuscolo: il cielo è quello della sera con il suo velo, e la notte è meno buia.
+    const buioNotte = (1 - giornata.luce) * (1 - 0.5 * incanto);
     atmosfera.notte.value = buioNotte;
-    atmosfera.sera.value = Math.min(1, buioNotte * 2.5);
+    atmosfera.sera.value = Math.max(Math.min(1, buioNotte * 2.5), incanto);
+    atmosfera.incanto.value = incanto;
+    if (incanto > 0.001) atmosfera.velo.value.copy(veloZona).multiplyScalar(1 / incanto).lerp(BIANCO_VELO, 1 - incanto);
+    else atmosfera.velo.value.setRGB(1, 1, 1);
+    bagliore.strength = 0.3 + 0.22 * incanto;
     tintaNotte.setRGB(1 - 0.4 * buioNotte, 1 - 0.3 * buioNotte, 1 + 0.15 * buioNotte);
     // La tinta di adesso: quella degli incantesimi per quella della notte (senza toccare la prima, che ha memoria).
     tintaOra.copy(umoreVero.tinta).multiply(tintaNotte);
