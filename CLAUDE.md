@@ -30,6 +30,9 @@ pnpm dev          # il gioco in sviluppo
 - Ogni difetto trovato provando il gioco diventa anche una prova in `prove/`, quando si può.
 - Chi sviluppa non ha una scheda grafica né un telefono vero: ciò che riguarda fluidità, aspetto e comandi a dita va
   detto chiaramente come «non verificato» e fatto provare al fondatore.
+- Per la fluidità c'è la misura: il fondatore apre il gioco con `?misura` in fondo all'indirizzo (o preme «Misura la
+  fluidità» nella schermata d'ingresso), aspetta due minuti e manda il testo del risultato. Il giro sta in
+  `src/misura.ts` e le soste in `SOSTE_MISURA` (`src/main.ts`): quando nasce un posto pesante, lo si aggiunge lì.
 - Codice: TypeScript strict ESM, import relativi con suffisso `.js`, nomi di dominio in italiano, moduli piccoli.
 - Verso chi gioca mai gergo; tono adatto a tutti (le creature si sbriciolano, niente sangue).
 - Non si vende mai nulla che dia un vantaggio nel gioco.

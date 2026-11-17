@@ -144,6 +144,14 @@ pnpm test         # prove senza grafica: costruzioni in piedi da sole, rammendo,
 pnpm build        # crea dist/index.html: un solo file, si apre con un doppio clic
 ```
 
+## Misurare la fluidità
+
+Chi sviluppa non ha una scheda grafica vera: per sapere come va il gioco su un dispositivo lo si chiede al gioco stesso.
+Dalla schermata d'ingresso, «Misura la fluidità su questo dispositivo» (oppure `?misura` in fondo all'indirizzo): il
+gioco fa da solo un giro di due minuti per il villaggio e le quattro zone fatte a mano, con due scoppi, al massimo
+dettaglio, e alla fine dice per ogni posto quante immagini al secondo escono (in media e nei momenti peggiori) con un
+giudizio in parole e un testo da copiare e mandare. Durante la misura il gioco non salva nulla.
+
 ## Dove sta cosa
 
 - `src/mago.ts`, `src/magoUi.ts`: vita, mana, livelli, essenze e le loro barre. `src/creature.ts`: le creature di ogni terra e i guardiani. `src/viaggioUi.ts`: il viaggio rapido. `src/quadernoUi.ts`: il quaderno.

@@ -17,6 +17,8 @@ export interface SceneFatte {
   /** Gli oggetti sciolti di tutte le scene: barili, casse, lapidi... */
   readonly cose: Cose;
   aggiorna(dt: number, occhi: THREE.Vector3, notte?: boolean): void;
+  /** Vero quando le forme di tutte le scene vicine sono arrivate (o si è rinunciato): serve a chi misura la fluidità. */
+  caricate(): boolean;
 }
 
 /** Come brilla ogni tipo di punto luce: colore, grandezza dell'alone in metri, quanto trema, se fa luce davvero. */
@@ -205,7 +207,7 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
       paesani.gruppo.visible = false;
       gruppo.add(paesani.gruppo);
     }
-    return { s, aloni, vere, camini, paesani, chiesta: false, forme: null as Forme | null, vicina: false };
+    return { s, aloni, vere, camini, paesani, chiesta: false, arrivata: false, forme: null as Forme | null, vicina: false };
   });
 
   const fari = [0, 1, 2].map(() => {
@@ -220,6 +222,7 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
   return {
     gruppo,
     cose,
+    caricate: () => scene.every((q) => !q.chiesta || q.arrivata),
     mete: SCENE_FATTE.map((s) => ({ nome: s.viaggio, x: s.dati.imbocco[0], z: s.dati.imbocco[1] })),
     aggiorna(dt, occhi, notte = false) {
       cose.avvicina(occhi.x, occhi.z);
@@ -238,6 +241,7 @@ export function creaSceneFatte(R: typeof RAPIER, fisica: RAPIER.World, fumo: Par
         if (!q.chiesta && lontano < 530) {
           q.chiesta = true;
           void caricaForme(q.s, (radice) => cose.forme(scene.indexOf(q), radice)).then((forme) => {
+            q.arrivata = true;
             if (!forme) return;
             forme.radice.visible = q.vicina;
             gruppo.add(forme.radice);

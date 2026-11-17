@@ -157,6 +157,14 @@ sfida «sbriciola tre creature»: lì le creature non nascono.
 Le scene scolpite (muri, tetti, moli, navi) sono ancora pezzi unici che non si sbriciolano, nelle case non si
 entra, e la gente dei paesi nuovi non dà ancora missioni: vedi qui sotto «Fisica dappertutto». Con Blender si fanno anche le creature: il golem è il primo (`strumenti/golem.py`).
 
+**La misura della fluidità (richiesta del fondatore: «come risolviamo la cosa della scheda grafica?»).** Chi
+sviluppa lavora senza scheda grafica e dal suo posto il computer del fondatore non si raggiunge: fluidità e aspetto
+restavano «non verificati». Ora il gioco si misura da solo sul dispositivo di chi gioca: dalla schermata d'ingresso
+(o con `?misura` nell'indirizzo) fa un giro di due minuti per il villaggio e le quattro zone fatte a mano, al massimo
+dettaglio, con due scoppi; per ogni posto conta le immagini al secondo (in media e nei momenti peggiori), quanto si
+sta disegnando e quanto pesano i conti del gioco, dà un giudizio (fluido, giocabile, a scatti) e un testo da copiare
+e mandare. Con quei numeri si decide dove alleggerire. Durante la misura il gioco non salva nulla.
+
 **Fisica dappertutto: modificare, rompere e usare tutto ciò che c'è nella mappa (richiesta del fondatore).**
 Le zone fatte a mano sono le più belle e le più ferme: sono scolpite in un pezzo solo. Romperle fino all'ultimo
 mattone in un browser non si può senza perdere l'aspetto o la fluidità; si può invece che le cose si rompano in

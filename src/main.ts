@@ -24,6 +24,8 @@ import { Creature } from './creature.js';
 import { caricaCreatureVere } from './creatureVere.js';
 import { abitato, CENTRI_FATTE } from './mondo/fatte/elenco.js';
 import { creaSceneFatte } from './mondo/fatte/scene.js';
+import { Misura, type Sosta } from './misura.js';
+import { MisuraUi } from './misuraUi.js';
 import { Missioni, type MondoMissioni } from './missioni.js';
 import { PAROLE, parolaInPremio, salvaConosciute } from './incantesimi/parole.js';
 import { costoDi, Mago } from './mago.js';
@@ -70,6 +72,28 @@ THREE.ShaderChunk.shadowmap_pars_fragment = THREE.ShaderChunk.shadowmap_pars_fra
   'vec2 dalBordo = smoothstep( vec2( 0.5 ), vec2( 0.40 ), abs( shadowCoord.xy - 0.5 ) ); return mix( 1.0, shadow, shadowIntensity * dalBordo.x * dalBordo.y );',
 );
 const PASSO_FISICA = 1 / 60;
+
+/** Con «?misura» in fondo all'indirizzo il gioco fa da solo il giro che misura la fluidità (vedi misura.ts). */
+const VUOLE_MISURA = new URLSearchParams(location.search).has('misura');
+if (VUOLE_MISURA) {
+  // Durante la misura si salta da un posto all'altro e si fa scoppiare di tutto: niente di questo deve restare
+  // nei ricordi della partita, quindi per questa volta il gioco non salva nulla.
+  try {
+    Storage.prototype.setItem = () => undefined;
+    Storage.prototype.removeItem = () => undefined;
+  } catch {
+    // Dove non si può, pazienza: la misura vale lo stesso.
+  }
+}
+/** Dove passa il giro: il villaggio di partenza e le quattro zone fatte a mano, con due scoppi per misurare i crolli. */
+const SOSTE_MISURA: readonly Sosta[] = [
+  { nome: 'Villaggio di partenza', x: 0, z: 41, guarda: 0, scoppio: { x: 0, z: 18 } },
+  { nome: 'Bosco della Strega', x: -199, z: 328, guarda: -2.26 },
+  { nome: 'Borgo d’Inverno', x: -522, z: 38, guarda: 1.2 },
+  { nome: 'Porto delle Nebbie', x: 393.5, z: 92.5, guarda: -2.43, scoppio: { x: 399.2, z: 99.2 } },
+  { nome: 'Castello del Bosco, la strada', x: -676, z: 331, guarda: 1.571 },
+  { nome: 'Castello del Bosco, il campo', x: -701, z: 301, guarda: 0 },
+];
 
 async function avvia(): Promise<void> {
   const q = scegliQualita();
@@ -1695,13 +1719,67 @@ async function avvia(): Promise<void> {
   applicaGrafica();
   ui.onGrafica = applicaGrafica;
 
+  // --- la misura della fluidità: un giro automatico dei posti più pesanti, sul dispositivo di chi gioca ---
+  document.getElementById('misura')?.addEventListener('click', () => {
+    location.search = '?misura';
+  });
+  let giroMisura: Misura | null = null;
+  // Se la finestra finisce dietro un'altra il browser smette di disegnare: quell'attesa non va contata come lentezza.
+  let finestraNascosta = false;
+  document.addEventListener('visibilitychange', () => {
+    finestraNascosta = true;
+  });
+  const misuraUi = VUOLE_MISURA ? new MisuraUi() : null;
+  if (VUOLE_MISURA) {
+    // Si misura al massimo dettaglio e senza che il gioco alleggerisca da solo: sono i numeri che servono a chi sviluppa.
+    regolatoreAcceso = false;
+    mostra(0);
+    renderer.info.autoReset = false;
+    ui.mostraIngresso(false);
+    giroMisura = new Misura(SOSTE_MISURA, {
+      vai: (x, z, imbardata) => prova.vai(x, z, imbardata, 0.02),
+      gira: (imbardata) => {
+        giocatore.imbardata = imbardata;
+      },
+      pronto: () => sceneFatte.caricate(),
+      scoppio: (x, z) => pezzi.spinta(x, altezza(x, z) + 0.4, z, 15, 24, 0.55),
+      rimetti: () => ricostruisci(),
+      disegnato: () => ({ triangoli: renderer.info.render.triangles, disegni: renderer.info.render.calls }),
+    });
+  }
+  const dispositivo = (): string => {
+    const gl = renderer.getContext();
+    const nome = gl.getExtension('WEBGL_debug_renderer_info');
+    const scheda = nome ? String(gl.getParameter(nome.UNMASKED_RENDERER_WEBGL)) : 'sconosciuta';
+    return `Scheda grafica: ${scheda} · immagine ${renderer.domElement.width}×${renderer.domElement.height} · ${q.telefono ? 'telefono' : 'computer'} · ${navigator.userAgent.replace(/^Mozilla\/5\.0 /, '').slice(0, 110)}`;
+  };
+
   const fotogramma = (): void => {
     const adesso = performance.now();
     const prima = ultimoIstante;
-    if (!prova.fermo) avanza(Math.min(0.05, (adesso - ultimoIstante) / 1000), comandi.attivi && !magoUi.aperta);
+    if (giroMisura) {
+      // Durante la misura si contano da capo i triangoli di ogni immagine, e chi gioca non può farsi male.
+      renderer.info.reset();
+      mago.vita = mago.vitaMassima;
+    }
+    if (!prova.fermo) avanza(Math.min(0.05, (adesso - ultimoIstante) / 1000), giroMisura !== null || (comandi.attivi && !magoUi.aperta));
     const lavoro = performance.now() - adesso;
     ultimoIstante = adesso;
     compositore.render();
+    if (giroMisura && misuraUi) {
+      misuraUi.stato(giroMisura.stato);
+      const nascosta = finestraNascosta || document.hidden;
+      finestraNascosta = false;
+      if (giroMisura.fotogramma((adesso - prima) / 1000, lavoro, nascosta)) {
+        const esiti = giroMisura.esiti;
+        giroMisura = null;
+        prova.vai(0, 41, 0, 0);
+        misuraUi.mostra(esiti, dispositivo(), __VERSIONE__, () => {
+          location.href = location.pathname;
+        });
+      }
+      return;
+    }
     regola((adesso - prima) / 1000, lavoro);
   };
   renderer.setAnimationLoop(fotogramma);
