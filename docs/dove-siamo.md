@@ -62,6 +62,8 @@ Comandi di sempre (anche in `CLAUDE.md`): `pnpm typecheck`, `pnpm test`, `pnpm b
     npm install -g @gltf-transform/cli
     cd strumenti/scene && ANTEPRIMA=../vedere/anteprima /opt/blender-env/bin/python rovine.py
 
+Nell'ambiente di lavoro «Gioco Prova» i primi due comandi (e `pnpm install`) girano da soli all'avvio di ogni
+sessione nuova: se `/opt/blender-env` c'è già, non serve rifarli. Lì sono aperti anche gli indirizzi di Poly Haven.
 Ogni scena si rifà in 30-60 secondi e, se non si è cambiato niente, esce identica (si vede da `git status`).
 Le materie dipinte dal codice: `python3 strumenti/scene/dipingi.py`.
 Per una zona nuova: la formula del terreno nei due `suoli` (`strumenti/scene/suoli.py` e `src/mondo/fatte/suoli.ts`),
