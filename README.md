@@ -181,4 +181,7 @@ giudizio in parole e un testo da copiare e mandare. Durante la misura il gioco n
 - `src/mete.ts` (le mete), `src/incantesimi/perduti.ts` e `src/mondo/sigilli.ts` (gli incantesimi perduti e le loro colonne di luce).
 - `src/giocatore.ts`, `src/bastone.ts`, `src/comandi.ts`, `src/interfaccia.ts`, `src/suoni.ts`: chi gioca e ciò che vede e sente.
 - `prove/`: le prove automatiche.
+- `strumenti/`: ciò che serve a chi sviluppa e non finisce nel gioco. `scene/` costruisce con Blender le zone fatte a
+  mano; `vedere/` guarda e fotografa scene e gioco senza scheda grafica, e conta i triangoli. Come si usano, e a che
+  punto è il lavoro, sta in `docs/dove-siamo.md`.
 

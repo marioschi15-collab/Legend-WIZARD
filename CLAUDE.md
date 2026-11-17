@@ -10,6 +10,9 @@ decisioni di prodotto. Le decisioni tecniche le prendi tu.
 
 ## Da leggere prima di lavorare
 
+- `docs/dove-siamo.md`: **a che punto siamo**. Le decisioni che aspettano il fondatore, i prossimi passi in ordine,
+  ciò che non è stato verificato, come si usano gli attrezzi (Blender, le foto, la misura) e le trappole già
+  incontrate. Si legge per primo quando si riprende il lavoro, e si aggiorna alla fine di ogni giro, nello stesso commit.
 - `docs/progetto.md`: **che gioco è** e le sette tappe. È la fonte di verità: se il gioco deve cambiare strada, si
   cambia prima quel documento, nello stesso commit. Si lavora una tappa per volta.
 - `README.md`: come si gioca oggi, dove sta cosa nel codice, i comandi.

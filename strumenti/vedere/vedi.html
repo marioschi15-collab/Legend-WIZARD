@@ -1,0 +1,41 @@
+<!doctype html><html><body style="margin:0"><canvas id="c"></canvas>
+<!-- Il visore delle scene fatte con Blender: le mostra fuori dal gioco, in pochi secondi, con la luce che si vuole.
+     Si usa con vedi.cjs (lì c'è scritto come). Parametri nell'indirizzo: s (nome del file della scena), t (il terreno
+     di anteprima), cam e mira (x,y,z: da dove e verso dove si guarda; x = est, y = alto, z = sud, dal centro della zona),
+     fov, cielo, nebbia, alta, bassa, amb, sole, forza, dasole (la luce), acqua (colore dell'acqua, se c'è). -->
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const Q = new URLSearchParams(location.search);
+const W = +(Q.get('w') ?? 1280), H = +(Q.get('h') ?? 720);
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true }); r.setSize(W, H, false);
+r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = +(Q.get('esp') ?? 1.0); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+const s = new THREE.Scene(); const cam = new THREE.PerspectiveCamera(+(Q.get('fov') ?? 62), W / H, 0.1, 1200);
+const nebbia = new THREE.Color(parseInt(Q.get('cielo') ?? '8a989c', 16)); s.background = nebbia; s.fog = new THREE.FogExp2(nebbia, +(Q.get('nebbia') ?? 0.014));
+s.add(new THREE.HemisphereLight(parseInt(Q.get('alta') ?? 'a8b8c4', 16), parseInt(Q.get('bassa') ?? '3a3a30', 16), +(Q.get('amb') ?? 1.5)));
+const sole = new THREE.DirectionalLight(parseInt(Q.get('sole') ?? 'c8d2dc', 16), +(Q.get('forza') ?? 1.6)); sole.castShadow = true; sole.shadow.mapSize.set(4096, 4096);
+const c = sole.shadow.camera; c.left = c.bottom = -90; c.right = c.top = 90; c.far = 400; sole.shadow.bias = -0.0005; s.add(sole); s.add(sole.target);
+const IMG = new Set(['muro','pietra','muschio','tetto','legno','corteccia','terra','ciottoli','intonaco','tegole','neve','tela','tavole','vetrata','blocchi','lastre','rupe']);
+const imm = {}; const img = (n) => { if (!imm[n]) { const t = new THREE.TextureLoader().load('/public/materiali/scene/' + n + '.jpg'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.flipY = false; t.anisotropy = 4; imm[n] = t; } return imm[n]; };
+(async () => {
+  const L = new GLTFLoader(); L.setMeshoptDecoder(MeshoptDecoder);
+  const nome = Q.get('s') ?? 'strega';
+  const [scena, terreno] = await Promise.all([L.loadAsync(Q.get('m') ?? ('/public/modelli/' + nome + '.glb')), L.loadAsync(Q.get('t') ?? ('anteprima/' + nome + '_terreno.glb'))]);
+  for (const g of [scena.scene, terreno.scene]) { g.traverse((o) => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = true;
+    const m = o.material; const n = m.name;
+    if (n === 'luce' || n === 'vetrata' || n === 'runa') o.material = new THREE.MeshBasicMaterial({ map: n === 'vetrata' ? img(n) : null, color: n === 'runa' ? new THREE.Color(0.6, 2.2, 2.6) : n === 'luce' ? new THREE.Color(3, 1.7, 0.6) : new THREE.Color(2.2, 2.0, 1.8), fog: true });
+    else if (n === 'ghiaccio') o.material = new THREE.MeshLambertMaterial({ color: 0xcfe6f4, vertexColors: true, emissive: 0x24384a });
+    else if (n === 'cristallo') { o.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 0.75, 2.4), vertexColors: true }); o.castShadow = false; }
+    else if (n === 'cascata') { o.material = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.75, 1.15, 1.25), transparent: true, opacity: 0.85, side: THREE.DoubleSide }); o.castShadow = false; }
+    else { o.material = new THREE.MeshLambertMaterial({ map: IMG.has(n) ? img(n) : null, color: IMG.has(n) ? 0xffffff : m.color, vertexColors: !!o.geometry.attributes.color, side: n === 'rametti' || n === 'terreno' ? THREE.DoubleSide : THREE.FrontSide, alphaTest: n === 'rametti' ? 0.35 : 0 }); if (n === 'rametti') o.castShadow = false; }
+  }); s.add(g); }
+  if (Q.get('acqua')) { const a = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshLambertMaterial({ color: parseInt(Q.get('acqua'), 16), transparent: true, opacity: 0.86 })); a.rotation.x = -Math.PI / 2; a.position.y = -0.55; s.add(a); }
+  const p = (Q.get('cam') ?? '28.8,7.2,-55.5').split(',').map(Number), q = (Q.get('mira') ?? '2.5,6.5,-73.7').split(',').map(Number);
+  cam.position.set(p[0], p[1], p[2]); cam.lookAt(q[0], q[1], q[2]); sole.target.position.set(q[0], 0, q[2]); const ds = (Q.get('dasole') ?? '-60,80,-50').split(',').map(Number); sole.position.set(q[0] + ds[0], ds[1], q[2] + ds[2]);
+  const luci = (Q.get('luci') ?? '').split(';').filter(Boolean); for (const t of luci) { const v = t.split(',').map(Number); const l = new THREE.PointLight(0xff9a40, 60, 26, 1.6); l.position.set(v[0], v[1], v[2]); s.add(l); }
+  await new Promise((ok) => setTimeout(ok, 1200)); r.render(s, cam); r.render(s, cam);
+  window.pronto = JSON.stringify({ tri: r.info.render.triangles, chiamate: r.info.render.calls });
+})().catch((e) => { window.pronto = 'ERRORE ' + e.message; });
+</script></body></html>
